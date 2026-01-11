@@ -94,8 +94,8 @@ export async function POST(request: Request) {
           email: user.email || '',     
           createTime: user.createTime || '',
           parentId: user.parentId || null,
-          companyName: user.companyName || '',
-          contactPerson: user.contactPerson || '',
+          organization_name: user.organization_name || '',
+          organization_leader: user.organization_leader || '',
           userType: user.userType || '',
           subAccountCount: user.subAccountCount || 0
         })),

@@ -22,8 +22,8 @@ interface UserProfile {
   name: string;
   phone: string;
   email: string;
-  companyName: string;
-  contactPerson: string;
+  organization_name: string;
+  organization_leader: string;
   userType: string;
   [key: string]: any;
 }
@@ -43,8 +43,8 @@ export default function PublisherProfilePage() {
       name: '', 
       phone: '',
       email: '',
-      companyName: '',
-      contactPerson: '',
+      organization_name: '',
+      organization_leader: '',
       userType: ''
   });
   // 加载状态和错误信息
@@ -82,8 +82,8 @@ export default function PublisherProfilePage() {
               name: apiUserData.username || '用户',
               phone: apiUserData.phone || '',
               email: apiUserData.email || '',
-              companyName: apiUserData.companyName || '',
-              contactPerson: apiUserData.contactPerson || '',
+              organization_name: apiUserData.organization_name || '',
+              organization_leader: apiUserData.organization_leader || '',
               userType: apiUserData.userType || '未设置'
             };
             
@@ -231,7 +231,7 @@ export default function PublisherProfilePage() {
             </div>
             <div>
               <span className="flex font-bold text-lg items-center">
-                {userProfile.companyName}
+                {userProfile.organization_name}
               </span>
               <span className="flex text-sm opacity-80">{userProfile.phone}</span>
             </div>

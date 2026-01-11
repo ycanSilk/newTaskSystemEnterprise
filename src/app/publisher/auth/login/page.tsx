@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+// 导入登录页面类型定义
+import { LoginFormData, LoginApiResponse } from '../../../types/auth/login';
 
 export default function PublisherLoginPage() {
   
-  const [formData, setFormData] = useState({
-    username: '',
+  const [formData, setFormData] = useState<LoginFormData>({
+    account: '',
     password: '',
     captcha: ''
   });
@@ -57,9 +59,9 @@ export default function PublisherLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    // 用户名校验
-    if (!formData.username || formData.username.trim() === '') {
-      setErrorMessage('请输入用户名');
+    // 账号校验
+    if (!formData.account || formData.account.trim() === '') {
+      setErrorMessage('请输入账号');
       return;
     }
     
@@ -91,39 +93,23 @@ export default function PublisherLoginPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          username: formData.username.trim(),
+          account: formData.account.trim(),
           password: formData.password.trim()
         }),
         credentials: 'include' // 确保携带cookie
       });
 
-     
-      // 解析响应数据
-      const result = await response.json();
       
-      if (response.ok) {
-        // 请求成功（状态码200）
-        if (result.success) {
-          router.push('/publisher/dashboard');
-        } else {
-          setErrorMessage(result.message || '登录失败，请检查输入信息');
-          refreshCaptcha();
-        }
+      // 解析响应数据
+      const result: LoginApiResponse = await response.json();
+      
+      if (result.success) {
+        // 登录成功，跳转到仪表盘
+        router.push('/publisher/dashboard');
       } else {
-        let errorMsg = '';    
-        switch (response.status) {
-          case 400:
-            errorMsg = result.message || '请求参数错误，请检查输入';
-            break;
-          case 401:
-            errorMsg = result.message || '用户名或密码错误';
-            break;
-          default:
-            errorMsg = result.message || `登录失败，状态码: ${response.status}`;
-        }       
-        setErrorMessage(errorMsg);
-        // 错误时刷新验证码
-        refreshCaptcha();
+        // 登录失败，显示错误信息
+        setErrorMessage(result.message || '登录失败，请检查输入信息');
+        refreshCaptcha(); // 刷新验证码
       }
     } catch (error) {
       setErrorMessage('网络连接失败，请检查网络设置后重试');
@@ -154,17 +140,17 @@ export default function PublisherLoginPage() {
 
             {/* 登录表单 */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 用户名输入 */}
+              {/* 账号输入 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  用户名
+                  账号
                 </label>
                 <input
                   type="text"
-                  placeholder="请输入用户名"
-                  value={formData.username}
+                  placeholder="请输入账号"
+                  value={formData.account}
                   onChange={(e) => {
-                    setFormData({...formData, username: e.target.value});
+                    setFormData({...formData, account: e.target.value});
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

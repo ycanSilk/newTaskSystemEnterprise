@@ -3,16 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SuccessModal from '../../../../components/button/authButton/SuccessModal';
+// 导入注册页面类型定义
+import { RegisterFormData, RegisterApiRequest, RegisterApiResponse } from '../../../types/auth/register';
 
 export default function PublisherRegisterPage() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
     password: '',
     confirmPassword: '',
     phone: '',
     email: '',
-    companyName: '',
-    contactPerson: '',
+    organization_name: '',
+    organization_leader: '',
     captcha: '',
     agreeToTerms: false
   });
@@ -100,31 +102,31 @@ export default function PublisherRegisterPage() {
     }
 
     // 企业名称验证（必填）
-    if (!formData.companyName.trim()) {
+    if (!formData.organization_name.trim()) {
       setErrorMessage('企业名称不能为空');
       return;
     }
 
-    if (formData.companyName.trim().length < 2 || formData.companyName.trim().length > 100) {
+    if (formData.organization_name.trim().length < 2 || formData.organization_name.trim().length > 100) {
       setErrorMessage('企业名称长度应在2-100个字符之间');
       return;
     }
 
     // 企业负责人验证（必填）
-    if (!formData.contactPerson.trim()) {
+    if (!formData.organization_leader.trim()) {
       setErrorMessage('企业负责人不能为空');
       return;
     }
 
-    if (formData.contactPerson.trim().length < 2 || formData.contactPerson.trim().length > 50) {
+    if (formData.organization_leader.trim().length < 2 || formData.organization_leader.trim().length > 50) {
       setErrorMessage('企业负责人姓名长度应在2-50个字符之间');
       return;
     }
 
-    // 企业负责人格式验证（中文、英文、空格）
-    const contactPersonRegex = /^[\u4e00-\u9fa5a-zA-Z\s]+$/;
-    if (!contactPersonRegex.test(formData.contactPerson.trim())) {
-      setErrorMessage('企业负责人姓名只能包含中文、英文和空格');
+    // 企业负责人格式验证（中文、英文，不能包含空格）
+    const organization_leaderRegex = /^[\u4e00-\u9fa5a-zA-Z]+$/;
+    if (!organization_leaderRegex.test(formData.organization_leader.trim())) {
+      setErrorMessage('企业负责人姓名只能包含中文和英文，不能有空格');
       return;
     }
 
@@ -166,23 +168,26 @@ export default function PublisherRegisterPage() {
     setIsLoading(true);
     
     try {
+      // 准备发送到后端的注册请求数据
+      const requestData: RegisterApiRequest = {
+        username: formData.username,
+        password: formData.password,
+        phone: formData.phone,
+        email: formData.email,
+        organization_name: formData.organization_name,
+        organization_leader: formData.organization_leader
+      };
+      
       // 调用发布者注册API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-          phone: formData.phone,
-          email: formData.email,
-          companyName: formData.companyName,
-          contactPerson: formData.contactPerson
-        }),
+        body: JSON.stringify(requestData),
       });
 
-      const result = await response.json();
+      const result: RegisterApiResponse = await response.json();
       
       if (result.success) {
         // 注册成功
@@ -333,8 +338,8 @@ export default function PublisherRegisterPage() {
                   <input
                     type="text"
                     placeholder="请输入企业名称"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                    value={formData.organization_name}
+                    onChange={(e) => setFormData({...formData, organization_name: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
@@ -347,8 +352,8 @@ export default function PublisherRegisterPage() {
                   <input
                     type="text"
                     placeholder="请输入企业负责人姓名"
-                    value={formData.contactPerson}
-                    onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                    value={formData.organization_leader}
+                    onChange={(e) => setFormData({...formData, organization_leader: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>

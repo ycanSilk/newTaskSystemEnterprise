@@ -10,8 +10,8 @@ interface UserProfile {
   name: string;
   phone: string;
   email: string;
-  companyName: string;
-  contactPerson: string;
+  organization_name: string;
+  organization_leader: string;
   userType: string;
   [key: string]: any;
 }
@@ -25,8 +25,8 @@ export default function PersonalInfoPage() {
     name: '', 
     phone: '',
     email: '',
-    companyName: '',
-    contactPerson: '',
+    organization_name: '',
+    organization_leader: '',
     userType: ''
   });
   
@@ -74,8 +74,8 @@ export default function PersonalInfoPage() {
             name: apiUserData.username || '用户',
             phone: apiUserData.phone || '',
             email: apiUserData.email || '',
-            companyName: apiUserData.companyName || '',
-            contactPerson: apiUserData.contactPerson || '',
+            organization_name: apiUserData.organization_name || '',
+            organization_leader: apiUserData.organization_leader || '',
             userType: apiUserData.userType || '未设置'
           };
           
@@ -254,10 +254,10 @@ export default function PersonalInfoPage() {
         <InfoItem label="邮箱" value={userProfile.email || '未填写'} field="email" placeholder="请输入邮箱" />
 
         {/* 企业名称 */}
-        <InfoItem label="企业名称" value={userProfile.companyName || '未填写'} field="companyName" placeholder="请输入企业名称" />
+        <InfoItem label="企业名称" value={userProfile.organization_name || '未填写'} field="organization_name" placeholder="请输入企业名称" />
 
         {/* 负责人 */}
-        <InfoItem label="负责人" value={userProfile.contactPerson || '未填写'} field="contactPerson" placeholder="请输入负责人姓名" />
+        <InfoItem label="负责人" value={userProfile.organization_leader || '未填写'} field="organization_leader" placeholder="请输入负责人姓名" />
 
         {/* 账号类型 */}
         <div className="p-4 border-b border-gray-100 flex justify-between items-center">

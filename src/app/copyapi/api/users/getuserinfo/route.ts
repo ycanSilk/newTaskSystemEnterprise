@@ -18,8 +18,8 @@ interface UserInfo {
   invitationCode?: string;
   createTime?: string;
   avatar?: string;
-  companyName?: string;
-  contactPerson?: string;
+  organization_name?: string;
+  organization_leader?: string;
   userType?: string;
 }
 
@@ -113,8 +113,8 @@ export async function GET(request: Request) {
       invitationCode: apiUserData.invitationCode,
       createTime: apiUserData.createTime,
       avatar: apiUserData.avatar || '/images/0e92a4599d02a7.jpg',
-      companyName: apiUserData.companyName,
-      contactPerson: apiUserData.contactPerson,
+      organization_name: apiUserData.organization_name,
+      organization_leader: apiUserData.organization_leader,
       userType: apiUserData.userType
     };
     

@@ -1,12 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 // 导入四个对应状态的页面组件
 import OverViewTabPage from './OverView/page';
 import ActiveTabPage from './InProgress/page';
 import AwaitingReviewTabPage from './AwaitingReview/page';
 import CompletedTabPage from './Completed/page';
+// 导入检查支付密码的API响应类型
+import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWalletPwd';
+// 导入URL重定向提示框组件
+import URLRedirection from '../../../components/promptBox/URLRedirection';
 
 // 定义API响应数据类型
 interface TaskStatsData {
@@ -55,6 +59,7 @@ interface ApiResponse<T> {
 
 export default function PublisherDashboardPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const tabFromUrl = searchParams?.get('tab') || 'OverView';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
@@ -84,6 +89,8 @@ export default function PublisherDashboardPage() {
   // 添加待审核订单数据状态
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [pendingOrdersPagination, setPendingOrdersPagination] = useState<PaginationData | null>(null);
+  // 添加URL重定向提示框状态
+  const [showRedirectModal, setShowRedirectModal] = useState(false);
 
   // 处理选项卡切换并更新URL参数
   const handleTabChange = (tab: string) => {
@@ -94,6 +101,32 @@ export default function PublisherDashboardPage() {
     newUrl.searchParams.set('tab', tab);
     window.history.replaceState({}, '', newUrl.toString());
   };
+
+  // 检查用户是否设置了支付密码
+  useEffect(() => {
+    const checkWalletPassword = async () => {
+      try {
+        // 调用检查支付密码API，使用正确的端点
+        const response = await fetch('/api/paymentWallet/checkWalletPwd', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        
+        const result: CheckWalletPwdApiResponse = await response.json();
+        
+        // 如果请求成功且用户未设置支付密码
+        if (result.success && !result.data.has_password) {
+          // 显示自定义提示弹窗
+          setShowRedirectModal(true);
+        }
+      } catch (error) {
+        console.error('检查支付密码失败:', error);
+      }
+    };
+    
+    // 调用检查支付密码函数
+    checkWalletPassword();
+  }, [router]);
 
   // 在组件挂载时获取任务统计数据
   useEffect(() => {
@@ -232,70 +265,81 @@ export default function PublisherDashboardPage() {
   }, []);
 
   return (
-    <div className="pb-20">
-      {/* 只保留这4个切换按钮的布局和框架 */}
-      <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
-        <button
-          onClick={() => handleTabChange('OverView')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'OverView' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-        >
-          概览
-        </button>
-        <button
-          onClick={() => handleTabChange('InProgress')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-        >
-          <div className="flex flex-col items-center">
-            <div className={activeTab === 'active' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-white-500'}>
-              {orderStats.acceptedCount}
+    <>
+      <div className="pb-20">
+        {/* 只保留这4个切换按钮的布局和框架 */}
+        <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
+          <button
+            onClick={() => handleTabChange('OverView')}
+            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'OverView' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          >
+            概览
+          </button>
+          <button
+            onClick={() => handleTabChange('InProgress')}
+            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          >
+            <div className="flex flex-col items-center">
+              <div className={activeTab === 'active' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-white-500'}>
+                {orderStats.acceptedCount}
+              </div>
+              <span>进行中</span>
             </div>
-            <span>进行中</span>
-          </div>
-        </button>
-        <button
-          onClick={() => handleTabChange('AwaitingReview')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-        >
-          <div className="flex flex-col items-center">
-            <div className={activeTab === 'audit' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-orange-500'}>
-              {orderStats.submittedCount}
+          </button>
+          <button
+            onClick={() => handleTabChange('AwaitingReview')}
+            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          >
+            <div className="flex flex-col items-center">
+              <div className={activeTab === 'audit' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-orange-500'}>
+                {orderStats.submittedCount}
+              </div>
+              <span>待审核</span>
             </div>
-            <span>待审核</span>
-          </div>
-        </button>
-        <button
-          onClick={() => handleTabChange('Completed')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-        >
-          <div className="flex flex-col items-center">
-            <div className={activeTab === 'Completed' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-green-500'}>
-              {orderStats.completedCount}
+          </button>
+          <button
+            onClick={() => handleTabChange('Completed')}
+            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          >
+            <div className="flex flex-col items-center">
+              <div className={activeTab === 'Completed' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-green-500'}>
+                {orderStats.completedCount}
+              </div>
+              <span>已完成</span>
             </div>
-            <span>已完成</span>
-          </div>
-        </button>
+          </button>
+        </div>
+
+        
+
+        {/* 直接嵌入4个对应状态的页面组件 */}
+        {activeTab === 'OverView' && (
+          <OverViewTabPage 
+            taskStats={taskStats} 
+            loading={loading} 
+            error={error} 
+            orderStats={orderStats}
+          />
+        )}
+        {activeTab === 'InProgress' && <ActiveTabPage />}
+        {activeTab === 'AwaitingReview' && (
+          <AwaitingReviewTabPage 
+            awaitingReviewOrders={pendingOrders}
+            awaitingReviewData={pendingOrdersPagination}
+            loading={loading}
+          />
+        )}
+        {activeTab === 'Completed' && <CompletedTabPage />}
       </div>
-
       
-
-      {/* 直接嵌入4个对应状态的页面组件 */}
-      {activeTab === 'OverView' && (
-        <OverViewTabPage 
-          taskStats={taskStats} 
-          loading={loading} 
-          error={error} 
-          orderStats={orderStats}
-        />
-      )}
-      {activeTab === 'InProgress' && <ActiveTabPage />}
-      {activeTab === 'AwaitingReview' && (
-        <AwaitingReviewTabPage 
-          awaitingReviewOrders={pendingOrders}
-          awaitingReviewData={pendingOrdersPagination}
-          loading={loading}
-        />
-      )}
-      {activeTab === 'Completed' && <CompletedTabPage />}
-    </div>
+      {/* URL重定向提示框组件 */}
+      <URLRedirection
+        isOpen={showRedirectModal}
+        message="您尚未设置支付密码，请先设置支付密码"
+        buttonText="前往设置"
+        redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
+        onClose={() => setShowRedirectModal(false)}
+      />
+    </>
   );
 }
