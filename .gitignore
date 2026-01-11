@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Development server
+dist/
+
+# Logs
+logs
+*.log
+
+# Environment variables
+.env*
+!.env.example
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS generated files
+Thumbs.db
+
+# Build outputs
+.build/
+
+# Temporary files
+tmp/
+temp/
+
+# NPM
+npm-debug.log*
+.npm/
+
+# Typescript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Optional eslint cache
+.eslintcache
+
+# Module systems
+yarn.lock
+.npmrc
+src/goflylivechat/

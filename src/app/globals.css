@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* H5移动端基础样式 */
+@layer base {
+  /* 设置rem基准 */
+  html {
+    font-size: 16px; /* 1rem = 16px */
+    scroll-behavior: smooth;
+  }
+  
+  /* 移动端适配 */
+  @media (max-width: 320px) {
+    html {
+      font-size: 14px; /* 小屏幕适配 */
+    }
+  }
+  
+  /* 禁用iOS默认样式 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* 允许文本选择的元素 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+                 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 
+                 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: theme('colors.gray.900');
+    background-color: theme('colors.gray.50');
+    /* 防止橡皮筋效果 */
+    overscroll-behavior: none;
+  }
+  
+  /* 滚动条美化 */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: theme('colors.gray.100');
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.gray.400');
+    border-radius: 2px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.gray.500');
+  }
+}
+
+/* H5移动端组件样式 */
+@layer components {
+  /* 安全区域容器 */
+  .safe-container {
+    @apply min-h-screen flex flex-col safe-top safe-bottom;
+  }
+  
+  /* H5页面容器 */
+  .mobile-page {
+    @apply min-h-screen bg-gray-50 flex flex-col;
+  }
+  
+  /* 顶部导航栏 */
+  .mobile-header {
+    @apply fixed top-0 left-0 right-0 z-50 h-14 bg-gradient-to-r from-primary-500 to-primary-400 text-white safe-top;
+  }
+  
+  /* 主内容区 */
+  .mobile-main {
+    @apply flex-1 pt-14 pb-16 overflow-hidden;
+  }
+  
+  /* 底部导航 */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 safe-bottom;
+  }
+  
+  /* 卡片样式 */
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-100;
+  }
+  
+  .card-padding {
+    @apply p-4;
+  }
+  
+  /* 按钮样式 */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-base transition-all duration-200 touch-target;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-500 text-white shadow-primary hover:bg-primary-600 active:bg-primary-700;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-primary-500 border border-primary-500 hover:bg-primary-50 active:bg-primary-100;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-50 active:bg-gray-100;
+  }
+  
+  .btn-success {
+    @apply btn bg-success text-white shadow-success hover:bg-green-600 active:bg-green-700;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-4 text-lg;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-2 text-sm;
+  }
+  
+  /* 状态徽章 */
+  .badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700;
+  }
+  
+  .badge-success {
+    @apply badge bg-green-100 text-green-700;
+  }
+  
+  .badge-warning {
+    @apply badge bg-yellow-100 text-yellow-700;
+  }
+  
+  .badge-error {
+    @apply badge bg-red-100 text-red-700;
+  }
+  
+  /* 输入框样式 */
+  .input {
+    @apply w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-base placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+  }
+  
+  /* 任务卡片特殊样式 */
+  .task-card {
+    @apply card card-padding mb-3 active:bg-gray-50 transition-colors;
+  }
+  
+  .task-card-hot {
+    @apply relative overflow-hidden;
+  }
+  
+  .task-card-hot::before {
+    content: '';
+    @apply absolute top-0 right-0 w-0 h-0 border-l-[20px] border-b-[20px] border-l-transparent border-b-red-500;
+  }
+  
+  /* 抢单按钮特殊效果 */
+  .grab-btn {
+    @apply btn-success relative overflow-hidden;
+  }
+  
+  .grab-btn.pulsing {
+    @apply animate-grab-pulse;
+  }
+  
+  /* 倒计时进度条 */
+  .countdown-progress {
+    @apply absolute top-0 left-0 h-full bg-white/20 transition-all duration-1000 ease-linear;
+  }
+}
+
+/* 工具类 */
+@layer utilities {
+  /* 文本截断 */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* 滚动优化 */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 防止滚动穿透 */
+  .no-scroll {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  
+  /* 居中容器 */
+  .center-container {
+    @apply max-w-sm mx-auto px-4;
+  }
+  
+  /* 角色主题色 */
+  .theme-admin {
+    --theme-color: theme('colors.role.admin');
+  }
+  
+  .theme-publisher {
+    --theme-color: theme('colors.role.publisher');
+  }
+  
+  .theme-commenter {
+    --theme-color: theme('colors.role.commenter');
+  }
+  
+  /* 触摸反馈 */
+  .touch-feedback {
+    @apply active:scale-95 transition-transform duration-100;
+  }
+}

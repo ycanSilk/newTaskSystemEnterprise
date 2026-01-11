@@ -1,0 +1,70 @@
+{
+  "baseUrl": "http://localhost:8083/api",
+  "timeout": 5000,
+  "headers": {
+    "accept": "*/*",
+    "Content-Type": "application/json"
+  },
+  "endpoints": {
+    "auth": {
+      "register": "/biz/user/register",
+      "login": "/biz/user/login",
+      "logout": "/biz/user/logout",
+      "resetpwd": "/biz/user/reset-password",
+      "refreshToken": "/biz/user/refresh",
+      "userlist": "/biz/user/list"
+    },
+    "user": {
+      "getuserinfo": "/biz/user/profile",
+      "changepwd": "/biz/user/change-password",
+      "getbizuserlist": "/biz/user/main-accounts/list",
+      "getinbuserlist": "/ind/user/list",
+      "getbizuserstats": "/biz/user/main-accounts/list"
+    },
+    "task": {
+      "publish": "/tasks/publish",
+      "mypublished": "/tasks/my-published",
+      "pendingverify": "/tasks/pending-verify",
+      "reviewtask": "/tasks/accepted/{subTaskId}/verify",
+      "taskcount": "/tasks/stats",
+      "missionhall": "/tasks/hall",
+      "platformStats": "/tasks/platform-stats"
+    },
+    "wallet": {
+      "walletinfo": "/wallet/info",
+      "bindAlipay": "/wallet/bind-alipay",
+      "setpaymentpwd": "/wallet/security-password",
+      "withdraw": "/wallet/withdraw",
+      "availablebalance": "/wallet/available-balance",
+      "validatepwd": "/wallet/validate-security-password",
+      "transactionrecord": "/wallet/transactions",
+      "usersrecharge": "/wallet/recharge"
+    },
+    "bank": {
+      "getbankcardslist": "/bank-cards/",
+      "addbankcard": "/bank-cards/",
+      "setdefaultbankcard": "/bank-cards/{cardId}/default",
+      "getdefaultbankcard": "/bank-cards/default"
+    },
+    "rental": {
+      "publishrental": "/rental/lease/publish",
+      "rentalmarket": "/rental/lease/market",
+      "requestrentalmarket": "/rental/rent/market",
+      "publishrequestrental": "/rental/rent/publish",
+      "mypublishrentalinfolist": "/rental/lease/my",
+      "myrequestrentalinfolist": "/rental/rent/my",
+      "creatleaseorder": "/rental/orders/create",
+      "myrentalorder": "/rental/orders/my/lessor",
+      "myrentedorder": "/rental/orders/my/renter",
+      "getleasestats": "/api/rental/stats"
+    },
+    "inviteagent": {
+      "agentstats": "/agent/stats",
+      "myagentteam": "/agent/team",
+      "myinvitationcode": "/agent/invitation-code"
+    }
+  },
+  "mockMode": false,
+  "retryCount": 3,
+  "retryDelay": 1000
+}
