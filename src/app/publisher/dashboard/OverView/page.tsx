@@ -31,13 +31,18 @@ interface OrderStatsData {
 
 // 组件Props接口
 interface OverviewTabPageProps {
-  taskStats: TaskStatsData | null;
-  loading: boolean;
-  error: string | null;
-  orderStats: OrderStatsData;
+  taskStats?: TaskStatsData | null;
+  loading?: boolean;
+  error?: string | null;
+  orderStats?: OrderStatsData;
 }
 
-export default function OverviewTabPage({ taskStats, loading, error, orderStats }: OverviewTabPageProps) {
+export default function OverviewTabPage({ 
+  taskStats = null, 
+  loading = false, 
+  error = null, 
+  orderStats = { acceptedCount: 0, submittedCount: 0, completedCount: 0 } 
+}: OverviewTabPageProps) {
   
   // 格式化金额显示
   const formatCurrency = (amount: number) => {

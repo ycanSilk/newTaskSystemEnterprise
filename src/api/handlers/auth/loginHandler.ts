@@ -8,7 +8,7 @@ import apiClient from '../../client';
 // 导入登录端点常量，用于构建登录请求URL
 import { LOGIN_ENDPOINT } from '../../endpoints/auth/login';
 // 导入登录请求和响应的类型定义
-import { LoginRequest, LoginResponse } from '../../types/auth/login';
+import { LoginRequest, LoginResponse } from '../../types/auth/loginTypes';
 // 导入错误处理相关的函数和类型
 import { ApiError, handleApiError, createErrorResponse } from '../../client/errorHandler';
 // 导入通用API响应类型
@@ -53,6 +53,9 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
       // 设置Cookie，使用API配置中的token Cookie名称
       // 过期时间设置为7天（7 * 24 * 60 * 60秒）
       setSecureHttpOnlyCookie(req, successResponse, apiConfig.auth.tokenCookieName, token, 7 * 24 * 60 * 60);
+      console.log('Token set in cookie:', token);
+      console.log('Cookie name:', apiConfig.auth.tokenCookieName);
+      console.log('token保存情况:', token);
     }
     
     // 返回响应给客户端
@@ -97,7 +100,7 @@ export function setSecureHttpOnlyCookie(
                  // 允许在开发环境下使用HTTP
                  process.env.NODE_ENV === 'development';
   
-  // 设置安全的HttpOnly Cookie
+  // 设置安全的HttpOnly Cookie，防止前端JavaScript读取，提高安全性
   response.cookies.set(name, value, {
     httpOnly: true,  // 仅HTTP访问，防止JavaScript读取Cookie，提高安全性
     secure: isHttps,  // 仅HTTPS传输，防止明文传输Cookie

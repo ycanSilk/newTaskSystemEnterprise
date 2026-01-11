@@ -84,12 +84,16 @@ interface AwaitingReviewOrder {
 }
 
 interface AwaitingReviewTabPageProps {
-  awaitingReviewOrders: AwaitingReviewOrder[];
-  awaitingReviewData: AwaitingReviewData | null;
-  loading: boolean;
+  awaitingReviewOrders?: AwaitingReviewOrder[];
+  awaitingReviewData?: AwaitingReviewData | null;
+  loading?: boolean;
 }
 
-export default function AwaitingReviewTabPage({ awaitingReviewOrders, awaitingReviewData, loading }: AwaitingReviewTabPageProps) {
+export default function AwaitingReviewTabPage({ 
+  awaitingReviewOrders = [], 
+  awaitingReviewData = null, 
+  loading = false 
+}: AwaitingReviewTabPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');

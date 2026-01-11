@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 // 导入登录页面类型定义
-import { LoginFormData, LoginApiResponse } from '../../../types/auth/login';
+import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
+// 导入useUser钩子，用于检查登录状态
+import { useUser } from '@/hooks/useUser';
 
 export default function PublisherLoginPage() {
   
@@ -17,6 +19,17 @@ export default function PublisherLoginPage() {
   const [captchaCode, setCaptchaCode] = useState('');
   const [countdown, setCountdown] = useState(60);
   const router = useRouter();
+  
+  // 使用useUser钩子检查登录状态
+  const { isAuthenticated, isLoading: isAuthLoading } = useUser();
+  
+  // 如果用户已登录，重定向到仪表盘页面
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) {
+      console.log('用户已登录，重定向到仪表盘页面');
+      router.push('/publisher/dashboard');
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
   
   // 生成随机验证码
   function generateCaptcha(length = 4) {

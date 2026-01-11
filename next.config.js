@@ -13,10 +13,10 @@ const nextConfig = {
   // 统一开发环境和生产环境的API代理配置
   async rewrites() {
     // 使用统一的API地址，确保环境一致性
-    const apiBaseUrl = process.env.API_BASE_URL || 'https://catchweight-graphemically-eldora.ngrok-free.dev';
+    const apiBaseUrl = process.env.API_BASE_URL || 'http://134.122.136.221:4667';
     
     return [
-      { source: '/api/users/me', destination: '/api/users/me' }, // 不转发到外部服务器
+      { source: '/api/auth/me', destination: '/api/auth/me' }, // 不转发到外部服务器
       { source: '/api/users/register', destination: `${apiBaseUrl}/api/users/register` },
       { source: '/api/users/login', destination: `${apiBaseUrl}/api/users/login` },
       { source: '/api/users', destination: `${apiBaseUrl}/api/users` },

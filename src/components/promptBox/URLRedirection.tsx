@@ -61,7 +61,7 @@ export default function URLRedirection({
     // 先调用关闭回调
     onClose();
     // 跳转到指定URL
-    router.push(redirectUrl);
+    window.location.href = redirectUrl;
   };
   
   return (

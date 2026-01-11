@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // 导入API客户端实例，用于发送HTTP请求
 import apiClient from '../../client';
 // 导入注册请求和响应的类型定义
-import { RegisterRequest, RegisterResponse } from '../../types/auth/register';
+import { RegisterRequest, RegisterResponse } from '../../types/auth/registerTypes';
 // 导入错误处理相关的函数和类型
 import { ApiError, handleApiError, createErrorResponse } from '../../client/errorHandler';
 // 导入通用API响应类型

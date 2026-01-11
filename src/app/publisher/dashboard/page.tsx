@@ -8,60 +8,28 @@ import ActiveTabPage from './InProgress/page';
 import AwaitingReviewTabPage from './AwaitingReview/page';
 import CompletedTabPage from './Completed/page';
 // 导入检查支付密码的API响应类型
-import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWalletPwd';
+import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWalletPwdTypes';
 // 导入URL重定向提示框组件
 import URLRedirection from '../../../components/promptBox/URLRedirection';
+// 导入useUser钩子，用于获取用户登录状态
+import { useUser } from '@/hooks/useUser';
+// 导入加载组件，用于状态加载中显示
+import { Loading } from '@/components/ui';
 
-// 定义API响应数据类型
-interface TaskStatsData {
-  publishedCount: number;
-  acceptedCount: number;
-  submittedCount: number;
-  completedCount: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  todayEarnings: number;
-  monthEarnings: number;
-  passedCount: number;
-  rejectedCount: number;
-  passRate: number;
-  avgCompletionTime: number;
-  ranking: number;
-  agentTasksCount: number;
-  agentEarnings: number;
-  invitedUsersCount: number;
-}
-
-interface TaskStatsResponse {
-  code: number;
-  message: string;
-  data: TaskStatsData;
-  success: boolean;
-  timestamp: number;
-}
-
-// 定义待审核订单相关类型
-interface PaginationData {
-  list: any[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
-
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-  success: boolean;
-  timestamp: number;
-}
+// 删除了不必要的数据类型定义
 
 export default function PublisherDashboardPage() {
+  // 获取搜索参数，用于从URL中读取tab值
   const searchParams = useSearchParams();
+  // 获取路由对象，用于页面跳转
   const router = useRouter();
+  // 从URL参数中获取tab值，如果没有则默认显示概览页
   const tabFromUrl = searchParams?.get('tab') || 'OverView';
+  // 设置当前激活的tab状态
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  
+  // 使用useUser钩子获取用户登录状态
+  const { isAuthenticated, isLoading } = useUser();
 
   // 确保页面加载时默认显示tab=OverView参数
   useEffect(() => {
@@ -72,23 +40,6 @@ export default function PublisherDashboardPage() {
     }
   }, []);
   
-  // 添加API数据状态
-  const [taskStats, setTaskStats] = useState<TaskStatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // 添加订单统计状态
-  const [orderStats, setOrderStats] = useState<{
-    acceptedCount: number;
-    submittedCount: number;
-    completedCount: number;
-  }>({
-    acceptedCount: 0,
-    submittedCount: 0,
-    completedCount: 0
-  });
-  // 添加待审核订单数据状态
-  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
-  const [pendingOrdersPagination, setPendingOrdersPagination] = useState<PaginationData | null>(null);
   // 添加URL重定向提示框状态
   const [showRedirectModal, setShowRedirectModal] = useState(false);
 
@@ -103,243 +54,152 @@ export default function PublisherDashboardPage() {
   };
 
   // 检查用户是否设置了支付密码
-  useEffect(() => {
-    const checkWalletPassword = async () => {
-      try {
-        // 调用检查支付密码API，使用正确的端点
-        const response = await fetch('/api/paymentWallet/checkWalletPwd', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        
-        const result: CheckWalletPwdApiResponse = await response.json();
-        
-        // 如果请求成功且用户未设置支付密码
-        if (result.success && !result.data.has_password) {
-          // 显示自定义提示弹窗
-          setShowRedirectModal(true);
+  const checkWalletPassword = async () => {
+    try {
+      // 调用检查支付密码API，使用正确的端点
+      const response = await fetch('/api/paymentWallet/checkWalletPwd', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      // 解析API响应
+      const result: CheckWalletPwdApiResponse = await response.json();
+      
+      console.log('dashboard checkWalletPassword: 检查结果:', result);
+      
+      // 如果请求成功且用户未设置支付密码
+      if (result.success && result.data && !result.data.has_password) {
+        // 显示自定义提示弹窗
+        setShowRedirectModal(true);
+        console.log('dashboard checkWalletPassword: 用户未设置支付密码，显示提示弹窗');
+      } else {
+        console.log('dashboard checkWalletPassword: 用户已设置支付密码，不显示提示弹窗');
+        // 如果已经显示了弹窗，关闭它
+        if (showRedirectModal) {
+          setShowRedirectModal(false);
         }
-      } catch (error) {
-        console.error('检查支付密码失败:', error);
       }
-    };
-    
-    // 调用检查支付密码函数
+    } catch (error) {
+      console.error('dashboard checkWalletPassword: 检查支付密码失败:', error);
+    }
+  };
+
+  // 在组件挂载时检查支付密码
+  useEffect(() => {
+    console.log('dashboard useEffect: 开始检查支付密码');
     checkWalletPassword();
-  }, [router]);
+  }, []);
 
-  // 在组件挂载时获取任务统计数据
+  // 监听页面可见性变化，当页面重新可见时检查支付密码
   useEffect(() => {
-    const fetchTaskStats = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        //调用后端API获取任务
-        const requestParams = {
-          page: 0,
-          size: 10,
-          sortField: 'createTime',
-          sortOrder: 'DESC',
-          platform: 'DOUYIN',
-          taskType: 'COMMENT',
-          minPrice: 1,
-          maxPrice: 9999,
-          keyword: ''
-        };
-
-        const taskresponse = await fetch('/api/task/mypublishedlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestParams),
-          credentials: 'include'
-        });
-
-        // 解析任务列表
-        const taskData = await taskresponse.json();
-        if (!taskresponse.ok) {
-          throw new Error(`HTTP error! status: ${taskresponse.status}`);
-        }
-        
-        // 创建订单状态统计方法（仅统计进行中和已完成订单）
-        const countOrderByStatus = () => {
-          const stats = {
-            acceptedCount: 0,
-            submittedCount: 0, // 这个将从pendingverifylist API获取
-            completedCount: 0
-          };
-          
-          // 验证data.list是否为有效的数组
-          if (taskData.data && Array.isArray(taskData.data.list)) {
-            // 遍历数组中的每个元素
-            taskData.data.list.forEach((item: { status?: string }) => {
-              // 确保元素有status属性且为字符串
-              if (item && typeof item.status === 'string') {
-                // 根据状态进行统计
-                switch (item.status) {
-                  case 'IN_PROGRESS':
-                    stats.acceptedCount += 1;
-                    break;
-                  case 'COMPLETED':
-                    stats.completedCount += 1;
-                    break;
-                  default:
-                    break;
-                }
-              }
-            });
-          }
-          
-          return stats;
-        };
-        
-        // 执行统计
-        if (taskData.data) {
-          const stats = countOrderByStatus();
-          setOrderStats(prev => ({ ...prev, ...stats }));
-        }
-        
-        // 调用待审核订单API
-        const pendingParams = {
-          page: 0,
-          size: 10,
-          sortField: 'createTime',
-          sortOrder: 'DESC',
-          platform: 'DOUYIN',
-          taskType: 'COMMENT',
-          keyword: ''
-        };
-        
-    
-        const pendingResponse = await fetch('/api/task/pendingverifylist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(pendingParams),
-          credentials: 'include'
-        });
-        
-        const pendingData: ApiResponse<PaginationData> = await pendingResponse.json();
-        
-
-        
-        if (pendingData.success && pendingData.data) {
-          setPendingOrders(pendingData.data.list || []);
-          setPendingOrdersPagination(pendingData.data);
-          
-          // 更新submittedCount字段
-          setOrderStats(prev => ({
-            ...prev,
-            submittedCount: pendingData.data.total || 0
-          }));
-        } else {
-          console.error('获取待审核订单失败:', pendingData.message);
-        }
-
-        // 调用后端API获取任务统计数据
-        const response = await fetch('/api/task/taskcount', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data: TaskStatsResponse = await response.json();
-        
-        if (data.success) {
-          // 直接使用后端返回的统计数据，不与订单统计数据合并
-          setTaskStats(data.data);
-        } else {
-          setError(data.message || '获取任务统计数据失败');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '网络请求失败，请稍后重试');
-      } finally {
-        setLoading(false);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('dashboard handleVisibilityChange: 页面重新可见，检查支付密码');
+        checkWalletPassword();
       }
     };
-    
-    fetchTaskStats();
+
+    // 监听visibilitychange事件
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      // 清理事件监听器
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+
+  // 删除了不必要的API请求代码
 
   return (
     <>
-      <div className="pb-20">
-        {/* 只保留这4个切换按钮的布局和框架 */}
-        <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
-          <button
-            onClick={() => handleTabChange('OverView')}
-            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'OverView' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-          >
-            概览
-          </button>
-          <button
-            onClick={() => handleTabChange('InProgress')}
-            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-          >
-            <div className="flex flex-col items-center">
-              <div className={activeTab === 'active' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-white-500'}>
-                {orderStats.acceptedCount}
-              </div>
-              <span>进行中</span>
-            </div>
-          </button>
-          <button
-            onClick={() => handleTabChange('AwaitingReview')}
-            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-          >
-            <div className="flex flex-col items-center">
-              <div className={activeTab === 'audit' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-orange-500'}>
-                {orderStats.submittedCount}
-              </div>
-              <span>待审核</span>
-            </div>
-          </button>
-          <button
-            onClick={() => handleTabChange('Completed')}
-            className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
-          >
-            <div className="flex flex-col items-center">
-              <div className={activeTab === 'Completed' ? 'text-lg font-bold text-white' : 'text-lg font-bold text-green-500'}>
-                {orderStats.completedCount}
-              </div>
-              <span>已完成</span>
-            </div>
-          </button>
+      {/* 1. 加载状态处理：当isLoading为true时，显示加载动画 */}
+      {isLoading && (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loading size="lg" />
+            <p className="mt-4 text-gray-600">正在验证身份...</p>
+          </div>
         </div>
-
-        
-
-        {/* 直接嵌入4个对应状态的页面组件 */}
-        {activeTab === 'OverView' && (
-          <OverViewTabPage 
-            taskStats={taskStats} 
-            loading={loading} 
-            error={error} 
-            orderStats={orderStats}
-          />
-        )}
-        {activeTab === 'InProgress' && <ActiveTabPage />}
-        {activeTab === 'AwaitingReview' && (
-          <AwaitingReviewTabPage 
-            awaitingReviewOrders={pendingOrders}
-            awaitingReviewData={pendingOrdersPagination}
-            loading={loading}
-          />
-        )}
-        {activeTab === 'Completed' && <CompletedTabPage />}
-      </div>
+      )}
       
-      {/* URL重定向提示框组件 */}
-      <URLRedirection
-        isOpen={showRedirectModal}
-        message="您尚未设置支付密码，请先设置支付密码"
-        buttonText="前往设置"
-        redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
-        onClose={() => setShowRedirectModal(false)}
-      />
+      {/* 2. 已登录状态：显示完整的仪表板页面 */}
+      {!isLoading && isAuthenticated && (
+        <div className="pb-20">
+          {/* 只保留这4个切换按钮的布局和框架 */}
+          <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
+            <button
+              onClick={() => handleTabChange('OverView')}
+              className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'OverView' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+            >
+              概览
+            </button>
+            <button
+              onClick={() => handleTabChange('InProgress')}
+              className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+            >
+              进行中
+            </button>
+            <button
+              onClick={() => handleTabChange('AwaitingReview')}
+              className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+            >
+              待审核
+            </button>
+            <button
+              onClick={() => handleTabChange('Completed')}
+              className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+            >
+              已完成
+            </button>
+          </div>
+
+          {/* 直接嵌入4个对应状态的页面组件 */}
+          {activeTab === 'OverView' && <OverViewTabPage />}
+          {activeTab === 'InProgress' && <ActiveTabPage />}
+          {activeTab === 'AwaitingReview' && <AwaitingReviewTabPage />}
+          {activeTab === 'Completed' && <CompletedTabPage />}
+        </div>
+      )}
+      
+      {/* 3. 未登录状态：显示全屏遮罩和登录提示弹窗 */}
+      {!isLoading && !isAuthenticated && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          {/* 全屏遮罩层，阻止用户操作页面其他内容 */}
+          <div className="absolute inset-0" />
+          
+          {/* 登录提示弹窗 */}
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 z-10">
+            {/* 弹窗标题 */}
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">请先登录</h3>
+            
+            {/* 弹窗提示信息 */}
+            <p className="text-gray-600 mb-8 text-center">
+              您尚未登录，无法访问该页面。请先登录账号。
+            </p>
+            
+            {/* 立即登录按钮 */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => router.push('/publisher/auth/login')}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200"
+              >
+                立即登录
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* URL重定向提示框组件（只有已登录状态下才会显示） */}
+      {isAuthenticated && (
+        <URLRedirection
+          isOpen={showRedirectModal}
+          message="您尚未设置支付密码，请先设置支付密码"
+          buttonText="前往设置"
+          redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
+          onClose={() => setShowRedirectModal(false)}
+        />
+      )}
     </>
   );
 }

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SuccessModal from '../../../../components/button/authButton/SuccessModal';
 // 导入注册页面类型定义
-import { RegisterFormData, RegisterApiRequest, RegisterApiResponse } from '../../../types/auth/register';
+import { RegisterFormData, RegisterApiRequest, RegisterApiResponse } from '../../../types/auth/registerTypes';
 
 export default function PublisherRegisterPage() {
   const [formData, setFormData] = useState<RegisterFormData>({

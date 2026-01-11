@@ -1,40 +1,39 @@
 'use client';
 import React, { useState } from 'react';
-import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
+// 导入设置支付密码的请求类型
+import { SetWalletPwdRequest } from '../../../../../app/types/paymentWallet/setPaymentPwdTypes';
+// 导入Toast hook，用于显示操作结果
+import { useToast } from '@/components/ui/Toast';
+
 
 const SetPaymentPasswordPage: React.FC = () => {
   const router = useRouter();
+  // 使用useToast hook获取toast功能
+  const { addToast } = useToast();
   
   // 简单直接的状态管理
-  const [securityPassword, setSecurityPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // 输入处理函数 - 只保留必要功能
-  const handleSecurityPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
-    setSecurityPassword(value);
-    if (errors.securityPassword) setErrors({ ...errors, securityPassword: '' });
-  };
-
-  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    setConfirmPassword(value);
-    if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+    setPassword(value);
+    if (errors.password) setErrors({ ...errors, password: '' });
   };
 
   // 表单验证
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
     
-    if (!securityPassword) newErrors.securityPassword = '请输入支付密码';
-    else if (securityPassword.length !== 6) newErrors.securityPassword = '支付密码长度必须为6个字符';
-    
-    if (!confirmPassword) newErrors.confirmPassword = '请确认支付密码';
-    else if (confirmPassword !== securityPassword) newErrors.confirmPassword = '两次输入的密码不一致';
+    if (!password) {
+      newErrors.password = '请输入支付密码';
+    } else if (password.length !== 6) {
+      newErrors.password = '支付密码长度必须为6个字符';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -49,27 +48,42 @@ const SetPaymentPasswordPage: React.FC = () => {
     setLoading(true);
     
     try {
-      // 直接使用表单数据对象
-      const data = { securityPassword, confirmPassword };
+      // 创建符合API要求的数据结构
+      const data: SetWalletPwdRequest = { password };
       
-      // 直接调用API
-      const response = await fetch('/api/walletmanagement/setpaymentpwd', {
+      // 调用新的API端点，使用fetch API
+      const response = await fetch('/api/paymentWallet/setPaymentPwd', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 包含cookie
         body: JSON.stringify(data)
       });
       
+      // 解析响应数据
       const result = await response.json();
       
-      if (result.success) {
-        alert('支付密码设置成功！');
-        router.back();
-      } else {
-        alert(result.message || '设置失败，请重试');
+      // 检查响应状态
+      if (!response.ok) {
+        throw new Error(result.message || '支付密码设置失败，请重试');
       }
-    } catch (error) {
+      
+      // 使用addToast提示成功
+      addToast({ title: '设置成功', message: '支付密码设置成功！', type: 'success' });
+      // 延迟返回上一页，确保toast提示显示
+      setTimeout(() => {
+        router.back();
+      }, 2000);
+    } catch (error: any) {
       console.error('请求错误:', error);
-      alert('网络请求失败，请重试');
+      
+      // 使用addToast提示错误
+      addToast({ 
+        title: '设置失败', 
+        message: error.message || '支付密码设置失败，请重试',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -80,21 +94,21 @@ const SetPaymentPasswordPage: React.FC = () => {
       <main className="p-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
           <form onSubmit={handleSubmit}>
-            {/* 安全密码输入框 */}
-            <div className="mb-6">
-              <label htmlFor="securityPassword" className="block text-sm font-medium text-gray-700 mb-1">
+            {/* 支付密码输入框 */}
+            <div className="mb-8">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 支付密码 <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  id="securityPassword"
-                  name="securityPassword"
-                  value={securityPassword}
-                  onChange={handleSecurityPasswordChange}
+                  id="password"
+                  name="password"
+                  value={password}
+                  onChange={handlePasswordChange}
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.securityPassword ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="请设置6位数字支付密码"
                   autoComplete="off"
                 />
@@ -106,30 +120,8 @@ const SetPaymentPasswordPage: React.FC = () => {
                   {showPassword ? '隐藏' : '显示'}
                 </button>
               </div>
-              {errors.securityPassword && (
-                <p className="mt-1 text-sm text-red-500">{errors.securityPassword}</p>
-              )}
-            </div>
-
-            {/* 确认密码输入框 */}
-            <div className="mb-8">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                确认密码 <span className="text-red-500">*</span>
-              </label>
-              <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  onChange={handleConfirmPasswordChange}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="请再次输入支付密码"
-                  autoComplete="off"
-                />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
               )}
             </div>
 
