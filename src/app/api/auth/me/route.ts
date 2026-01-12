@@ -4,6 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiConfig } from '@/api/client/config';
 
+// 标记为动态路由，因为它使用了request.cookies，无法静态渲染
+export const dynamic = 'force-dynamic';
+
 /**
  * 验证用户登录状态的GET请求处理函数
  * @param req - Next.js请求对象
