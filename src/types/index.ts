@@ -37,6 +37,21 @@ export interface User {
     totalEarnings?: number;
     level?: string;  // stats中也可能包含level
   };
+  // 添加组织相关属性
+  organization_name?: string;
+  organization_leader?: string;
+  // 添加钱包相关属性
+  wallet_id?: string;
+  wallet?: {
+    balance: number;
+  };
+  // 添加其他可能的属性
+  reason?: null;
+  create_ip?: string;
+  created_at?: string;
+  updated_at?: string;
+  // 添加user_id属性，兼容API响应
+  user_id?: number;
 }
 
 // 任务相关

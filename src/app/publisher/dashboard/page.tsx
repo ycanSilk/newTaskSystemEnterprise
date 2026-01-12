@@ -62,6 +62,7 @@ export default function PublisherDashboardPage() {
       const result: CheckWalletPwdApiResponse = await response.json();
       
       console.log('dashboard checkWalletPassword: 检查结果:', result);
+      console.log('当前登录用户是否设置里密码',result.data?.has_password);
       
       // 如果请求成功且用户未设置支付密码
       if (result.success && result.data && !result.data.has_password) {
@@ -70,6 +71,7 @@ export default function PublisherDashboardPage() {
         console.log('dashboard checkWalletPassword: 用户未设置支付密码，显示提示弹窗');
       } else {
         console.log('dashboard checkWalletPassword: 用户已设置支付密码，不显示提示弹窗');
+        console.log('当前登录用户是否设置里密码',result.data?.has_password);
         // 如果已经显示了弹窗，关闭它
         if (showRedirectModal) {
           setShowRedirectModal(false);

@@ -9,8 +9,8 @@
 export const encryptData = (data: any): string => {
   try {
     const jsonString = JSON.stringify(data);
-    // 使用Base64编码加密
-    const base64String = btoa(jsonString);
+    // 先编码URI组件处理非Latin1字符，再使用Base64编码加密
+    const base64String = btoa(encodeURIComponent(jsonString));
     // 添加简单的字符替换，增强加密效果
     return base64String
       .replace(/=/g, '')
@@ -35,8 +35,8 @@ export const decryptData = <T>(encryptedData: string): T => {
       .replace(/_/g, '/');
     // 添加适当的填充
     const paddedString = base64String + '='.repeat((4 - base64String.length % 4) % 4);
-    // 使用Base64解码解密
-    const jsonString = atob(paddedString);
+    // 使用Base64解码解密，再解码URI组件
+    const jsonString = decodeURIComponent(atob(paddedString));
     return JSON.parse(jsonString) as T;
   } catch (error) {
     console.error('解密失败:', error);

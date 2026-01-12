@@ -293,7 +293,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
             aria-label="用户菜单"
           >
             <img 
-              src="/images/0e92a4599d02a7.jpg" 
+              src="/images/default.png" 
               alt="用户头像" 
               className="w-full h-full rounded-full object-cover"
             />

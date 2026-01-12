@@ -98,7 +98,7 @@ const getPlatformImageUrl = (platform: string): string => {
     'kuaishou': '/images/kuaishou-logo.png'
     // 可以添加更多平台图片映射
   };
-  return platformImages[platform.toLowerCase()] || '/images/0e92a4599d02a7.jpg';
+  return platformImages[platform.toLowerCase()] || '/images/default.png';
 };
 
 const RentalOrderPage = () => {

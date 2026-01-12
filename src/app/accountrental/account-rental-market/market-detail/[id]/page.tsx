@@ -566,10 +566,10 @@ const AccountDetailPage = ({
                       {(!leaseInfo.image && (!leaseInfo.images || leaseInfo.images.length === 0)) ? (
                         <div 
                           className="cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-blue-400 transition-colors w-[100px] h-[100px]"
-                          onClick={() => setSelectedImage('/images/0e92a4599d02a7.jpg')}
+                          onClick={() => setSelectedImage('/images/default.png')}
                         >
                           <img 
-                            src="/images/0e92a4599d02a7.jpg" 
+                            src="/images/default.png" 
                             alt="账号默认图片" 
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
@@ -588,7 +588,7 @@ const AccountDetailPage = ({
                               onError={(e) => {
                                 // 图片加载失败时显示默认图片
                                 const target = e.target as HTMLImageElement;
-                                target.src = '/images/0e92a4599d02a7.jpg';
+                                target.src = '/images/default.png';
                                 target.alt = '账号默认图片';
                               }}
                             />
@@ -608,7 +608,7 @@ const AccountDetailPage = ({
                                 onError={(e) => {
                                   // 图片加载失败时显示默认图片
                                   const target = e.target as HTMLImageElement;
-                                  target.src = '/images/0e92a4599d02a7.jpg';
+                                  target.src = '/images/default.png';
                                   target.alt = '账号默认图片';
                                 }}
                               />
@@ -640,7 +640,7 @@ const AccountDetailPage = ({
                         onError={(e) => {
                           // 预览图片加载失败时显示默认图片
                           const target = e.target as HTMLImageElement;
-                          target.src = '/public/images/0e92a4599d02a7.jpg';
+                          target.src = '/public/images/default.png';
                         }}
                       />
                     </div>

@@ -129,7 +129,7 @@ const OrderDetailPage: React.FC = () => {
             '/images/1758380776810_96.jpg',
             '/images/1758384598887_578.jpg',
             '/images/1758596791656_544.jpg',
-            '/images/0e92a4599d02a7.jpg'
+            '/images/default.png'
           ],
           createdTime: '2023-06-30T17:01:17',
           paymentTime: '2023-06-30T17:01:53',

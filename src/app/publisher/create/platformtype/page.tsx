@@ -73,7 +73,7 @@ export default function CreateTask() {
   const handlePlatformClick = (platform: Platform) => {
     // 只有抖音平台可以正常跳转，其他平台显示维护提示
     if (platform.id === 'douyin') {
-      router.push(`/publisher/create/platform-task/${platform.id}`);
+      router.push(`/publisher/create/${platform.id}`);
     } else {
       setIsModalOpen(true);
     }

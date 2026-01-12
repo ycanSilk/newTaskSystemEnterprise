@@ -238,7 +238,7 @@ export default function PublishTaskPage() {
           unitPrice1: taskPrice,
           quantity1: formData.quantity,
           commentText1: formData.comments[0]?.content.trim() || '',
-          commentImages1: formData.comments[0]?.image ? '/images/0e92a4599d02a7.jpg' : '',
+          commentImages1: formData.comments[0]?.image ? '/images/default.png' : '',
           mentionUser1: ''
           
         }

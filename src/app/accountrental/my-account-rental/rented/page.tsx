@@ -225,7 +225,7 @@ const RentedAccountsPage = () => {
             paymentStatus: 'paid',
             description: '生活方式类账号，主要分享日常家居布置、生活小技巧和健康饮食内容。',
             images: [
-              '/images/0e92a4599d02a7.jpg',
+              '/images/default.png',
               '/images/1758380776810_96.jpg',
               '/images/1758384598887_578.jpg',
               '/images/1758596791656_544.jpg'
@@ -269,7 +269,7 @@ const RentedAccountsPage = () => {
             paymentStatus: 'unpaid',
             description: '旅行摄影账号，分享国内外旅游景点和摄影技巧，适合发布风景照片和旅行Vlog。',
             images: [
-              '/images/0e92a4599d02a7.jpg',
+              '/images/default.png',
               '/images/1758380776810_96.jpg'
             ]
           }

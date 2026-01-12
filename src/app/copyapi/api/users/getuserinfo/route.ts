@@ -112,7 +112,7 @@ export async function GET(request: Request) {
       email: apiUserData.email,
       invitationCode: apiUserData.invitationCode,
       createTime: apiUserData.createTime,
-      avatar: apiUserData.avatar || '/images/0e92a4599d02a7.jpg',
+      avatar: apiUserData.avatar || '/images/default.png',
       organization_name: apiUserData.organization_name,
       organization_leader: apiUserData.organization_leader,
       userType: apiUserData.userType

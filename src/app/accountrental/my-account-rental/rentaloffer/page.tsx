@@ -350,7 +350,7 @@ const RentalOfferPage = () => {
                   />
                 ) : (
                   <img 
-                    src="/images/0e92a4599d02a7.jpg" 
+                    src="/images/default.png" 
                     alt="默认图片" 
                     className="w-full h-full object-cover" 
                   />

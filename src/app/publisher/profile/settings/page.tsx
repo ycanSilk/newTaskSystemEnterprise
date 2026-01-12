@@ -14,7 +14,7 @@ export default function PersonalInfoPage() {
   
   // 用户个人信息状态
   const [userProfile, setUserProfile] = useState({
-    avatar: '/images/0e92a4599d02a7.jpg',
+    avatar: '/images/default.png',
   });
   
   // 编辑状态

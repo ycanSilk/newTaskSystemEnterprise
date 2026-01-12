@@ -333,7 +333,7 @@ const RentalRequestPage = () => {
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.onerror = null;
-                          target.src = '/images/0e92a4599d02a7.jpg';
+                          target.src = '/images/default.png';
                         }}
                       />
                     </div>

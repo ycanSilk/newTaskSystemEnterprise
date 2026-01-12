@@ -1,18 +1,18 @@
 // 用户信息状态管理
 import { create } from 'zustand';
 // 导入用户信息类型定义
-import { GetUserInfoResponseData } from '@/app/types/users/getUserInfoTypes';
+import { User } from '@/types';
 
 // 定义Store的状态和方法
 interface UserState {
   // 状态 (State)
-  currentUser: GetUserInfoResponseData | null;
+  currentUser: User | null;
   isLoading: boolean;
   error: string | null;
 
   // 方法 (Actions)
   // 用于设置用户信息
-  setUser: (user: GetUserInfoResponseData) => void;
+  setUser: (user: User) => void;
   // 用于清除用户信息（登出时用）
   clearUser: () => void;
   // 用于获取用户信息，如果内存中没有，则从API获取
@@ -56,9 +56,21 @@ export const useUserStore = create<UserState>((set, get) => ({
       const result = await response.json();
       
       if (result.code === 0 && result.data) {
+        // 将API响应数据转换为User类型
+        const userData: User = {
+          id: result.data.id || '',
+          username: result.data.username || '',
+          email: result.data.email,
+          phone: result.data.phone,
+          role: (result.data.role as 'admin' | 'publisher' | 'commenter') || 'publisher',
+          balance: result.data.balance || result.data.wallet?.balance || 0,
+          status: (result.data.status as 'active' | 'inactive' | 'banned') || 'active',
+          createdAt: result.data.createdAt || result.data.created_at || new Date().toISOString()
+        };
+        
         // 设置用户信息到store
         set({ 
-          currentUser: result.data, 
+          currentUser: userData, 
           isLoading: false, 
           error: null 
         });

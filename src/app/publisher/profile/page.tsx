@@ -143,13 +143,14 @@ export default function PublisherProfilePage() {
         >
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-white bg-opacity-20 rounded-lg flex items-center justify-center text-2xl">
-              <img src="/images/0e92a4599d02a7.jpg" alt="" className="w-full h-full overflow-hidden rounded-lg" />
+              <img src="/images/default.png" alt="" className="w-full h-full overflow-hidden rounded-lg" />
             </div>
             <div>
               <span className="flex font-bold text-lg items-center">
                 {currentUser?.organization_name || '测试组织'}
               </span>
-              <span className="flex text-sm opacity-80">{currentUser?.phone || '13800138000'}</span>
+              <span className="flex text-sm opacity-80">{currentUser?.phone || '未设置手机号'}</span>
+              <span className="flex text-sm opacity-80">{currentUser?.email || ''}</span>
             </div>
           </div>
           <div className="text-white">
