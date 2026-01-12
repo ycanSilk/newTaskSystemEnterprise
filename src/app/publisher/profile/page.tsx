@@ -3,6 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShopOutlined, WalletOutlined, EditOutlined, OrderedListOutlined, BarChartOutlined, CreditCardOutlined, RightOutlined, BellOutlined, MessageOutlined, UserAddOutlined, DownloadOutlined } from '@ant-design/icons';
 import { message } from 'antd';
+// 导入Zustand用户状态存储
+import { useUserStore } from '@/store/userStore';
+// 导入用户信息类型定义
+
 
 interface BalanceData {
   balance: number;
@@ -15,109 +19,21 @@ interface MenuItem {
   color: string;
   path: string;
 }
-// 定义用户信息接口
-interface UserProfile {
-  id?: string;
-  avatar: string;
-  name: string;
-  phone: string;
-  email: string;
-  organization_name: string;
-  organization_leader: string;
-  userType: string;
-  [key: string]: any;
-}
 
-// API响应接口
-  interface ApiResponse<T = any> {
-    code: number;
-    message: string;
-    data: T;
-  }
 export default function PublisherProfilePage() {
   const router = useRouter();
   const [balance, setBalance] = useState<BalanceData>({ balance: 0 });
-  // 用户个人信息状态
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-      avatar: '/images/0e92a4599d02a7.jpg',
-      name: '', 
-      phone: '',
-      email: '',
-      organization_name: '',
-      organization_leader: '',
-      userType: ''
-  });
-  // 加载状态和错误信息
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-      const fetchUserInfo = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          
-          const response = await fetch('/api/users/getuserinfo', {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json'
-              // Cookie中的token会自动传递
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const result = await response.json() as ApiResponse;
-          // 处理后端返回的数据结构
-          if (result.code === 200 && result.data && result.data.userInfo) {
-            // 从userInfo对象中提取数据
-            const apiUserData = result.data.userInfo;
-            
-            // 映射数据到UserProfile格式
-            const mappedUserProfile: UserProfile = {
-              id: apiUserData.id,
-              avatar: apiUserData.avatar || '/images/0e92a4599d02a7.jpg',
-              name: apiUserData.username || '用户',
-              phone: apiUserData.phone || '',
-              email: apiUserData.email || '',
-              organization_name: apiUserData.organization_name || '',
-              organization_leader: apiUserData.organization_leader || '',
-              userType: apiUserData.userType || '未设置'
-            };
-            
-            setUserProfile(mappedUserProfile);
-          } else {
-            setError(result.message || '获取用户信息失败');
-            console.warn('API响应数据不符合预期:', result);
-            // 设置默认数据以便展示
-            setUserProfile(prev => ({
-              ...prev,
-              name: '用户',
-              accountType: '未设置'
-            }));
-          }
-        } catch (err) {
-          console.error('获取用户信息错误:', err);
-          setError('网络请求失败，请稍后重试');
-          // 设置默认数据以便展示
-          setUserProfile(prev => ({
-            ...prev,
-            name: '用户',
-            accountType: '未设置'
-          }));
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchUserInfo();
-    }, []);
-
-
-
+  // 从Zustand store获取用户信息
+  const { currentUser, fetchUser } = useUserStore();
+  // 未读通知数量
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  
+  // 组件挂载时，确保用户信息已加载
+  useEffect(() => {
+    if (!currentUser) {
+      fetchUser();
+    }
+  }, [currentUser, fetchUser]);
 
   // 获取余额数据和未读通知数量
   useEffect(() => {
@@ -227,13 +143,13 @@ export default function PublisherProfilePage() {
         >
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-white bg-opacity-20 rounded-lg flex items-center justify-center text-2xl">
-              <img src={userProfile.avatar} alt="" className="w-full h-full overflow-hidden rounded-lg" />
+              <img src="/images/0e92a4599d02a7.jpg" alt="" className="w-full h-full overflow-hidden rounded-lg" />
             </div>
             <div>
               <span className="flex font-bold text-lg items-center">
-                {userProfile.organization_name}
+                {currentUser?.organization_name || '测试组织'}
               </span>
-              <span className="flex text-sm opacity-80">{userProfile.phone}</span>
+              <span className="flex text-sm opacity-80">{currentUser?.phone || '13800138000'}</span>
             </div>
           </div>
           <div className="text-white">

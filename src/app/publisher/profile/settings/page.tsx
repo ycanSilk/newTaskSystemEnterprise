@@ -1,118 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+// 导入Zustand用户状态存储
+import { useUserStore } from '@/store/userStore';
 
-// 定义用户信息接口
-interface UserProfile {
-  id?: string;
-  avatar: string;
-  name: string;
-  phone: string;
-  email: string;
-  organization_name: string;
-  organization_leader: string;
-  userType: string;
-  [key: string]: any;
-}
 
 export default function PersonalInfoPage() {
   const router = useRouter();
   
+  // 从Zustand store获取用户信息
+  const { currentUser, fetchUser, isLoading } = useUserStore();
+  
   // 用户个人信息状态
-  const [userProfile, setUserProfile] = useState<UserProfile>({
+  const [userProfile, setUserProfile] = useState({
     avatar: '/images/0e92a4599d02a7.jpg',
-    name: '', 
-    phone: '',
-    email: '',
-    organization_name: '',
-    organization_leader: '',
-    userType: ''
   });
   
-  // 加载状态
-  const [loading, setLoading] = useState(true);
-  
-  // 错误状态
-  const [error, setError] = useState<string | null>(null);
-  
-  // API响应接口
-  interface ApiResponse<T = any> {
-    code: number;
-    message: string;
-    data: T;
-  }
-  
-  // 获取用户信息
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch('/api/users/getuserinfo', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-            // Cookie中的token会自动传递
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json() as ApiResponse;
-        if (result.code === 200 && result.data && result.data.userInfo) {
-          // 从userInfo对象中提取数据
-          const apiUserData = result.data.userInfo;
-          
-          // 映射数据到UserProfile格式
-          const mappedUserProfile: UserProfile = {
-            id: apiUserData.id,
-            avatar: apiUserData.avatar || '/images/0e92a4599d02a7.jpg',
-            name: apiUserData.username || '用户',
-            phone: apiUserData.phone || '',
-            email: apiUserData.email || '',
-            organization_name: apiUserData.organization_name || '',
-            organization_leader: apiUserData.organization_leader || '',
-            userType: apiUserData.userType || '未设置'
-          };
-          
-          setUserProfile(mappedUserProfile);
-        } else {
-          setError(result.message || '获取用户信息失败');
-          console.warn('API响应数据不符合预期:', result);
-          // 设置默认数据以便展示
-          setUserProfile(prev => ({
-            ...prev,
-            name: '用户',
-            accountType: '未设置'
-          }));
-        }
-      } catch (err) {
-        console.error('获取用户信息错误:', err);
-        setError('网络请求失败，请稍后重试');
-        // 设置默认数据以便展示
-        setUserProfile(prev => ({
-          ...prev,
-          name: '用户',
-          accountType: '未设置'
-        }));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUserInfo();
-  }, []);
-
   // 编辑状态
-  const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentField, setCurrentField] = useState<{
-    key: keyof UserProfile;
+    key: string;
     label: string;
     placeholder?: string;
   } | null>(null);
@@ -135,19 +44,18 @@ export default function PersonalInfoPage() {
   };
 
   // 打开编辑模态框
-  const openEditModal = (field: keyof UserProfile, label: string, placeholder?: string) => {
+  const openEditModal = (field: string, label: string, placeholder?: string) => {
     setCurrentField({ key: field, label, placeholder });
-    setTempValue(userProfile[field]);
+    // 将值转换为字符串类型
+    setTempValue(String(currentUser?.[field as keyof typeof currentUser] || ''));
     setShowEditModal(true);
   };
 
   // 保存编辑
   const saveEdit = () => {
     if (currentField) {
-      setUserProfile(prev => ({
-        ...prev,
-        [currentField.key]: tempValue
-      }));
+      // 这里可以添加更新用户信息的API调用
+      // 目前只关闭模态框
       setShowEditModal(false);
       setCurrentField(null);
       setTempValue('');
@@ -162,53 +70,45 @@ export default function PersonalInfoPage() {
   // 信息项组件
   const InfoItem = ({ 
     label, 
-    value, 
     field,
     placeholder 
   }: { 
     label: string; 
-    value: string; 
-    field: keyof UserProfile;
+    field: string;
     placeholder?: string;
-  }) => (
-    <div 
-      className="p-4 border-b border-gray-100 flex justify-between items-center"
-      onClick={() => openEditModal(field, label, placeholder)}
-    >
-      <span className="">{label}</span>
-      <div className="flex items-center ">
-        <span className="mr-2 whitespace-nowrap">{value}</span>
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
+  }) => {
+    // 获取字段值
+    const value = currentUser?.[field as keyof typeof currentUser];
+    // 格式化显示值，确保可以直接渲染
+    const displayValue = (() => {
+      if (value === null || value === undefined) {
+        return '未设置';
+      }
+      if (typeof value === 'object') {
+        // 如果是对象，只显示balance字段或转换为字符串
+        return (value as any).balance || JSON.stringify(value);
+      }
+      return String(value);
+    })();
+    
+    return (
+      <div 
+        className="p-4 border-b border-gray-100 flex justify-between items-center"
+        onClick={() => openEditModal(field, label, placeholder)}
+      >
+        <span className="">{label}</span>
+        <div className="flex items-center ">
+          <span className="mr-2 whitespace-nowrap">{displayValue}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 错误提示 */}
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mt-2 mx-4 rounded">
-          <div className="flex">
-            <div className="py-1">
-              <svg className="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* 加载状态 */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64 bg-white mt-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
       <div className="mt-4 bg-white shadow-sm">
         {/* 头像 - 整行可点击 */}
         <div 
@@ -245,37 +145,19 @@ export default function PersonalInfoPage() {
         </div>
 
         {/* 名字 */}
-        <InfoItem label="名字" value={userProfile.name} field="name" placeholder="请输入名字" />
+        <InfoItem label="名字" field="username" placeholder="请输入名字" />
 
         {/* 手机号 */}
-        <InfoItem label="手机号" value={userProfile.phone} field="phone" placeholder="请输入手机号" />
+        <InfoItem label="手机号" field="phone" placeholder="请输入手机号" />
 
         {/* 邮箱 */}
-        <InfoItem label="邮箱" value={userProfile.email || '未填写'} field="email" placeholder="请输入邮箱" />
+        <InfoItem label="邮箱" field="email" placeholder="请输入邮箱" />
 
         {/* 企业名称 */}
-        <InfoItem label="企业名称" value={userProfile.organization_name || '未填写'} field="organization_name" placeholder="请输入企业名称" />
+        <InfoItem label="企业名称" field="organization_name" placeholder="请输入企业名称" />
 
         {/* 负责人 */}
-        <InfoItem label="负责人" value={userProfile.organization_leader || '未填写'} field="organization_leader" placeholder="请输入负责人姓名" />
-
-        {/* 账号类型 */}
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-          <span className="">账号类型</span>
-          <div className="">
-            {userProfile.userType || '未设置'}
-          </div>
-        </div>
-        
-        {/* 用户ID */}
-        {userProfile.id && (
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-            <div className="w-1/4">用户ID</div>
-            <div className="w-3/4 text-right">
-              {userProfile.id || 'NULL'}
-            </div>
-          </div>
-        )}
+        <InfoItem label="负责人" field="organization_leader" placeholder="请输入负责人姓名" />
 
         <div onClick={() => router.push('/publisher/profile/changepwd')} className="p-4 border-b border-gray-100  justify-between text-center items-center cursor-pointer bg-blue-200 hover:bg-blue-200">
             修改密码
@@ -316,7 +198,6 @@ export default function PersonalInfoPage() {
           </div>
         )}
       </div>
-      )}
    </div> 
 )
 }

@@ -26,23 +26,35 @@ export async function GET(req: NextRequest) {
     // 这里可以添加更多验证逻辑，比如验证token的有效性
     // 例如，调用后端API验证token，或者解析JWT token获取用户信息
     
+    // 验证请求头中的Authorization token
+    const authHeader = req.headers.get('Authorization');
+    const headerToken = authHeader?.replace('Bearer ', '');
+    // 使用请求头中的token或cookie中的token
+    const validToken = headerToken || token;
+    
     // 返回完整的User对象，包含所有必填字段
     // 实际项目中应该调用后端API验证token并获取真实用户信息
+    // 根据需求，返回包含指定字段的用户信息
     return NextResponse.json({
       success: true,
       message: '用户已登录',
       data: {
-        id: '1', // 模拟用户ID
-        username: 'publisher', // 模拟用户名
+        user_id: 2, // 用户ID（数字类型）
+        username: 'ceshi', // 用户名
+        email: '2235676091@qq.com', // 邮箱
+        phone: null, // 手机号（可为null）
+        organization_name: '测试团队', // 组织名称
+        organization_leader: 'test', // 组织负责人
         role: 'publisher', // 角色信息
-        balance: 0, // 模拟余额
-        status: 'active', // 模拟状态
-        createdAt: new Date().toISOString(), // 模拟创建时间
-        // 其他可选字段可以省略或设置默认值
-        token: token, // 包含原始token，用于后续请求验证
+        token: validToken, // 包含原始token，用于后续请求验证
+        // 保留原有的id字段以兼容现有代码
+        id: '2',
+        status: 'active',
+        createdAt: new Date().toISOString(),
       }
     }, { status: 200 });
   } catch (error) {
+    console.error('验证用户登录状态失败:', error);
     return NextResponse.json({
       success: false,
       message: '验证用户登录状态失败',

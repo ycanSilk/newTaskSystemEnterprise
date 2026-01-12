@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户信息加密</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0051b8;
+        }
+        .result {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>测试用户信息加密</h1>
+        
+        <div class="section">
+            <h2>1. 测试加密解密功能</h2>
+            <button onclick="testEncryption()">运行加密解密测试</button>
+            <div class="result" id="encryptionResult"></div>
+        </div>
+        
+        <div class="section">
+            <h2>2. 测试localStorage存储</h2>
+            <button onclick="testLocalStorage()">保存测试数据到localStorage</button>
+            <button onclick="viewLocalStorage()">查看localStorage内容</button>
+            <button onclick="clearLocalStorage()">清除localStorage</button>
+            <div class="result" id="localStorageResult"></div>
+        </div>
+        
+        <div class="section">
+            <h2>3. 模拟用户登录流程</h2>
+            <button onclick="simulateLogin()">模拟用户登录</button>
+            <button onclick="simulateGetUser()">模拟获取用户信息</button>
+            <div class="result" id="loginResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // 实现加密解密函数（从userEncryption.ts复制并转换为JavaScript）
+        const encryptData = (data) => {
+            try {
+                const jsonString = JSON.stringify(data);
+                const base64String = btoa(jsonString);
+                return base64String
+                    .replace(/=/g, '')
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_');
+            } catch (error) {
+                console.error('加密失败:', error);
+                throw error;
+            }
+        };
+
+        const decryptData = (encryptedData) => {
+            try {
+                const base64String = encryptedData
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+                const paddedString = base64String + '='.repeat((4 - base64String.length % 4) % 4);
+                const jsonString = atob(paddedString);
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error('解密失败:', error);
+                throw error;
+            }
+        };
+
+        // 测试加密解密
+        function testEncryption() {
+            const resultDiv = document.getElementById('encryptionResult');
+            const testUser = {
+                user_id: 123,
+                username: 'testuser',
+                email: 'test@example.com',
+                phone: '13800138000',
+                organization_name: '测试组织',
+                organization_leader: '测试负责人',
+                role: 'publisher',
+                token: 'test-token-123',
+                cachedAt: Date.now(),
+                balance: 100.50
+            };
+
+            try {
+                const encrypted = encryptData(testUser);
+                const decrypted = decryptData(encrypted);
+                
+                resultDiv.innerHTML = `
+                    <h3>原始数据：</h3>
+                    <pre>${JSON.stringify(testUser, null, 2)}</pre>
+                    <h3>加密后：</h3>
+                    <pre>${encrypted}</pre>
+                    <h3>解密后：</h3>
+                    <pre>${JSON.stringify(decrypted, null, 2)}</pre>
+                    <h3>验证结果：</h3>
+                    <p>用户名匹配: ${testUser.username === decrypted.username}</p>
+                    <p>邮箱匹配: ${testUser.email === decrypted.email}</p>
+                    <p>手机号匹配: ${testUser.phone === decrypted.phone}</p>
+                    <p>余额匹配: ${testUser.balance === decrypted.balance}</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">测试失败: ${error.message}</p>`;
+            }
+        }
+
+        // 测试localStorage存储
+        function testLocalStorage() {
+            const resultDiv = document.getElementById('localStorageResult');
+            const testUser = {
+                user_id: 456,
+                username: 'localuser',
+                email: 'local@example.com',
+                phone: '13900139000',
+                organization_name: '本地测试组织',
+                organization_leader: '本地负责人',
+                role: 'publisher',
+                token: 'local-token-456',
+                cachedAt: Date.now(),
+                balance: 200.75
+            };
+
+            try {
+                const encrypted = encryptData(testUser);
+                localStorage.setItem('task_system_user_cache', encrypted);
+                resultDiv.innerHTML = `
+                    <h3>已保存到localStorage：</h3>
+                    <pre>键名: task_system_user_cache</pre>
+                    <pre>值: ${encrypted}</pre>
+                    <p style="color: green;">数据已成功保存到localStorage！</p>
+                    <p>注意：使用F12开发者工具查看Application -> Local Storage，将无法直接看到明文的用户信息。</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">保存失败: ${error.message}</p>`;
+            }
+        }
+
+        // 查看localStorage内容
+        function viewLocalStorage() {
+            const resultDiv = document.getElementById('localStorageResult');
+            const encryptedData = localStorage.getItem('task_system_user_cache');
+            
+            if (encryptedData) {
+                try {
+                    const decrypted = decryptData(encryptedData);
+                    resultDiv.innerHTML = `
+                        <h3>localStorage内容：</h3>
+                        <pre>加密值: ${encryptedData}</pre>
+                        <h3>解密后：</h3>
+                        <pre>${JSON.stringify(decrypted, null, 2)}</pre>
+                    `;
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <h3>localStorage内容：</h3>
+                        <pre>加密值: ${encryptedData}</pre>
+                        <p style="color: red;">解密失败: ${error.message}</p>
+                    `;
+                }
+            } else {
+                resultDiv.innerHTML = '<p>localStorage中没有task_system_user_cache键</p>';
+            }
+        }
+
+        // 清除localStorage
+        function clearLocalStorage() {
+            localStorage.removeItem('task_system_user_cache');
+            document.getElementById('localStorageResult').innerHTML = '<p style="color: green;">已清除localStorage中的task_system_user_cache键</p>';
+        }
+
+        // 模拟用户登录流程
+        function simulateLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            
+            // 模拟API返回的用户信息
+            const apiResponse = {
+                success: true,
+                data: {
+                    user_id: 789,
+                    username: 'loginuser',
+                    email: 'login@example.com',
+                    phone: '13700137000',
+                    organization_name: '登录测试组织',
+                    organization_leader: '登录负责人',
+                    role: 'publisher',
+                    token: 'login-token-789',
+                    balance: 500.00,
+                    id: 'user-789',
+                    status: 'active',
+                    createdAt: '2023-01-01T00:00:00Z'
+                }
+            };
+
+            try {
+                // 模拟useUser.ts中的缓存逻辑
+                const cachedUser = {
+                    user_id: apiResponse.data.user_id || 0,
+                    username: apiResponse.data.username || '',
+                    email: apiResponse.data.email || '',
+                    phone: apiResponse.data.phone || null,
+                    organization_name: apiResponse.data.organization_name || '',
+                    organization_leader: apiResponse.data.organization_leader || '',
+                    role: apiResponse.data.role || '',
+                    token: apiResponse.data.token || '',
+                    cachedAt: Date.now(),
+                    balance: apiResponse.data.balance || 0,
+                    id: apiResponse.data.id,
+                    status: apiResponse.data.status,
+                    createdAt: apiResponse.data.createdAt
+                };
+
+                const encryptedUser = encryptData(cachedUser);
+                localStorage.setItem('task_system_user_cache', encryptedUser);
+                
+                resultDiv.innerHTML = `
+                    <h3>模拟登录成功：</h3>
+                    <pre>API返回数据: ${JSON.stringify(apiResponse.data, null, 2)}</pre>
+                    <h3>缓存到localStorage的值：</h3>
+                    <pre>${encryptedUser}</pre>
+                    <p style="color: green;">用户信息已加密保存到localStorage！</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">模拟登录失败: ${error.message}</p>`;
+            }
+        }
+
+        // 模拟获取用户信息
+        function simulateGetUser() {
+            const resultDiv = document.getElementById('loginResult');
+            
+            try {
+                const encryptedUserStr = localStorage.getItem('task_system_user_cache');
+                if (!encryptedUserStr) {
+                    resultDiv.innerHTML = '<p>未找到缓存的用户信息，请先模拟登录</p>';
+                    return;
+                }
+
+                const decryptedUser = decryptData(encryptedUserStr);
+                
+                // 检查缓存是否过期（5分钟）
+                const CACHE_EXPIRY_TIME = 5 * 60 * 1000;
+                const isExpired = Date.now() - decryptedUser.cachedAt > CACHE_EXPIRY_TIME;
+                
+                resultDiv.innerHTML = `
+                    <h3>获取用户信息：</h3>
+                    <pre>${JSON.stringify(decryptedUser, null, 2)}</pre>
+                    <p>缓存状态: ${isExpired ? '已过期' : '未过期'}</p>
+                    <p>缓存时间: ${new Date(decryptedUser.cachedAt).toLocaleString()}</p>
+                    <p style="color: green;">成功从缓存中获取并解密用户信息！</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">获取用户信息失败: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

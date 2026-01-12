@@ -28,7 +28,7 @@
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.2.0",
     "typescript": "^5.3.3",
-    "zustand": "^4.4.7"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@tailwindcss/aspect-ratio": "^0.4.2",
