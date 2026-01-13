@@ -9,6 +9,11 @@ import { useUserStore } from '@/store/userStore';
 
 // 从API获取用户信息的函数
 const fetchUserInfoFromApi = async (): Promise<User | null> => {
+  // 每次调用都重新检查当前页面是否为登录页面，如果是则直接返回null，不进行任何API调用
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/auth/login')) {
+    return null;
+  }
+  
   try {
     // 调用验证用户登录状态的API端点
     const response = await fetch('/api/auth/me', {
@@ -97,8 +102,19 @@ export function useUser(): UseUserReturn {
   // 上次请求时间引用
   const lastRequestTimeRef = useRef<number>(0);
 
+  // 检查当前页面是否为登录页面的辅助函数
+  const checkIfLoginPage = () => {
+    return typeof window !== 'undefined' && window.location.pathname.includes('/auth/login');
+  };
+
   // 检查用户登录状态的函数
   const checkLoginStatus = async () => {
+    // 如果是登录页面，直接返回，不进行任何API调用
+    if (checkIfLoginPage()) {
+      setIsLoading(false);
+      return;
+    }
+
     // 防抖：如果在短时间内已经请求过，跳过
     const now = Date.now();
     if (now - lastRequestTimeRef.current < 1000) {
@@ -143,6 +159,12 @@ export function useUser(): UseUserReturn {
 
   // 初始化时检查用户登录状态
   useEffect(() => {
+    // 如果是登录页面，直接设置为未加载状态，不调用API
+    if (checkIfLoginPage()) {
+      setIsLoading(false);
+      return;
+    }
+
     // 异步函数包装器，用于在useEffect中调用异步函数
     const initialize = async () => {
       // 调用API检查登录状态
@@ -160,7 +182,10 @@ export function useUser(): UseUserReturn {
           clearTimeout(requestDebounceRef.current);
         }
         requestDebounceRef.current = setTimeout(() => {
-          checkLoginStatus();
+          // 每次调用前都检查当前页面是否为登录页面
+          if (!checkIfLoginPage()) {
+            checkLoginStatus();
+          }
         }, 300);
       }
     };
@@ -180,6 +205,10 @@ export function useUser(): UseUserReturn {
 
   // 刷新用户信息函数
   const refreshUser = async () => {
+    // 如果是登录页面，直接返回，不进行任何API调用
+    if (checkIfLoginPage()) {
+      return;
+    }
     await checkLoginStatus();
   };
 

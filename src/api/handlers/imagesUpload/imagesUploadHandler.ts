@@ -2,11 +2,16 @@
 
 // 导入Next.js的请求和响应类型
 import { NextRequest, NextResponse } from 'next/server';
-// 导入文件系统操作模块
-import fs from 'fs';
-import path from 'path';
+// 导入API客户端实例
+import apiClient from '@/api/client';
+// 导入API配置
+import { apiConfig } from '@/api/client/config';
+// 导入上传图片端点常量
+import { UPLOAD_IMAGE_ENDPOINT } from '@/api/endpoints/imagesUpload';
+// 导入错误处理相关的函数、类型和枚举
+import { ApiError, ApiErrorType, handleApiError, createErrorResponse } from '@/api/client/errorHandler';
 // 导入通用API响应类型
-import { ApiResponse } from '../../types/common';
+import { ApiResponse } from '@/api/types/common';
 
 /**
  * 处理上传图片请求
@@ -15,58 +20,32 @@ import { ApiResponse } from '../../types/common';
  */
 export const imagesUploadHandler = async (request: NextRequest): Promise<NextResponse> => {
   try {
-    // 解析FormData
-    const formData = await request.formData();
+    // 获取请求内容类型
+    const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
     
-    // 获取文件
-    const file = formData.get('file') as File;
-    if (!file) {
-      return NextResponse.json({
-        success: false,
-        message: '未找到上传的文件',
-        data: null
-      } as ApiResponse, { status: 400 });
-    }
+    // 读取请求体作为Buffer
+    const body = await request.arrayBuffer();
+    const fileBuffer = Buffer.from(body);
     
-    // 获取保存路径，默认保存到public/upload/images
-    const savePath = formData.get('savePath') as string || 'public/upload/images';
-    
-    // 确保保存目录存在
-    const fullSavePath = path.join(process.cwd(), savePath);
-    if (!fs.existsSync(fullSavePath)) {
-      fs.mkdirSync(fullSavePath, { recursive: true });
-    }
-    
-    // 生成唯一文件名
-    const timestamp = Date.now();
-    const ext = path.extname(file.name);
-    const fileName = `${timestamp}-${Math.random().toString(36).substring(2, 10)}${ext}`;
-    const filePath = path.join(fullSavePath, fileName);
-    
-    // 读取文件内容并保存到指定路径
-    const buffer = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(filePath, buffer);
-    
-    // 返回成功响应
-    return NextResponse.json({
-      success: true,
-      message: '图片上传成功',
-      data: {
-        fileName,
-        filePath,
-        originalName: file.name,
-        size: file.size,
-        url: `/${savePath.replace('public/', '')}/${fileName}`
+    // 调用API客户端发送POST请求到上传图片端点
+    // 标准化axios客户端会自动从cookie获取token并添加到请求头
+    const response = await apiClient.post<ApiResponse>(UPLOAD_IMAGE_ENDPOINT, fileBuffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': fileBuffer.length.toString()
       }
-    } as ApiResponse, { status: 200 });
+    });
+    
+    // 返回响应给客户端
+    return NextResponse.json(response.data, { status: response.status });
   } catch (error) {
     console.error('图片上传失败:', error);
     
-    // 返回错误响应
-    return NextResponse.json({
-      success: false,
-      message: error instanceof Error ? error.message : '图片上传失败',
-      data: null
-    } as ApiResponse, { status: 500 });
+    // 捕获并处理请求过程中发生的错误
+    const apiError: ApiError = handleApiError(error);
+    const errorResponse: ApiResponse = createErrorResponse(apiError);
+    
+    // 返回错误响应给客户端
+    return NextResponse.json(errorResponse, { status: apiError.status });
   }
 };

@@ -51,6 +51,11 @@ export default function PublisherDashboardPage() {
 
   // 检查用户是否设置了支付密码
   const checkWalletPassword = async () => {
+    // 只有在浏览器环境中才调用API
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     try {
       // 调用检查支付密码API，使用正确的端点
       const response = await fetch('/api/paymentWallet/checkWalletPwd', {
@@ -90,6 +95,11 @@ export default function PublisherDashboardPage() {
 
   // 监听页面可见性变化，当页面重新可见时检查支付密码
   useEffect(() => {
+    // 只有在浏览器环境中才添加事件监听器
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('dashboard handleVisibilityChange: 页面重新可见，检查支付密码');

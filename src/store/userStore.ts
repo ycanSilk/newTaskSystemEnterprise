@@ -37,6 +37,19 @@ export const useUserStore = create<UserState>((set, get) => ({
       return;
     }
     
+    // 每次调用都重新检查当前页面是否为登录页面，如果是则直接返回，不进行API调用
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/auth/login')) {
+      set({ isLoading: false });
+      return;
+    }
+    
+    // 再次确认，防止在调用过程中页面路径发生变化
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (currentPath.includes('/auth/login')) {
+      set({ isLoading: false });
+      return;
+    }
+    
     set({ isLoading: true, error: null });
     
     try {
@@ -48,6 +61,8 @@ export const useUserStore = create<UserState>((set, get) => ({
           'Content-Type': 'application/json',
         },
       });
+
+      console.log('调用API获取用户信息', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error(`获取用户信息失败: ${response.status}`);

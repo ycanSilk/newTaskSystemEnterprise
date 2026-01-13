@@ -6,9 +6,10 @@ import { useEphemeralImageManager } from '@/hooks/useEphemeralImageManager';
 export interface ImageUploadProps {
   initialImages?: File[];           // 初始图片列表
   maxCount?: number;                // 最大上传数量
-  onImagesChange?: (images: File[]) => void;  // 图片变化回调
+  onImagesChange?: (images: File[], urls: string[]) => void;  // 图片变化回调，包含上传后的URL
   savePath?: string;                // 保存图片路径
   title?: string;                   // 组件标题
+  columns?: number;                 // 每行显示数量
 }
 
 /**
@@ -18,26 +19,41 @@ export interface ImageUploadProps {
  */
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   initialImages = [],
-  maxCount = 5,
+  maxCount = 6,
   onImagesChange,
   savePath = '',
-  title = '图片上传'
+  title = '图片上传',
+  columns = 3
 }) => {
   // 使用图片管理Hook
   const {
     images,
     imagePreviews,
+    uploadedUrls,
     handleImageUpload,
     removeImage,
     resetImages,
     isUploading,
-    uploadProgress
+    uploadProgress,
+    uploadStatus,
+    selectedPreviewIndex,
+    setSelectedPreviewIndex
   } = useEphemeralImageManager(initialImages, savePath);
 
   // 通知父组件图片变化
   useEffect(() => {
-    onImagesChange?.(images);
-  }, [images, onImagesChange]);
+    onImagesChange?.(images, uploadedUrls);
+  }, [images, uploadedUrls, onImagesChange]);
+
+  // 打开图片预览
+  const handleOpenPreview = (index: number) => {
+    setSelectedPreviewIndex(index);
+  };
+
+  // 关闭图片预览
+  const handleClosePreview = () => {
+    setSelectedPreviewIndex(null);
+  };
 
   return (
     <div className="image-upload-container p-4 bg-white rounded-lg shadow-md">
@@ -48,8 +64,15 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         </h3>
       )}
       
+      {/* 上传状态 */}
+      {uploadStatus && (
+        <div className="mb-4 p-2 bg-blue-50 text-blue-700 rounded-md">
+          {uploadStatus}
+        </div>
+      )}
+      
       {/* 图片上传网格 */}
-      <div className="image-upload-grid grid grid-cols-3 gap-4 mb-4">
+      <div className={`image-upload-grid grid grid-cols-${columns} gap-4 justify-center items-center mb-4`}>
         {Array.from({ length: maxCount }).map((_, index) => (
           <div 
             key={index} 
@@ -60,17 +83,18 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             {/* 已上传图片显示 */}
             {images[index] ? (
               <>
-                {/* 图片预览 */}
+                {/* 图片预览 - 点击可放大查看 */}
                 <img 
                   src={imagePreviews[index]} 
                   alt={`上传图片 ${index + 1}`} 
-                  className="uploaded-image w-full h-full object-cover rounded-lg"
+                  className="uploaded-image w-full h-full object-cover rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                  onClick={() => handleOpenPreview(index)}
                 />
                 
                 {/* 移除按钮 */}
                 <button 
                   onClick={() => removeImage(index)}
-                  className="remove-button absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  className="remove-button absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
                   aria-label="移除图片"
                 >
                   ×
@@ -103,7 +127,31 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         ))}
       </div>
       
-
+      {/* 图片放大预览模态框 */}
+      {selectedPreviewIndex !== null && imagePreviews[selectedPreviewIndex] && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={handleClosePreview}
+        >
+          <div className="relative max-w-4xl max-h-[90vh]">
+            {/* 关闭按钮 */}
+            <button
+              className="absolute top-[-40px] right-0 text-white text-2xl cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={handleClosePreview}
+              aria-label="关闭预览"
+            >
+              ×
+            </button>
+            
+            {/* 预览图片 */}
+            <img
+              src={imagePreviews[selectedPreviewIndex]}
+              alt="放大预览"
+              className="max-w-full max-h-[90vh] object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

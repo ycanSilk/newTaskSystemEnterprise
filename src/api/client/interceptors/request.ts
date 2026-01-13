@@ -53,9 +53,10 @@ export const requestInterceptor = async (config: AxiosRequestConfig): Promise<Ax
     
     // 如果获取到Token，添加到请求头
     // Authorization是HTTP标准的认证头，Bearer是一种认证类型
-    // 格式是：Authorization: Bearer <token>
+    // X-Token是自定义头，用于兼容旧的API
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers['X-Token'] = token;
     }
   } catch (error) {
     // 如果获取token失败，记录错误日志，但不中断请求

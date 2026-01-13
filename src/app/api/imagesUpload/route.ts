@@ -18,12 +18,12 @@ import { imagesUploadHandler } from '@/api/handlers/imagesUpload/imagesUploadHan
  */
 export async function POST(req: NextRequest) {
   try {
-    console.log('POST /api/upload 请求收到');
+    console.log('POST /api/imagesUpload 请求收到');
     
     // 调用API处理函数上传图片，直接返回处理结果
     return await imagesUploadHandler(req);
   } catch (error) {
-    console.error('POST /api/upload 错误:', error);
+    console.error('POST /api/imagesUpload 错误:', error);
     
     // 返回错误响应
     return new NextResponse(JSON.stringify({

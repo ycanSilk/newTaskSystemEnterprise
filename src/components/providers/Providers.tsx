@@ -20,10 +20,16 @@ export function Providers({ children }: ProvidersProps) {
   // 从Zustand store获取fetchUser方法
   const fetchUser = useUserStore(state => state.fetchUser);
 
-  // 应用加载时调用fetchUser方法获取用户信息
+  // 应用加载时调用fetchUser方法获取用户信息，但登录页面除外
   useEffect(() => {
-    console.log('Providers: 初始化获取用户信息');
-    fetchUser();
+    // 检查当前页面是否为登录页面，如果是则不调用API
+    if (typeof window !== 'undefined') {
+      const isLoginPage = window.location.pathname.includes('/auth/login');
+      if (!isLoginPage) {
+        console.log('Providers: 初始化获取用户信息');
+        fetchUser();
+      }
+    }
   }, [fetchUser]);
 
   return (

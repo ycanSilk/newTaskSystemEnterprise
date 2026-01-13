@@ -5,138 +5,62 @@ import { useRouter } from 'next/navigation';
 
 import { Button, Card } from 'antd';
 
-// 交易记录类型定义
-interface TransactionRecord {
-  orderNo: string;
-  transactionType: string;
-  typeDescription: string;
-  amount: number;
-  beforeBalance: number;
-  afterBalance: number;
-  status: string;
-  statusDescription: string;
-  description: string;
-  channel: string;
-  createTime: string;
-  updateTime: string;
-  totalBalance: number,
-  totalIncome: number,
-}
-
-// 交易响应类型定义
-interface TransactionResponse {
-  code: number;
-  message: string;
-  data: {
-    list: TransactionRecord[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
-  };
-  success: boolean;
-  timestamp: number;
-}
-
-//钱包信息接口定义
-interface WalletInfoInfo {
-  userId: string,
-  totalBalance: number,
-  availableBalance: number,
-  frozenBalance: number,
-  totalIncome: number,
-  totalExpense: number,
-  status: string,
-  currency: string,
-  createTime: string
-}
-// 钱包信息类型定义
-  interface WalletInfoResponse {
-    code: number;
-    message: string;
-    data: {
-      userId: string,
-      totalBalance: number,
-      availableBalance: number,
-      frozenBalance: number,
-      totalIncome: number,
-      totalExpense: number,
-      status: string,
-      currency: string,
-      createTime: string
-    };
-    success: boolean;
-    timestamp: number;
-  }
+// 导入钱包余额和交易明细的类型定义
+import { GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
+// 导入通用API响应类型
+import { ApiResponse } from '@/api/types/common';
 
 const BalancePage = () => {
   const router = useRouter();
   const [balance, setBalance] = useState(0.00);
   const [frozenBalance, setFrozenBalance] = useState(0.00);
-  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [totalBalance, setTotalBalance] = useState(0.00);
-  // 合并获取钱包信息和交易记录
+  
+  // 获取钱包余额和交易明细
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchWalletData = async () => {
       try {
         setLoading(true);
         setError(null);
-        // 首先调用获取钱包信息API
-        const walletResponse = await fetch('/api/walletmanagement/getwalletinfo', {
+        
+        // 调用新的钱包API端点
+        const response = await fetch('/api/paymentWallet/getWalletBalance', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
-          }
-        });
-        if (!walletResponse.ok) {
-          throw new Error(`获取钱包信息失败: ${walletResponse.status}`);
-        }
-        const walletData: WalletInfoResponse = await walletResponse.json();       
-        if (walletData.code === 200 && walletData.success && walletData.data) {
-          // 设置余额、冻结金额和总余额
-          setBalance(walletData.data.availableBalance || 0);
-          setFrozenBalance(walletData.data.frozenBalance || 0);
-          setTotalBalance(walletData.data.totalBalance || 0);
-        } else {
-          throw new Error(walletData.message || '获取钱包信息失败');
-        }
-        
-        // 然后调用获取交易记录API
-        const transactionResponse = await fetch('/api/walletmanagement/transactionrecord', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            userId: '',
-            transactionType: '',
-            status: '',
-            startDate: '',
-            endDate: '',
-            page: 1,
-            size: 50 // 请求更多数据以便前端进行筛选
-          })
+          credentials: 'include'
         });
+
+      
+     
         
-        if (transactionResponse.ok) {
-          const transactionData: TransactionResponse = await transactionResponse.json();
+        if (!response.ok) {
+          throw new Error(`获取钱包数据失败: ${response.status}`);
+        }
+        
+        const walletData: ApiResponse<GetWalletBalanceResponse> = await response.json();
+        console.log('获取钱包余额和交易明细响应:', walletData);
+          console.log('获取钱包余额和交易明细响应:', walletData.data);
+        if (walletData.code === 0 && walletData.success) {
+          // 设置余额信息
+          const walletInfo = walletData.data.wallet;
+          setTotalBalance(parseFloat(walletInfo.balance) || 0);
+          // 假设可用余额等于总余额，冻结余额为0，因为新API没有返回这些字段
+          setBalance(parseFloat(walletInfo.balance) || 0);
+          setFrozenBalance(0);
           
-          if (transactionData.code === 200 && transactionData.success && transactionData.data) {
-            // 确保交易记录按创建时间排序（最新的在前）
-            const sortedTransactions = [...transactionData.data.list].sort((a, b) => 
-              new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
-            );
-            // 只保留最新的20条记录
-            const latestTransactions = sortedTransactions.slice(0, 20);
-            setTransactions(latestTransactions);
-          } else {
-            console.warn('获取交易记录失败:', transactionData.message);
-          }
+          // 设置交易记录，按创建时间排序（最新的在前）
+          const sortedTransactions = [...walletData.data.transactions].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          setTransactions(sortedTransactions);
         } else {
-          console.warn('获取交易记录失败:', transactionResponse.status);
+          throw new Error(walletData.message || '获取钱包数据失败');
         }
       } catch (error) {
         setError(error instanceof Error ? error.message : '获取数据失败，请稍后重试');
@@ -145,7 +69,7 @@ const BalancePage = () => {
       }
     };
 
-    fetchData();
+    fetchWalletData();
   }, []);
 
   // 格式化日期
@@ -184,13 +108,13 @@ const BalancePage = () => {
 
 
   // 处理查看交易详情，传递完整交易记录数据
-  const handleViewTransaction = (transaction: TransactionRecord) => {
+  const handleViewTransaction = (transaction: Transaction) => {
     // 使用状态管理或localStorage传递数据
     localStorage.setItem('transactionData', JSON.stringify(transaction));
-    router.push(`/publisher/balance/transactionDetails/${transaction.orderNo}` as any);
+    router.push(`/publisher/balance/transactionDetails/${transaction.id}` as any);
   };
 
-  // 从createTime中提取日期和时间
+  // 从created_at中提取日期和时间
   const extractDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return {
@@ -212,18 +136,10 @@ const BalancePage = () => {
           <div className="absolute right-0 top-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16" />
           <div className="absolute left-0 bottom-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12" />
           <div className="p-2 relative z-10 ">
-            <div className="mb-10 grid grid-cols-3 gap-2">
+            <div className="mb-10 grid grid-cols-1 gap-2">
               <div className="text-center bg-green-500 rounded-lg p-2">
-                <div>总余额:</div>
+                <div>余额:</div>
                 <div>{totalBalance}</div>
-              </div>
-              <div className="text-center bg-green-500 rounded-lg p-2">
-                <div>可用余额:</div>
-                <div>{balance.toFixed(2)}</div>
-              </div>
-              <div className="text-center bg-green-500 rounded-lg p-2">
-                <div>冻结余额:</div>
-                <div>{frozenBalance.toFixed(2)}</div>
               </div>
             </div>
             
@@ -324,9 +240,9 @@ const BalancePage = () => {
               <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
                 <div className="text-xs ">
                   共显示最新的 {transactions.filter(t => {
-                    const isIncome = t.amount > 0;
+                    const isIncome = parseFloat(t.amount) > 0;
                     if (activeTab === 'recharge') return isIncome;
-                    if (activeTab === 'withdraw') return !isIncome && t.amount < 0;
+                    if (activeTab === 'withdraw') return !isIncome && parseFloat(t.amount) < 0;
                     return true;
                   }).length} 条记录
                 </div>
@@ -335,7 +251,7 @@ const BalancePage = () => {
               {transactions
                 .filter(transaction => {
                   // 判断是否为收入记录（金额大于0）
-                  const isIncome = transaction.amount > 0;
+                  const isIncome = parseFloat(transaction.amount) > 0;
                   
                   // 根据当前activeTab进行过滤
                   if (activeTab === 'recharge') {
@@ -343,32 +259,31 @@ const BalancePage = () => {
                     return isIncome;
                   } else if (activeTab === 'withdraw') {
                     // 支出明细：只显示金额小于0的记录
-                    return !isIncome && transaction.amount < 0;
+                    return !isIncome && parseFloat(transaction.amount) < 0;
                   }
                   // 全部明细：显示所有记录
                   return true;
                 })
-                // 移除slice(0, 10)限制，因为我们在API请求后已经限制了最多20条最新记录
                 .map((transaction) => {
                   const iconInfo = getTransactionIcon();
-                  const isIncome = transaction.amount > 0;
-                  const { date, time } = extractDateTime(transaction.createTime);
+                  const isIncome = parseFloat(transaction.amount) > 0;
+                  const { date, time } = extractDateTime(transaction.created_at);
                   
                   return (
                     <div 
-                      key={transaction.orderNo}
+                      key={transaction.id}
                       onClick={() => handleViewTransaction(transaction)}
                       className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 cursor-pointer"
                     >
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold`}>
                         <span className={iconInfo.color}>{iconInfo.icon}</span>
                       </div>
-                         
+                          
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium text-gray-900 truncate max-w-[60%]">{transaction.description || transaction.typeDescription}</h3>
+                          <h3 className="font-medium text-gray-900 truncate max-w-[60%]">{transaction.remark || transaction.type_text}</h3>
                           <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                            {isIncome ? '+' : ''}{transaction.amount.toFixed(2)}
+                            {isIncome ? '+' : ''}{parseFloat(transaction.amount).toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -376,7 +291,7 @@ const BalancePage = () => {
                             {formatDate(date)} {time}
                           </div>
                           <div className="text-xs ">
-                            余额: {transaction.afterBalance.toFixed(2)}
+                            余额: {parseFloat(transaction.after_balance).toFixed(2)}
                           </div>
                         </div>
                       </div>
