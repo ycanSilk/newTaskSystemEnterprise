@@ -7,7 +7,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function PublishTaskPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const taskPrice = 2
+  
+  // 从URL参数获取任务信息，确保searchParams不为null
+  const getSearchParam = (key: string) => {
+    return searchParams?.get(key) || '';
+  };
+  
+  const taskPrice = parseFloat(getSearchParam('price').trim() || '2')
   const [mentionInput, setMentionInput] = useState('');
   const [mentions, setMentions] = useState<string[]>([]);
   
@@ -548,7 +554,11 @@ export default function PublishTaskPage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* 页面头部 */}
       <div className="px-4 py-3 space-y-4">
-        <div className="text-lg text-red-500">
+        <h1 className="text-2xl font-bold pl-5">
+          发布中评评论
+        </h1>
+
+        <div className="text-lg pl-5 text-red-500">
           <span className="text-2xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
         </div>
         {/* 视频链接 */}

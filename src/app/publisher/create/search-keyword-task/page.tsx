@@ -18,7 +18,7 @@ export default function PublishSearchKeywordTaskPage() {
   const taskId = getSearchParam('taskId').trim();
   const taskTitle = getSearchParam('title').trim() || '放大镜搜索词任务发布页';
   const taskIcon = getSearchParam('icon').trim() || '🔍';
-  const taskPrice = parseFloat(getSearchParam('price').trim() || '0');
+  const taskPrice = parseFloat(getSearchParam('price').trim() || '5');
   const taskDescription = getSearchParam('description').trim() || '任务描述';
   
   // 新的表单数据结构，包含搜索词和视频链接信息
@@ -240,7 +240,11 @@ export default function PublishSearchKeywordTaskPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      <h1 className="text-2xl font-bold pl-5">
+          发布上评评论
+        </h1>
 
+        <div className="text-lg pl-5 text-red-500"></div>
 
       <div className="px-4 py-3 space-y-4">
         {/* 视频链接 */}

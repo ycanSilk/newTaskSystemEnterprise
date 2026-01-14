@@ -1,72 +1,10 @@
 'use client';
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { EditOutlined, CopyOutlined, LinkOutlined } from '@ant-design/icons';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
-
-// 任务类型定义，根据API返回数据结构
-interface Task {
-  id: string;
-  publisherId: string;
-  publisherName: string | null;
-  title: string;
-  description: string;
-  platform: string;
-  taskType: string;
-  status: string;
-  totalQuantity: number;
-  completedQuantity: number;
-  availableCount: number;
-  unitPrice: number;
-  totalAmount: number;
-  deadline: string;
-  requirements: string;
-  publishedTime: string;
-  completedTime: string | null;
-  createTime: string;
-  updateTime: string;
-  pendingSubTaskCount: number | null;
-  acceptedSubTaskCount: number | null;
-  submittedSubTaskCount: number | null;
-  completedSubTaskCount: number | null;
-  completionRate: number | null;
-  remainingDays: number | null;
-  isExpired: boolean | null;
-  publisherAvatar: string | null;
-  publisherTaskCount: number | null;
-  publisherSuccessRate: number | null;
-  commentDetail: any | null;
-  canAccept: boolean | null;
-  cannotAcceptReason: string | null;
-}
-
-// API响应类型
-interface ApiResponse {
-  code: number;
-  message: string;
-  data: {
-    list: Task[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
-  };
-  success: boolean;
-  timestamp: number;
-}
-
-// 格式化时间函数
-const formatTime = (timeString: string): string => {
-  if (!timeString) return '未知时间';
-  return new Date(timeString).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+// 导入任务类型定义
+import { Task } from '../../../types/task/getTasksListTypes';
 
 // 获取平台中文名称
 const getPlatformName = (platform: string): string => {
@@ -95,72 +33,18 @@ const getTaskTypeName = (taskType: string): string => {
   return taskTypeMap[taskType] || taskType;
 };
 
-export default function ActiveTabPage() {
+// 组件Props接口
+interface ActiveTabPageProps {
+  tasks: Task[];
+}
+
+export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [apiResponse, setApiResponse] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // 构建请求参数
-        const requestParams = {
-          page: 0,
-          size: 10,
-          sortField: 'createTime',
-          sortOrder: 'DESC',
-          platform: 'DOUYIN',
-          taskType: 'COMMENT',
-          minPrice: 1,
-          maxPrice: 999999,
-          keyword: ''
-        };
-        
-        // 调用后端API
-        const response = await fetch('/api/task/mypublishedlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(requestParams)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result: ApiResponse = await response.json();
-        setApiResponse(result);
-        if (result.success && result.data) {
-          // 注意：检查后端实际返回的是tasks还是list
-          const taskList = result.data.list || [];
-          
-          // 筛选进行中的任务
-          const filteredTasks = taskList.filter((task: Task) => task.status === 'IN_PROGRESS');
-          
-          setTasks(filteredTasks);
-        } else {
-          throw new Error(result.message || '获取任务失败');
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : '获取数据失败';
-        console.error('获取数据时发生错误:', errorMessage, err);
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
 
   // 处理搜索
   const handleSearch = () => {
@@ -182,7 +66,7 @@ export default function ActiveTabPage() {
   const filterRecentOrders = (tasks: Task[]) => {
     return tasks.filter(task => {
       try {
-        const taskTime = new Date(task.createTime).getTime();
+        const taskTime = new Date(task.created_at).getTime();
         // 对于未来日期的任务，也应该显示
         return !isNaN(taskTime);
       } catch (error) {
@@ -195,9 +79,9 @@ export default function ActiveTabPage() {
   const searchOrders = (tasks: Task[]) => {
     if (!searchTerm.trim()) return tasks;
     return tasks.filter(task => 
-      task.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase())
+      task.task_id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.template_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.template_title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
@@ -272,12 +156,10 @@ export default function ActiveTabPage() {
   }> = ({ task, onCopyOrderNumber, onViewDetails, onReorder }) => {
     const router = useRouter();
 
-    // 直接使用API返回的原始统计数据
-
     // 处理复制订单号 - 仅调用父组件传入的方法
     const handleCopyOrderNumber = () => {
       if (onCopyOrderNumber) {
-        onCopyOrderNumber(task.id);
+        onCopyOrderNumber(task.task_id.toString());
       }
     };
 
@@ -285,20 +167,20 @@ export default function ActiveTabPage() {
     const handleViewDetails = () => {
       if (onViewDetails) {
         // 调用父组件传入的方法
-        onViewDetails(task.id);
+        onViewDetails(task.task_id.toString());
       } else {
         // 直接跳转到任务详情页
-        navigateToTaskDetail(task.id);
+        navigateToTaskDetail(task.task_id.toString());
       }
     };
 
     // 处理补单
     const handleReorder = () => {
       if (onReorder) {
-        onReorder(task.id);
+        onReorder(task.task_id.toString());
       } else {
         // 跳转到新的补单页面
-        router.push(`/publisher/create/supplementaryorder?reorder=true&orderId=${task.id}&title=${encodeURIComponent(task.title)}&description=${encodeURIComponent(task.description)}&budget=${task.totalAmount.toString()}&subOrderCount=${task.totalQuantity}`);
+        router.push(`/publisher/create/supplementaryorder?reorder=true&orderId=${task.task_id}&title=${encodeURIComponent(task.template_title)}&description=${encodeURIComponent(task.template_title)}&budget=${task.total_price}&subOrderCount=${task.task_count}`);
       }
     };
 
@@ -306,7 +188,7 @@ export default function ActiveTabPage() {
       <div className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-5 bg-white space-y-2">
         <div className="flex items-center  overflow-hidden">
           <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate ">
-            任务ID：{task.id}
+            任务ID：{task.task_id}
           </div>
           <div className="relative">
             <button 
@@ -319,58 +201,54 @@ export default function ActiveTabPage() {
         </div>
         <div className="flex items-center space-x-3">
           <span className={`inline-flex items-center p-1 text-sm  bg-blue-100 text-blue-700`}>
-            任务状态：{getStatusName(task.status)}
+            任务状态：{task.status_text}
           </span>
           <span className="inline-flex items-center p-1 text-sm  bg-blue-100 text-blue-700">
-            任务类型：{getTaskTypeName(task.taskType)}
+            任务类型：评论任务
           </span>
         </div>
         <div className="">
-          发布时间：{task.createTime}
+          发布时间：{task.created_at}
         </div>
         <div className=" ">
-          截止时间：{task.deadline}
+          截止时间：{task.deadline_text}
         </div>
         <div className="  w-full rounded-lg">
-           任务要求：{task.requirements}
+           任务要求：{task.template_title}
         </div>
         <div className="">
-          任务描速：{task.description}
+          任务描速：{task.template_title}
         </div>
         <div className=" bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
           <p className='  text-sm text-blue-600'>任务视频点击进入：</p>
           <a 
-            href="https://v.douyin.com/oiunFce071s/" 
+            href={task.video_url} 
             target="_blank" 
             rel="noopener noreferrer" 
             className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm  inline-flex items-center"
             onClick={(e) => {
               e.preventDefault();
-              // 获取评论内容
-              const blueDiv = e.currentTarget.closest('div.bg-blue-50');
-              const commentSpan = blueDiv?.querySelector('p:last-of-type span');
-              const commentText = commentSpan?.textContent || '';
               // 复制评论（不使用await，避免返回Promise）
-              handleCopyComment(commentText).then(() => {
+              handleCopyComment(task.template_title).then(() => {
                 // 设置当前视频URL并打开模态框
-                setCurrentVideoUrl('https://v.douyin.com/oiunFce071s/');
+                setCurrentVideoUrl(task.video_url);
                 setIsModalOpen(true);
               });
             }}
           >
              打开视频
           </a>
-          <p>视频评论链接：<span>90:/. 06/15 k@p.qr 复制打开抖音，查看【初代风华】发布作品的评论：想起李白的一句诗，今月不是古时月，今月曾照古时人[...ŠŠcjs5gch5s19➝➝</span></p>
+          <p>视频评论链接：<span>{task.video_url}</span></p>
         </div>
         
         <div className="flex gap-2 ">
           <div className="flex-1 bg-green-600 rounded-lg p-1 text-center">
             <span className="text-white text-sm ">总价</span>
-            <span className="text-white text-sm block">¥{task.totalAmount.toFixed(2)}</span>
+            <span className="text-white text-sm block">¥{task.total_price}</span>
           </div>
           <div className="flex-1 bg-green-600 rounded-lg p-1 text-center">
             <span className="text-white text-sm ">总数量</span>
-            <span className="text-white text-sm block">{task.totalQuantity}</span>
+            <span className="text-white text-sm block">{task.task_count}</span>
           </div>
         </div>
 
@@ -386,33 +264,9 @@ export default function ActiveTabPage() {
     );
   };
 
-  // 渲染加载状态
-  if (loading) {
-    return (
-      <div className="pb-20 flex items-center justify-center h-64">
-        <div className="text-gray-500">加载中...</div>
-      </div>
-    );
-  }
-
-  // 渲染错误状态
-  if (error) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-red-500 mb-4">{error}</p>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={() => window.location.reload()}
-        >
-          重试
-        </button>
-      </div>
-    );
-  }
-
   // 获取过滤和搜索后的订单 - 默认按时间排序
   const filteredTasks = searchOrders(filterRecentOrders(tasks)).sort((a, b) => 
-    new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   // 渲染任务列表
@@ -469,16 +323,12 @@ export default function ActiveTabPage() {
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => (
             <MainOrderCard
-              key={task.id}
+              key={task.task_id}
               task={task}
               onCopyOrderNumber={handleCopyOrderNumber}
               onViewDetails={(orderId) => {
-                if (task.taskType === 'ACCOUNT_RENTAL') {
-                  router.push(`/publisher/orders/account-rental/${orderId}`);
-                } else {
-                  // 直接跳转到任务详情页
-                  navigateToTaskDetail(orderId);
-                }
+                // 直接跳转到任务详情页
+                navigateToTaskDetail(orderId);
               }}
               onReorder={(orderId) => handleTaskAction(orderId, 'reorder')}
             />

@@ -19,6 +19,9 @@ const BalancePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [totalBalance, setTotalBalance] = useState(0.00);
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   
   // 获取钱包余额和交易明细
   useEffect(() => {
@@ -36,16 +39,13 @@ const BalancePage = () => {
           credentials: 'include'
         });
 
-      
-     
-        
         if (!response.ok) {
           throw new Error(`获取钱包数据失败: ${response.status}`);
         }
         
         const walletData: ApiResponse<GetWalletBalanceResponse> = await response.json();
         console.log('获取钱包余额和交易明细响应:', walletData);
-          console.log('获取钱包余额和交易明细响应:', walletData.data);
+        console.log('获取钱包余额和交易明细响应:', walletData.data);
         if (walletData.code === 0 && walletData.success) {
           // 设置余额信息
           const walletInfo = walletData.data.wallet;
@@ -59,6 +59,8 @@ const BalancePage = () => {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           setTransactions(sortedTransactions);
+          // 重置分页到第一页
+          setCurrentPage(1);
         } else {
           throw new Error(walletData.message || '获取钱包数据失败');
         }
@@ -71,6 +73,11 @@ const BalancePage = () => {
 
     fetchWalletData();
   }, []);
+
+  // 当activeTab变化时，重置当前页码到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // 格式化日期
   const formatDate = (dateString: string) => {
@@ -234,70 +241,101 @@ const BalancePage = () => {
               <p className=" text-sm mb-4">您还没有任何交易记录</p>
             </div>
           ) : (
-            // 根据当前tab过滤交易记录 - 显示最多20条最新记录
+            // 交易记录处理
             <div>
-              {/* 显示交易记录总数信息 */}
-              <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
-                <div className="text-xs ">
-                  共显示最新的 {transactions.filter(t => {
-                    const isIncome = parseFloat(t.amount) > 0;
-                    if (activeTab === 'recharge') return isIncome;
-                    if (activeTab === 'withdraw') return !isIncome && parseFloat(t.amount) < 0;
-                    return true;
-                  }).length} 条记录
-                </div>
-              </div>
-              
-              {transactions
-                .filter(transaction => {
-                  // 判断是否为收入记录（金额大于0）
-                  const isIncome = parseFloat(transaction.amount) > 0;
-                  
-                  // 根据当前activeTab进行过滤
+              {/* 1. 首先根据type字段过滤交易记录 */}
+              {(() => {
+                // 过滤交易记录
+                const filteredTransactions = transactions.filter(transaction => {
+                  // 根据当前activeTab和type字段进行过滤
                   if (activeTab === 'recharge') {
-                    // 收入明细：只显示金额大于0的记录
-                    return isIncome;
+                    // 收入明细：只显示type=2的记录
+                    return transaction.type === 1;
                   } else if (activeTab === 'withdraw') {
-                    // 支出明细：只显示金额小于0的记录
-                    return !isIncome && parseFloat(transaction.amount) < 0;
+                    // 支出明细：只显示type=1的记录
+                    return transaction.type === 2;
                   }
                   // 全部明细：显示所有记录
                   return true;
-                })
-                .map((transaction) => {
-                  const iconInfo = getTransactionIcon();
-                  const isIncome = parseFloat(transaction.amount) > 0;
-                  const { date, time } = extractDateTime(transaction.created_at);
-                  
-                  return (
-                    <div 
-                      key={transaction.id}
-                      onClick={() => handleViewTransaction(transaction)}
-                      className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 cursor-pointer"
-                    >
-                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold`}>
-                        <span className={iconInfo.color}>{iconInfo.icon}</span>
-                      </div>
-                          
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium text-gray-900 truncate max-w-[60%]">{transaction.remark || transaction.type_text}</h3>
-                          <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                            {isIncome ? '+' : ''}{parseFloat(transaction.amount).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="text-xs ">
-                            {formatDate(date)} {time}
-                          </div>
-                          <div className="text-xs ">
-                            余额: {parseFloat(transaction.after_balance).toFixed(2)}
-                          </div>
-                        </div>
+                });
+                
+                // 2. 分页处理
+                const totalFiltered = filteredTransactions.length;
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+                
+                return (
+                  <>
+                    {/* 显示交易记录总数信息 */}
+                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                      <div className="text-xs ">
+                        共显示 {paginatedTransactions.length} / {totalFiltered} 条记录
                       </div>
                     </div>
-                  );
-                })}
+                    
+                    {/* 交易记录列表 */}
+                    {paginatedTransactions.map((transaction) => {
+                      const iconInfo = getTransactionIcon();
+                      // 根据type字段判断交易类型
+                      const isIncome = transaction.type === 1;
+                      const { date, time } = extractDateTime(transaction.created_at);
+                      
+                      return (
+                        <div 
+                          key={transaction.id}
+                          onClick={() => handleViewTransaction(transaction)}
+                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 cursor-pointer"
+                        >
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold`}>
+                            <span className={iconInfo.color}>{iconInfo.icon}</span>
+                          </div>
+                              
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h3 className="font-medium text-gray-900 truncate max-w-[60%]">{transaction.remark || transaction.type_text}</h3>
+                              <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                                {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <div className="text-xs ">
+                                {formatDate(date)} {time}
+                              </div>
+                              <div className="text-xs ">
+                                余额: {parseFloat(transaction.after_balance).toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* 3. 分页控件 */}
+                    {totalFiltered > itemsPerPage && (
+                      <div className="px-4 py-3 border-t border-gray-100 flex justify-center items-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          上一页
+                        </button>
+                        <span className="text-sm text-gray-600">
+                          第 {currentPage} / {Math.ceil(totalFiltered / itemsPerPage)} 页
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalFiltered / itemsPerPage), prev + 1))}
+                          disabled={currentPage >= Math.ceil(totalFiltered / itemsPerPage)}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>

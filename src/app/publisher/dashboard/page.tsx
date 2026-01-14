@@ -14,8 +14,8 @@ import URLRedirection from '../../../components/promptBox/URLRedirection';
 
 // 导入加载组件，用于状态加载中显示
 import { Loading } from '@/components/ui';
-
-// 删除了不必要的数据类型定义
+// 导入任务列表API响应类型
+import { GetTasksListResponse, Task, TaskStats, OrderStats } from '../../types/task/getTasksListTypes';
 
 export default function PublisherDashboardPage() {
   // 获取搜索参数，用于从URL中读取tab值
@@ -26,6 +26,14 @@ export default function PublisherDashboardPage() {
   const tabFromUrl = searchParams?.get('tab') || 'OverView';
   // 设置当前激活的tab状态
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  
+  // API请求状态管理
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  
+  // 添加URL重定向提示框状态
+  const [showRedirectModal, setShowRedirectModal] = useState(false);
 
   // 确保页面加载时默认显示tab=OverView参数
   useEffect(() => {
@@ -36,8 +44,42 @@ export default function PublisherDashboardPage() {
     }
   }, []);
   
-  // 添加URL重定向提示框状态
-  const [showRedirectModal, setShowRedirectModal] = useState(false);
+  // 获取任务列表数据
+  const fetchTasks = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // 调用后端API获取任务列表
+      const response = await fetch('/api/task/getTasksList', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: GetTasksListResponse = await response.json();
+      
+      if (result.code === 0) {
+        setTasks(result.data.tasks);
+      } else {
+        throw new Error(result.message || '获取任务列表失败');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '获取数据失败';
+      console.error('获取任务列表失败:', errorMessage, err);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // 在组件挂载时获取任务列表
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
   // 处理选项卡切换并更新URL参数
   const handleTabChange = (tab: string) => {
@@ -116,7 +158,47 @@ export default function PublisherDashboardPage() {
     };
   }, []);
 
-  // 删除了不必要的API请求代码
+  // 计算统计数据
+  const calculateTaskStats = (): TaskStats => {
+    // 这里可以根据实际需求计算统计数据
+    // 暂时返回模拟数据
+    return {
+      publishedCount: tasks.length,
+      acceptedCount: tasks.reduce((sum, task) => sum + task.task_doing, 0),
+      submittedCount: tasks.reduce((sum, task) => sum + task.task_reviewing, 0),
+      completedCount: tasks.reduce((sum, task) => sum + task.task_done, 0),
+      totalEarnings: parseFloat(tasks.reduce((sum, task) => sum + parseFloat(task.total_price), 0).toFixed(2)),
+      pendingEarnings: 0,
+      todayEarnings: 0,
+      monthEarnings: 0,
+      passedCount: 0,
+      rejectedCount: 0,
+      passRate: 0,
+      avgCompletionTime: 0,
+      ranking: 0,
+      agentTasksCount: 0,
+      agentEarnings: 0,
+      invitedUsersCount: 0
+    };
+  };
+  
+  // 计算订单统计数据
+  const calculateOrderStats = (): OrderStats => {
+    return {
+      acceptedCount: tasks.reduce((sum, task) => sum + task.task_doing, 0),
+      submittedCount: tasks.reduce((sum, task) => sum + task.task_reviewing, 0),
+      completedCount: tasks.reduce((sum, task) => sum + task.task_done, 0)
+    };
+  };
+  
+  // 根据状态过滤任务
+  const inProgressTasks = tasks.filter(task => task.status === 1 && task.status_text === '进行中');
+  const awaitingReviewTasks = tasks.filter(task => task.task_reviewing > 0);
+  const completedTasks = tasks.filter(task => task.status !== 1 || task.status_text === '已完成');
+  
+  // 生成统计数据
+  const taskStats = calculateTaskStats();
+  const orderStats = calculateOrderStats();
 
   return (
     <div className="pb-20">
@@ -148,11 +230,43 @@ export default function PublisherDashboardPage() {
         </button>
       </div>
 
-      {/* 直接嵌入4个对应状态的页面组件 */}
-      {activeTab === 'OverView' && <OverViewTabPage />}
-      {activeTab === 'InProgress' && <ActiveTabPage />}
-      {activeTab === 'AwaitingReview' && <AwaitingReviewTabPage />}
-      {activeTab === 'Completed' && <CompletedTabPage />}
+      {/* 显示加载状态 */}
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <Loading />
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="text-red-500">{error}</div>
+        </div>
+      ) : (
+        // 直接嵌入4个对应状态的页面组件，并传递数据
+        <>
+          {activeTab === 'OverView' && (
+            <OverViewTabPage 
+              taskStats={taskStats}
+              orderStats={orderStats}
+              loading={false}
+            />
+          )}
+          {activeTab === 'InProgress' && (
+            <ActiveTabPage 
+              tasks={inProgressTasks}
+            />
+          )}
+          {activeTab === 'AwaitingReview' && (
+            <AwaitingReviewTabPage 
+              awaitingReviewOrders={awaitingReviewTasks}
+              loading={false}
+            />
+          )}
+          {activeTab === 'Completed' && (
+            <CompletedTabPage 
+              tasks={completedTasks}
+            />
+          )}
+        </>
+      )}
       
       {/* URL重定向提示框组件 */}
       <URLRedirection

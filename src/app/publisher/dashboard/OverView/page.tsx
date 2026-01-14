@@ -1,47 +1,22 @@
 'use client';
 
 import * as React from 'react';
-
-// 定义类型
-interface TaskStatsData {
-  publishedCount: number;
-  acceptedCount: number;
-  submittedCount: number;
-  completedCount: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  todayEarnings: number;
-  monthEarnings: number;
-  passedCount: number;
-  rejectedCount: number;
-  passRate: number;
-  avgCompletionTime: number;
-  ranking: number;
-  agentTasksCount: number;
-  agentEarnings: number;
-  invitedUsersCount: number;
-}
-
-// 定义订单统计数据类型
-interface OrderStatsData {
-  acceptedCount: number;
-  submittedCount: number;
-  completedCount: number;
-}
+// 导入类型定义
+import { TaskStats, OrderStats } from '../../../types/task/getTasksListTypes';
 
 // 组件Props接口
 interface OverviewTabPageProps {
-  taskStats?: TaskStatsData | null;
+  taskStats: TaskStats;
+  orderStats: OrderStats;
   loading?: boolean;
   error?: string | null;
-  orderStats?: OrderStatsData;
 }
 
 export default function OverviewTabPage({ 
-  taskStats = null, 
+  taskStats, 
+  orderStats, 
   loading = false, 
-  error = null, 
-  orderStats = { acceptedCount: 0, submittedCount: 0, completedCount: 0 } 
+  error = null 
 }: OverviewTabPageProps) {
   
   // 格式化金额显示

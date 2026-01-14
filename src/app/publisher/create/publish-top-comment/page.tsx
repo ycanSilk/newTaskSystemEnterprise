@@ -1,8 +1,15 @@
 'use client';
 
 import { Button, Input, AlertModal } from '@/components/ui';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import PaymentPasswordModal from '@/components/payPalPwd/payPalPwd';
+import ImageUpload from '@/components/imagesUpload/ImageUpload';
+import {
+  PublishTaskFormData,
+  PublishSingleTaskRequest,
+  PublishSingleTaskResponse
+} from '@/app/types/task/publishSingleTaskTypes';
 
 export default function PublishTaskPage() {
   const router = useRouter();
@@ -13,21 +20,33 @@ export default function PublishTaskPage() {
     return searchParams?.get(key) || '';
   };
   
-  const taskPrice = 4
+  // 从URL参数获取模板ID和价格
+  const templateId = parseInt(getSearchParam('template_id') || '0');
+  const taskPrice = parseFloat(getSearchParam('price').trim() || '4');
 
-  const [formData, setFormData] = useState({
+  // 表单状态
+  const [formData, setFormData] = useState<PublishTaskFormData>({
     videoUrl: '', // 默认视频链接
     quantity: 1, // 默认任务数量设为1
     comments: [
       {
         content: '',
-        image: null as File | null
+        image: null,
+        imageUrl: ''
       }
     ],
-    deadline: '48' // 默认截止时间设为48小时
+    deadline: '30' // 默认截止时间设为30分钟
   });
+  
+  // 保存每个评论的图片上传状态
+  const [commentImages, setCommentImages] = useState<File[][]>([]);
+  const [commentImageUrls, setCommentImageUrls] = useState<string[][]>([]);
 
+  // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
+  
+  // 支付密码模态框状态
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -72,7 +91,8 @@ export default function PublishTaskPage() {
         for (let i = currentCommentCount; i < quantity; i++) {
           newComments.push({
             content: ``,
-            image: null
+            image: null,
+            imageUrl: ''
           });
         }
         return {
@@ -95,6 +115,37 @@ export default function PublishTaskPage() {
         quantity
       };
     });
+    
+    // 更新图片数组
+    setCommentImages(prevImages => {
+      const newImages = [...prevImages];
+      // 如果新的数量大于当前图片数组长度，添加空数组
+      if (quantity > newImages.length) {
+        for (let i = newImages.length; i < quantity; i++) {
+          newImages.push([]);
+        }
+      }
+      // 如果新的数量小于当前图片数组长度，减少数组长度
+      else if (quantity < newImages.length) {
+        return newImages.slice(0, quantity);
+      }
+      return newImages;
+    });
+    
+    setCommentImageUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      // 如果新的数量大于当前URL数组长度，添加空数组
+      if (quantity > newUrls.length) {
+        for (let i = newUrls.length; i < quantity; i++) {
+          newUrls.push([]);
+        }
+      }
+      // 如果新的数量小于当前URL数组长度，减少数组长度
+      else if (quantity < newUrls.length) {
+        return newUrls.slice(0, quantity);
+      }
+      return newUrls;
+    });
   };
   
   // AI优化评论功能
@@ -110,82 +161,37 @@ export default function PublishTaskPage() {
     showAlert('优化成功', '评论内容已通过AI优化！', '✨');
   };
 
-  // 图片压缩函数
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          // 保持原图宽高比例
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = height * (MAX_WIDTH / width);
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = width * (MAX_HEIGHT / height);
-              height = MAX_HEIGHT;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // 质量参数，从0到1，1表示最佳质量
-          let quality = 0.9;
-          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          
-          // 如果压缩后大小仍大于200KB，继续降低质量
-          while (compressedDataUrl.length * 0.75 > 200 * 1024 && quality > 0.1) {
-            quality -= 0.1;
-            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          }
-          
-          // 将DataURL转换回File对象
-          const byteString = atob(compressedDataUrl.split(',')[1]);
-          const mimeString = compressedDataUrl.split(',')[0].split(':')[1].split(';')[0];
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-          
-          const blob = new Blob([ab], { type: mimeString });
-          const compressedFile = new File([blob], file.name, { type: mimeString });
-          resolve(compressedFile);
-        };
-        img.src = event.target?.result as string;
+  // 处理图片变化 - 使用useCallback避免无限循环
+  const handleImagesChange = useCallback((commentIndex: number, images: File[], urls: string[]) => {
+    // 更新评论的图片URL
+    setFormData(prevData => {
+      const newComments = [...prevData.comments];
+      newComments[commentIndex] = {
+        ...newComments[commentIndex],
+        imageUrl: urls[0] || ''
       };
-      reader.readAsDataURL(file);
+      return {
+        ...prevData,
+        comments: newComments
+      };
     });
-  };
+    
+    // 更新图片数组状态
+    setCommentImages(prevImages => {
+      const newImages = [...prevImages];
+      newImages[commentIndex] = images;
+      return newImages;
+    });
+    
+    setCommentImageUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      newUrls[commentIndex] = urls;
+      return newUrls;
+    });
+  }, [setFormData, setCommentImages, setCommentImageUrls]);
 
-  // 图片上传功能移至handlePublish函数内部
-
-  // 移除已上传的图片
-  const removeImage = (index: number) => {
-    setFormData(prevData => ({
-      ...prevData,
-      comments: prevData.comments.map((comment, i) => 
-        i === index ? { ...comment, image: null } : comment
-      )
-    }));
-  };
-
-  // 发布任务
-  const handlePublish = async () => {
+  // 发布任务 - 处理支付密码提交
+  const handlePublishWithPassword = async (password: string) => {
     // 防止重复提交
     if (isPublishing) {
       return;
@@ -194,6 +200,7 @@ export default function PublishTaskPage() {
     // 表单验证
     if (!formData.videoUrl.trim()) {
       showAlert('验证失败', '请输入抖音视频链接', 'error');
+      setShowPasswordModal(false);
       return;
     }
     
@@ -201,12 +208,14 @@ export default function PublishTaskPage() {
     const validComments = formData.comments.filter(comment => comment.content.trim() !== '');
     if (validComments.length === 0) {
       showAlert('验证失败', '请输入评论内容', 'error');
+      setShowPasswordModal(false);
       return;
     }
     
     // 验证任务数量
     if (!formData.quantity || formData.quantity < 1) {
       showAlert('验证失败', '请设置有效的任务数量', 'error');
+      setShowPasswordModal(false);
       return;
     }
     
@@ -214,113 +223,84 @@ export default function PublishTaskPage() {
       // 设置加载状态
       setIsPublishing(true);
       
+      // 计算总价格
+      const totalPrice = taskPrice * formData.quantity;
+      
+      // 计算截止时间戳（当前时间 + 任务截止时间（分钟））
+      const currentTime = Math.floor(Date.now() / 1000); // 当前时间戳（秒）
+      const deadline = currentTime + parseInt(formData.deadline) * 60;
+      
       // 构建请求体
-      const futureDate = new Date(Date.now() + parseInt(formData.deadline) * 60 * 60 * 1000);
-      // 格式化deadline为'YYYY-MM-DD HH:mm:ss'格式
-      const formattedDeadline = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')} ${String(futureDate.getHours()).padStart(2, '0')}:${String(futureDate.getMinutes()).padStart(2, '0')}:${String(futureDate.getSeconds()).padStart(2, '0')}`;
-      
-      // 创建标题和描述
-      const taskTitle = `评论任务 - ${new Date().toLocaleDateString()}`;
-      const taskDescription = `任务数量: ${formData.quantity}，单价: ¥${taskPrice}`;
-      
-      const requestBody = {
-        title: '上坪评论',
-        description: '这里是任务描述信息',
-        platform: 'DOUYIN',
-        taskType: 'COMMENT',
-        totalQuantity: formData.quantity,
-        unitPrice: taskPrice,
-        deadline: formattedDeadline,
-        requirements: '这里是任务要求信息',
-        commentDetail: {
-          commentType: 'SINGLE',
-          linkUrl1: formData.videoUrl.trim(),
-          unitPrice1: taskPrice,
-          quantity1: formData.quantity,
-          commentText1: formData.comments[0]?.content.trim() || '',
-          commentImages1: formData.comments[0]?.image ? '/images/default.png' : '',
-          mentionUser1: ''
-          
-        }
+      const requestBody: PublishSingleTaskRequest = {
+        template_id: templateId,
+        video_url: formData.videoUrl.trim(),
+        deadline,
+        task_count: formData.quantity,
+        total_price: totalPrice,
+        pswd: password,
+        recommend_marks: formData.comments.map(comment => ({
+          comment: comment.content.trim(),
+          image_url: comment.imageUrl,
+          at_user: ''
+        }))
       };
 
-      const apiUrl = '/api/task/topcomment';
-
+      // 调用API
+      const apiUrl = '/api/task/publishSingleTask';
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
-        credentials: 'include'
       });
       
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        throw new Error('服务器返回无效响应格式');
-      }
+      const result: PublishSingleTaskResponse = await response.json();
       
-      // 检查响应状态
-      if (!response.ok || result.success === false || (result.code && result.code !== 200 && result.code !== 1)) {
-        const errorMsg = result.message || result.error || '发布任务失败，请稍后重试';
-        throw new Error(errorMsg);
-      }
+      // 关闭密码模态框
+      setShowPasswordModal(false);
       
-      // 成功处理
-      showAlert('发布成功', '任务已成功发布！', 'success', '确定', () => {
-        router.push('/publisher/dashboard');
-      });
+      // 处理响应
+      if (result.code === 0) {
+        // 成功处理
+        showAlert('发布成功', result.message, 'success', '确定', () => {
+          router.push('/publisher/dashboard');
+        });
+      } else {
+        // 失败处理
+        showAlert('发布失败', result.message || '发布任务失败，请稍后重试', 'error');
+      }
     } catch (error) {
       // 错误处理
-      const errorMessage = error instanceof Error ? error.message : '发布任务时发生错误';
-      showAlert('发布失败', errorMessage, 'error');
+      console.error('发布任务失败:', error);
+      setShowPasswordModal(false);
+      showAlert('发布失败', '网络错误，请稍后重试', 'error');
     } finally {
       // 无论成功失败，都重置加载状态
       setIsPublishing(false);
     }
   };
-    
-    // 处理图片上传
-    const handleImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      
-      // 检查文件大小
-      if (file.size > 2000 * 1024) { // 200KB
-        showAlert('上传失败', '图片大小不能超过200KB', 'error');
-        return;
-      }
-      
-      try {
-        // 压缩图片
-        const compressedFile = await compressImage(file);
-        
-        // 保存压缩后的图片文件
-        const newComments = [...formData.comments];
-        newComments[index] = {
-          ...newComments[index],
-          image: compressedFile
-        };
-        setFormData({...formData, comments: newComments});
-        
-        // 显示上传成功提示
-        showAlert('上传成功', '图片上传成功！', 'success');
-      } catch {
-        showAlert('上传失败', '图片上传失败，请重试', 'error');
-      }
-    };
-    
-    const totalCost = (taskPrice * formData.quantity).toFixed(2);
-    return (
-      <div className="min-h-screen bg-gray-50 pb-20">
-         <div className="px-4 py-3 space-y-4">
+
+  // 显示支付密码模态框
+  const handlePublish = () => {
+    setShowPasswordModal(true);
+  };
   
-        <div className="text-lg text-red-500">
-          <span className="text-2xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
+  // 计算总费用
+  const totalCost = (taskPrice * formData.quantity).toFixed(2);
+  
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="px-4 py-3 space-y-4">
+        <h1 className="text-2xl font-bold pl-5">
+          发布上评评论
+        </h1>
+
+        <div className="text-lg pl-5 text-red-500">
+          <span className="text-1xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
         </div>
-  
+
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -333,7 +313,7 @@ export default function PublishTaskPage() {
             className="w-full"
           />
         </div>
-  
+
         {/* 截止时间 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -349,7 +329,7 @@ export default function PublishTaskPage() {
             <option value="24">24小时</option>
           </select>
         </div>
-  
+
         {/* 评论内容 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -383,56 +363,24 @@ export default function PublishTaskPage() {
                   setFormData({...formData, comments: newComments});
                 }}
               />
-                   
-                  {/* 图片上传区域 */}
-                  <div className="mt-1">
-                    <div className="flex items-end space-x-3">
-                      <div 
-                        className={`w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all ${comment.image ? 'border-green-500' : 'border-gray-300 hover:border-blue-500'}`}
-                        onClick={() => document.getElementById(`image-upload-${index}`)?.click()}
-                      >
-                        {comment.image ? (
-                          <div className="relative w-full h-full">
-                            <img 
-                              src={URL.createObjectURL(comment.image)} 
-                              alt={`上评评论图片 ${index + 1}`} 
-                              className="w-full h-full object-cover rounded"
-                            />
-                            <button 
-                              type="button"
-                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(index);
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <span className="text-xl">+</span>
-                            <span className="text-xs text-gray-500 mt-1">点击上传图片</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        支持JPG、PNG格式，最大200KB
-                      </div>
-                    </div>
-                    <input
-                      id={`image-upload-${index}`}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(index, e)}
-                      className="hidden"
+                    
+                  {/* 图片上传组件 */}
+                  <div className="mt-3">
+                    <ImageUpload
+                      maxCount={1}
+                      onImagesChange={(images, urls) => handleImagesChange(index, images, urls)}
+                      savePath="comments"
+                      title="上传评论图片"
+                      columns={1}
+                      gridWidth="100px" // 设置网格宽度与单个上传项宽度一致
+                      itemSize="100x100" // 设置单个上传项尺寸为100x100像素
                     />
                   </div>
                 </div>
           ))}
-  
+
         </div>
-  
+
         {/* 任务数量 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -468,7 +416,7 @@ export default function PublishTaskPage() {
             上评任务单价为¥{taskPrice}，最多可发布10个任务
           </div>
         </div>
-  
+
         {/* 费用预览 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
@@ -517,6 +465,14 @@ export default function PublishTaskPage() {
           setShowAlertModal(false);
         }}
         onClose={() => setShowAlertModal(false)}
+      />
+      
+      {/* 支付密码模态框组件 */}
+      <PaymentPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={handlePublishWithPassword}
+        loading={isPublishing}
       />
     </div>
   );

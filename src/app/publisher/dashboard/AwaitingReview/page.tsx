@@ -1,101 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
-// Publisher auth storage removed
+import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
+// 导入任务类型定义
+import { Task } from '../../../types/task/getTasksListTypes';
 
-// 确保导入类型和必要的依赖
-
-// 定义数据类型
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-  success: boolean;
-  timestamp: number;
-}
-
-interface AwaitingReviewData {
-  list: AwaitingReviewOrder[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
-
-interface AwaitingReviewOrder {
-  id: string;
-  mainTaskId: string;
-  mainTaskTitle: string;
-  mainTaskPlatform: string;
-  workerId: string;
-  workerName: string;
-  agentId: string;
-  agentName: string;
-  commentGroup: string;
-  commentType: string;
-  unitPrice: number;
-  userReward: number;
-  agentReward: number;
-  status: string;
-  acceptTime: string;
-  expireTime: string;
-  submitTime: string;
-  completeTime: string;
-  settleTime: string;
-  submittedImages: string;
-  submittedLinkUrl: string;
-  submittedComment: string;
-  verificationNotes: string;
-  rejectReason: string;
-  cancelReason: string;
-  cancelTime: string;
-  releaseCount: number;
-  settled: boolean;
-  verifierId: string;
-  verifierName: string;
-  createTime: string;
-  updateTime: string;
-  taskDescription: string;
-  taskRequirements: string;
-  taskDeadline: string;
-  remainingMinutes: number;
-  isExpired: boolean;
-  isAutoVerified: boolean;
-  canSubmit: boolean;
-  canCancel: boolean;
-  canVerify: boolean;
-  verifyResult: string;
-  verifyTime: string;
-  verifyComment: string;
-  settlementStatus: string;
-  settlementTime: string;
-  settlementRemark: string;
-  workerRating: number;
-  workerComment: string;
-  publisherRating: number;
-  publisherComment: string;
-  firstGroupComment: string;
-  secondGroupComment: string;
-  firstGroupImages: string;
-  secondGroupImages: string;
-}
-
+// 组件Props接口
 interface AwaitingReviewTabPageProps {
-  awaitingReviewOrders?: AwaitingReviewOrder[];
-  awaitingReviewData?: AwaitingReviewData | null;
+  awaitingReviewOrders: Task[];
   loading?: boolean;
 }
 
 export default function AwaitingReviewTabPage({ 
-  awaitingReviewOrders = [], 
-  awaitingReviewData = null, 
+  awaitingReviewOrders,
   loading = false 
 }: AwaitingReviewTabPageProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('time');
   // 显示复制成功提示
@@ -110,7 +32,7 @@ export default function AwaitingReviewTabPage({
   const [rejectReason, setRejectReason] = useState('');
   const [currentOrderId, setCurrentOrderId] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
-  const [currentOrder, setCurrentOrder] = useState<AwaitingReviewOrder | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<Task | null>(null);
   // 图片查看器状态
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState('');
@@ -120,8 +42,8 @@ export default function AwaitingReviewTabPage({
   // 处理搜索函数已在其他位置定义
 
   // 处理订单审核
-  const handleOrderReview = (order: AwaitingReviewOrder, action: string) => {
-    setCurrentOrderId(order.id);
+  const handleOrderReview = (order: Task, action: string) => {
+    setCurrentOrderId(order.task_id.toString());
     setCurrentOrder(order);
     if (action === 'approve') {
       setShowApproveModal(true);
@@ -140,7 +62,7 @@ export default function AwaitingReviewTabPage({
         subTaskId: currentOrderId,
         verifyResult: 'PASS',
         verifyNotes: verificationNotes[currentOrderId] || '',
-        evidenceImages: currentOrder.submittedImages
+        evidenceImages: ''
       };
       
       const response = await fetch('/api/task/reviewtask', {
@@ -203,20 +125,20 @@ export default function AwaitingReviewTabPage({
   // 过滤最近订单
   const filterRecentOrders = (orders: any[]) => {
     return orders.filter(order => {
-      const orderTime = new Date(order.submitTime).getTime();
+      const orderTime = new Date(order.created_at).getTime();
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
       return orderTime >= sevenDaysAgo;
     });
   };
 
   // 搜索订单
-  const searchOrders = (orders: AwaitingReviewOrder[]) => {
+  const searchOrders = (orders: Task[]) => {
     if (!searchTerm.trim()) return orders;
     
     return orders.filter(order => 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.mainTaskTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.submittedComment.toLowerCase().includes(searchTerm.toLowerCase())
+      order.task_id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.template_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.template_title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
@@ -225,9 +147,9 @@ export default function AwaitingReviewTabPage({
     return [...orders].sort((a, b) => {
       switch (sortBy) {
         case 'time':
-          return new Date(b.submitTime).getTime() - new Date(a.submitTime).getTime();
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case 'status':
-          return a.status.localeCompare(b.status);
+          return a.status_text.localeCompare(b.status_text);
         default:
           return 0;
       }
@@ -292,7 +214,7 @@ export default function AwaitingReviewTabPage({
       {/* 使用标准模板组件 */}
       <OrderHeaderTemplate
         title="待审核的订单"
-        totalCount={awaitingReviewData?.total || awaitingReviewOrders.length}
+        totalCount={awaitingReviewOrders.length}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         handleSearch={handleSearch}
@@ -333,16 +255,16 @@ export default function AwaitingReviewTabPage({
 
       {/* 子订单列表 - 内联实现AuditOrderCard功能 */}
       {filteredOrders.map((order, index) => (
-        <div key={`pending-${order.id}-${index}`} className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
+        <div key={`pending-${order.task_id}-${index}`} className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
           {/* 订单号 */}
           <div className="flex items-center mb-1 overflow-hidden">
             <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate">
-              订单号：{order.id}
+              订单号：{order.task_id}
             </div>
             <div className="relative">
               <button 
                 className="text-blue-600 hover:text-blue-700 whitespace-nowrap text-sm"
-                onClick={() => handleCopyOrderNumber(order.id)}
+                onClick={() => handleCopyOrderNumber(order.task_id.toString())}
               >
                 <span>⧉ 复制</span>
               </button>
@@ -352,10 +274,10 @@ export default function AwaitingReviewTabPage({
           {/* 订单状态和任务类型 - 同一行且独立占一行 */}
           <div className="flex items-center mb-1 space-x-4">
             <div className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
-              {order.status === 'PENDING' ? '待审核' : order.status}
+              {order.status_text}
             </div>
             <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-              {order.mainTaskPlatform}
+              抖音
             </div>
           </div>
           
@@ -363,63 +285,59 @@ export default function AwaitingReviewTabPage({
           <div className="mb-1">
             <div className="flex items-center mb-1">
               <span className="text-sm text-black font-medium">单价：</span>
-              <span className="text-sm text-black">¥{order.unitPrice.toFixed(2)}</span>
+              <span className="text-sm text-black">¥{order.unit_price}</span>
             </div>
           </div>
           
           {/* 时间信息 - 各自独占一行 */}
           <div className="text-sm text-black mb-1">
-            发布时间：{order.createTime}
+            发布时间：{order.created_at}
           </div>
           <div className="text-sm text-black mb-1">
-            提交时间：{order.submitTime}
+            截止时间：{order.deadline_text}
           </div>
           
           {/* 领取用户信息展示 */}
           <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论员：{order.workerName}
+              评论员：未知
           </div>
           <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论类型：{order.commentType}
+              评论类型：评论任务
           </div>
 
           <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频丢失，将以接单员完成任务截图为准给予审核结算</div>
           
           {/* 评论展示和复制功能 */}
-          {order.submittedComment && (
-            <div className="mb-3 p-2 border border-gray-200 rounded-lg bg-blue-50">
-              <div className="flex items-start justify-between mb-1">
-                <span className="text-sm font-medium text-blue-700">提交的评论：</span>
-                <button
-                  className="text-blue-600 hover:text-blue-700 text-xs flex items-center"
-                  onClick={() => handleCopyComment(order.submittedComment || '')}
-                >
-                  <span className="mr-1">⧉</span> 复制评论
-                </button>
-              </div>
-              <p className="text-sm text-blue-700 whitespace-pre-wrap">{order.submittedComment}</p>
+          <div className="mb-3 p-2 border border-gray-200 rounded-lg bg-blue-50">
+            <div className="flex items-start justify-between mb-1">
+              <span className="text-sm font-medium text-blue-700">提交的评论：</span>
+              <button
+                className="text-blue-600 hover:text-blue-700 text-xs flex items-center"
+                onClick={() => handleCopyComment(order.template_title)}
+              >
+                <span className="mr-1">⧉</span> 复制评论
+              </button>
             </div>
-          )}
+            <p className="text-sm text-blue-700 whitespace-pre-wrap">{order.template_title}</p>
+          </div>
 
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
             <p className='mb-1  text-sm text-blue-600'>已完成评论点击进入：</p>
             <a 
-              href={order.submittedLinkUrl || ''} 
+              href={order.video_url} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
               onClick={(e) => {
                 e.preventDefault();
                 // 复制视频链接
-                if (order.submittedLinkUrl) {
-                  navigator.clipboard.writeText(order.submittedLinkUrl).then(() => {
-                    showCopySuccess('视频链接已复制');
-                  }).catch(() => {
-                    // 静默处理复制失败
-                  });
-                }
+                navigator.clipboard.writeText(order.video_url).then(() => {
+                  showCopySuccess('视频链接已复制');
+                }).catch(() => {
+                  // 静默处理复制失败
+                });
                 // 设置当前视频URL并打开模态框
-                setCurrentVideoUrl('https://v.douyin.com/oiunFce071s/');
+                setCurrentVideoUrl(order.video_url);
                 setIsModalOpen(true);
               }}
             >
@@ -427,50 +345,14 @@ export default function AwaitingReviewTabPage({
             </a>
           </div>
 
-          {/* 截图显示区域 - 自适应高度，居中显示 */}
-          <div className="mb-4 border border-blue-200 rounded-lg p-3 bg-blue-50">
-            <div className='text-sm text-blue-600 pl-2 py-2'>完成任务截图上传：</div>
-            {order.submittedImages ? (
-              <div className="grid grid-cols-3 gap-2">
-                {/* 假设submittedImages是逗号分隔的URL字符串 */}
-                {order.submittedImages.split(',').map((imageUrl: string, imgIndex: number) => (
-                  <div 
-                    key={imgIndex}
-                    className="w-[90px] h-[90px] relative cursor-pointer overflow-hidden rounded-lg border border-gray-300 bg-gray-50 transition-colors hover:border-blue-400 hover:shadow-md flex items-center justify-center"
-                    onClick={() => openImageViewer(imageUrl.trim())}
-                  >
-                    <img 
-                      src={imageUrl.trim()} 
-                      alt={`任务截图 ${imgIndex + 1}`} 
-                      className="w-full h-full object-contain"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 flex items-center justify-center transition-all">
-                      <span className="text-blue-600 text-xs opacity-0 hover:opacity-100 transition-opacity">点击放大</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="w-full h-24 flex flex-col items-center justify-center text-gray-400">
-                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-xs">未上传截图</span>
-              </div>
-            )}
-            <p className="text-xs text-blue-600 mt-1 pl-2">
-              点击可放大查看截图
-            </p>
-          </div>
-          
           {/* 审核备注输入框 */}
           <div className="mb-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
             <label className="block text-sm font-medium text-gray-700 mb-1">审核备注（选填）</label>
             <textarea 
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y min-h-[80px]"
               placeholder="请输入审核备注信息..."
-              value={verificationNotes[order.id] || ''}
-              onChange={(e) => setVerificationNotes(prev => ({...prev, [order.id]: e.target.value}))}
+              value={verificationNotes[order.task_id.toString()] || ''}
+              onChange={(e) => setVerificationNotes(prev => ({...prev, [order.task_id.toString()]: e.target.value}))}
               disabled={false}
             />
           </div>
@@ -487,7 +369,7 @@ export default function AwaitingReviewTabPage({
               <button 
                 className="py-2 px-4 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
                 onClick={() => handleOrderReview(order, 'reject')}
-                disabled={!order.canVerify}
+                disabled={false}
               >
                 驳回订单
               </button>

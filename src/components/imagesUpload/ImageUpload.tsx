@@ -1,5 +1,5 @@
 // components/imagesUpload/ImageUpload.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEphemeralImageManager } from '@/hooks/useEphemeralImageManager';
 
 // 组件属性类型定义
@@ -10,6 +10,8 @@ export interface ImageUploadProps {
   savePath?: string;                // 保存图片路径
   title?: string;                   // 组件标题
   columns?: number;                 // 每行显示数量
+  gridWidth?: string;               // 图片网格宽度，支持具体尺寸或百分比，默认100%
+  itemSize?: string;                // 单个上传项尺寸，格式为"widthxheight"，默认"100x100"
 }
 
 /**
@@ -23,8 +25,23 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   onImagesChange,
   savePath = '',
   title = '图片上传',
-  columns = 3
+  columns = 3,
+  gridWidth = '100%', // 默认网格宽度为100%
+  itemSize = '100x100' // 默认单个上传项尺寸为100x100
 }) => {
+  // 解析itemSize字符串，获取宽高值
+  // 默认值为100x100
+  const [itemWidth, itemHeight] = (() => {
+    const match = itemSize.match(/^(\d+)x(\d+)$/);
+    if (match) {
+      return [`${match[1]}px`, `${match[2]}px`];
+    }
+    // 如果格式无效，使用默认值
+    return ['100px', '100px'];
+  })();
+  // 使用ref保存最新的onImagesChange回调函数，避免因函数变化导致的无限循环
+  const onImagesChangeRef = useRef(onImagesChange);
+  
   // 使用图片管理Hook
   const {
     images,
@@ -39,11 +56,36 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     selectedPreviewIndex,
     setSelectedPreviewIndex
   } = useEphemeralImageManager(initialImages, savePath);
+  
+  // 使用ref保存之前的images和uploadedUrls，用于比较是否真正变化
+  // 初始化为空数组，避免使用未声明的变量
+  const prevImagesRef = useRef<File[]>([]);
+  const prevUploadedUrlsRef = useRef<string[]>([]);
 
-  // 通知父组件图片变化
+  // 更新ref中的回调函数，确保始终使用最新版本
   useEffect(() => {
-    onImagesChange?.(images, uploadedUrls);
-  }, [images, uploadedUrls, onImagesChange]);
+    onImagesChangeRef.current = onImagesChange;
+  }, [onImagesChange]);
+
+  // 通知父组件图片变化 - 只在images或uploadedUrls真正变化时调用
+  // 避免初始渲染和重复渲染时的不必要调用，彻底解决无限循环
+  useEffect(() => {
+    // 比较当前值与之前值，只有真正变化时才调用回调
+    const imagesChanged = images.length !== prevImagesRef.current.length ||
+                         images.some((img, index) => img !== prevImagesRef.current[index]);
+    
+    const urlsChanged = uploadedUrls.length !== prevUploadedUrlsRef.current.length ||
+                        uploadedUrls.some((url, index) => url !== prevUploadedUrlsRef.current[index]);
+    
+    if ((imagesChanged || urlsChanged) && (images.length > 0 || uploadedUrls.some(url => url))) {
+      // 通过ref访问最新的回调函数
+      onImagesChangeRef.current?.(images, uploadedUrls);
+      
+      // 更新ref中的值，用于下次比较
+      prevImagesRef.current = images;
+      prevUploadedUrlsRef.current = uploadedUrls;
+    }
+  }, [images, uploadedUrls]);
 
   // 打开图片预览
   const handleOpenPreview = (index: number) => {
@@ -56,10 +98,10 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   return (
-    <div className="image-upload-container p-4 bg-white rounded-lg shadow-md">
+    <div className="image-upload-container p-0 ">
       {/* 组件标题 */}
       {title && (
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+        <h3 className="text-sm font-semibold mb-2 text-gray-800">
           {title}
         </h3>
       )}
@@ -72,13 +114,15 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       )}
       
       {/* 图片上传网格 */}
-      <div className={`image-upload-grid grid grid-cols-${columns} gap-4 justify-center items-center mb-4`}>
+      <div 
+        className={`image-upload-grid grid grid-cols-${columns} gap-4 justify-center items-center mb-4`}
+        style={{ width: gridWidth }}
+      >
         {Array.from({ length: maxCount }).map((_, index) => (
           <div 
             key={index} 
-            className={`image-upload-item relative w-full h-40 border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-300 ${
-              images[index] ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-            }`}
+            className={`image-upload-item relative border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-300 ${images[index] ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}
+            style={{ width: itemWidth, height: itemHeight }}
           >
             {/* 已上传图片显示 */}
             {images[index] ? (

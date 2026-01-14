@@ -13,7 +13,11 @@ export default function PublishTaskPage() {
     return searchParams?.get(key) || '';
   };
 
+  // 从URL参数获取任务价格
   const taskPrice = parseFloat(getSearchParam('price').trim() || '0');
+  // 从URL参数获取阶段价格
+  const stage1Price = parseFloat(getSearchParam('stage1Price').trim() || '0');
+  const stage2Price = parseFloat(getSearchParam('stage2Price').trim() || '0');
 
   
   // @用户相关状态 - 只用于中评
@@ -590,11 +594,16 @@ export default function PublishTaskPage() {
     }
   };
 
-  const totalCost = (4 + formData.middleQuantity * 2).toFixed(2);
+  // 使用URL参数中的阶段价格计算总费用，默认值为4和2
+  const totalCost = ((stage1Price || 4) + formData.middleQuantity * (stage2Price || 2)).toFixed(2);
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-4">
-        <div className="text-lg text-red-500">
+        <h1 className="text-2xl font-bold pl-5">
+          发布上中评评论
+        </h1>
+
+        <div className="text-lg pl-5 text-red-500">
           <span className="text-2xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
         </div>
         {/* 视频链接 */}
