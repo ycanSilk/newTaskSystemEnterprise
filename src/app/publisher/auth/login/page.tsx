@@ -26,6 +26,7 @@ export default function PublisherLoginPage() {
   // 如果用户已登录，重定向到仪表盘页面
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
+      console.log('isAuthenticated:', isAuthenticated);
       console.log('用户已登录，重定向到仪表盘页面');
       router.push('/publisher/dashboard');
     }
@@ -166,6 +167,7 @@ export default function PublisherLoginPage() {
                     setFormData({...formData, account: e.target.value});
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="username"
                 />
               </div>
 

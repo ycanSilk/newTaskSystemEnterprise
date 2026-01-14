@@ -241,7 +241,27 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
           <p>视频评论链接：<span>{task.video_url}</span></p>
         </div>
         
-        <div className="flex gap-2 ">
+        {/* 子任务状态统计 */}
+        <div className="grid grid-cols-4 gap-2 mt-3">
+          <div className="bg-green-100 rounded-lg p-2 text-center">
+            <span className="text-green-700 text-xs">已完成</span>
+            <span className="text-green-700 text-sm font-medium block">{task.task_done || 0}</span>
+          </div>
+          <div className="bg-blue-100 rounded-lg p-2 text-center">
+            <span className="text-blue-700 text-xs">执行中</span>
+            <span className="text-blue-700 text-sm font-medium block">{task.task_doing || 0}</span>
+          </div>
+          <div className="bg-yellow-100 rounded-lg p-2 text-center">
+            <span className="text-yellow-700 text-xs">待审核</span>
+            <span className="text-yellow-700 text-sm font-medium block">{task.task_reviewing || 0}</span>
+          </div>
+          <div className="bg-purple-100 rounded-lg p-2 text-center">
+            <span className="text-purple-700 text-xs">待领取</span>
+            <span className="text-purple-700 text-sm font-medium block">{task.task_available || 0}</span>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mt-3">
           <div className="flex-1 bg-green-600 rounded-lg p-1 text-center">
             <span className="text-white text-sm ">总价</span>
             <span className="text-white text-sm block">¥{task.total_price}</span>

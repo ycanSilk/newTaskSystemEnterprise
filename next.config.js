@@ -60,7 +60,7 @@ const nextConfig = {
           // 内容安全策略 (CSP) - 防止XSS和数据注入攻击
         { 
           key: 'Content-Security-Policy', 
-          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none';"
+          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://134.122.136.221:4667; font-src 'self' https:; connect-src 'self' https: http://134.122.136.221:4667; frame-src 'self' https:; object-src 'none';"
         },
           // 严格传输安全 (HSTS) - 强制使用HTTPS
           { 

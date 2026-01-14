@@ -2,21 +2,42 @@
 
 // 导入React钩子：useState用于状态管理，useEffect用于处理副作用
 import { useState, useEffect, useRef } from 'react';
-// 导入User类型定义
-import { User } from '@/types';
+// 导入User和UserRole类型定义
+import { User, UserRole } from '@/types';
+// 导入CheckTokenResponse类型
+import { CheckTokenResponse } from '@/types/checkTokenTypes/checkTokenTypes';
 // 导入userStore
 import { useUserStore } from '@/store/userStore';
+// 导入路由解密工具函数
+import { decryptRoute, isEncryptedRoute } from '@/lib/routeEncryption';
 
 // 从API获取用户信息的函数
 const fetchUserInfoFromApi = async (): Promise<User | null> => {
-  // 每次调用都重新检查当前页面是否为登录页面，如果是则直接返回null，不进行任何API调用
-  if (typeof window !== 'undefined' && window.location.pathname.includes('/auth/login')) {
-    return null;
+  // 每次调用都重新检查当前页面是否为登录或注册页面，如果是则直接返回null，不进行任何API调用
+  if (typeof window !== 'undefined') {
+    let pathname = window.location.pathname;
+    
+    // 解密路径，以便正确判断页面类型
+    const pathParts = pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
+      try {
+        const decryptedPath = decryptRoute(pathParts[0]);
+        const decryptedParts = decryptedPath.split('/').filter(Boolean);
+        const remainingPath = pathParts.slice(1).join('/');
+        pathname = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
+      } catch (error) {
+        console.error('解密路径失败:', error);
+      }
+    }
+    
+    if (pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register')) {
+      return null;
+    }
   }
   
   try {
-    // 调用验证用户登录状态的API端点
-    const response = await fetch('/api/auth/me', {
+    // 调用验证Token有效性的API端点
+    const response = await fetch('/api/auth/checkToken', {
       method: 'GET',
       credentials: 'include', // 包含cookie
       headers: {
@@ -32,16 +53,33 @@ const fetchUserInfoFromApi = async (): Promise<User | null> => {
     
     // 解析API响应
     const data = await response.json();
-    console.log('GET /api/auth/me 响应数据:', data);
+    console.log('GET /api/auth/checkToken 响应数据:', data);
     
-    // 如果API返回成功，返回用户信息
-    if (data.success && data.data) {
-      return data.data;
+    // 如果API返回成功，且token有效，返回用户信息
+    if (data.success && data.data && data.data.valid) {
+      // 从响应中提取用户信息
+      const userInfo: User = {
+        // 从响应中实际存在的字段映射
+        id: data.data.user_id.toString(),
+        username: data.data.username,
+        email: data.data.email,
+        user_id: data.data.user_id,
+        organization_name: data.data.organization_name,
+        organization_leader: data.data.organization_leader,
+        
+        // User类型必需的字段，使用默认值
+        role: 'publisher' as UserRole, // 默认角色
+        balance: 0, // 默认余额
+        status: 'active', // 默认状态
+        createdAt: new Date().toISOString() // 默认创建时间
+      };
+      return userInfo;
     }
     
-    // 如果API返回失败，返回null
+    // 如果API返回失败，或token无效，返回null
     return null;
   } catch (error) {
+    console.error('Token校验失败:', error);
     return null;
   }
 };
@@ -102,9 +140,26 @@ export function useUser(): UseUserReturn {
   // 上次请求时间引用
   const lastRequestTimeRef = useRef<number>(0);
 
-  // 检查当前页面是否为登录页面的辅助函数
+  // 检查当前页面是否为登录或注册页面的辅助函数
   const checkIfLoginPage = () => {
-    return typeof window !== 'undefined' && window.location.pathname.includes('/auth/login');
+    if (typeof window === 'undefined') return false;
+    
+    let pathname = window.location.pathname;
+    
+    // 解密路径，以便正确判断页面类型
+    const pathParts = pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
+      try {
+        const decryptedPath = decryptRoute(pathParts[0]);
+        const decryptedParts = decryptedPath.split('/').filter(Boolean);
+        const remainingPath = pathParts.slice(1).join('/');
+        pathname = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
+      } catch (error) {
+        console.error('解密路径失败:', error);
+      }
+    }
+    
+    return pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register');
   };
 
   // 检查用户登录状态的函数

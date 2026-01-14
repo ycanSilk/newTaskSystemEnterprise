@@ -11,6 +11,7 @@ import {
   firstLevelPages
 } from '../config/routes';
 import { decryptRoute, isEncryptedRoute, encryptRoute } from '../../../lib/routeEncryption';
+import { useUserStore } from '@/store/userStore';
 
 interface PublisherHeaderProps {
   user?: {
@@ -324,12 +325,41 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   const handleLogout = async () => {
     console.log('Logging out user');
     try {
-      // 在实际应用中，这里会调用认证相关的方法来清除登录状态
-      // PublisherAuthStorage.clearAuth();
+      // 清除userStore中的用户状态
+      const { clearUser } = useUserStore.getState();
+      clearUser();
+      
+      // 调用退出登录API
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      console.log('Logout response:', result);
+      
+      // 检查响应是否成功
+      if (result.success || result.code === 0) {
+        console.log('Logout successful');
+      } else {
+        console.error('Logout failed:', result.message);
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // 清除cookie中的token
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'X-Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'token-front=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+     console.log('Logout successful');
+      // 无论API调用结果如何，都跳转到登录页
       router.push('/publisher/auth/login');
+   
+        console.log('跳转登录页成功')
+  
+
     }
   };
 
@@ -344,15 +374,7 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
 
   const handleLogoutClick = async () => {
     setShowUserName(false); // 关闭下拉菜单
-    console.log('Logging out user');
-    try {
-      // 在实际应用中，这里会调用认证相关的方法来清除登录状态
-      // PublisherAuthStorage.clearAuth();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      router.push('/auth/login/publisherlogin');
-    }
+    await handleLogout();
   };
 
   // 点击页面其他区域关闭下拉菜单
@@ -360,19 +382,22 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       // 检查点击是否发生在头像按钮或下拉菜单之外
-      if (showUserName && !target.closest('.user-avatar-container')) {
-        setShowUserName(false);
+      const avatarButton = document.querySelector('.relative.ml-3 button');
+      const dropdownMenu = document.querySelector('.absolute.right-0.mt-2.w-48.bg-white');
+      
+      if (showDropdown && target !== avatarButton && !target.closest('.absolute.right-0.mt-2.w-48.bg-white')) {
+        setShowDropdown(false);
       }
     };
 
-    if (showUserName) {
+    if (showDropdown) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [showUserName]);
+  }, [showDropdown]);
 
   return (
     <div className="bg-blue-500 border-b border-[#9bcfffff] px-4 py-3 flex items-center justify-between h-[60px] box-border">

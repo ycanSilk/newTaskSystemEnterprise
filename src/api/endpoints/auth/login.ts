@@ -20,15 +20,6 @@ export const LOGIN_ENDPOINT = '/b/v1/auth/login.php';
 export const REGISTER_ENDPOINT = '/b/v1/auth/register.php';
 
 /**
- * 登出端点
- * 用户登出API，用于销毁当前token
- * 请求方法：POST
- * 请求头：Authorization: Bearer <token>
- * 响应：登出结果
- */
-export const LOGOUT_ENDPOINT = '/b/v1/auth/change-password.php';
-
-/**
  * 重置密码端点
  * 重置密码API，用于忘记密码时重置
  * 请求方法：POST
@@ -65,3 +56,10 @@ export const USER_LIST_ENDPOINT = '/biz/user/list';
  * 响应：包含用户列表和分页信息
  */
 export const USER_INFO_ENDPOINT = '/b/v1/me.php';
+
+
+//校验token端点
+export const CHECK_TOKEN_ENDPOINT = '/b/v1/auth/check-token.php';
+
+// 用户退出登录端点
+export const LOGOUT_ENDPOINT = '/b/v1/auth/logout.php';

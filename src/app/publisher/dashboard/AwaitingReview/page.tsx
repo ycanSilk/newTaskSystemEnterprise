@@ -1,22 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
-import { Task } from '../../../types/task/getTasksListTypes';
+import { PendingTask, PendingTasksListResponse } from '../../../types/task/pendingTasksListTypes';
 
-// 组件Props接口
-interface AwaitingReviewTabPageProps {
-  awaitingReviewOrders: Task[];
-  loading?: boolean;
-}
-
-export default function AwaitingReviewTabPage({ 
-  awaitingReviewOrders,
-  loading = false 
-}: AwaitingReviewTabPageProps) {
+// 独立页面组件，不接收外部传入的数据
+export default function AwaitingReviewTabPage() {
+  // 状态管理 - 只使用PendingTask类型
+  const [awaitingReviewOrders, setAwaitingReviewOrders] = useState<PendingTask[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('time');
@@ -32,7 +27,36 @@ export default function AwaitingReviewTabPage({
   const [rejectReason, setRejectReason] = useState('');
   const [currentOrderId, setCurrentOrderId] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
-  const [currentOrder, setCurrentOrder] = useState<Task | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<PendingTask | null>(null);
+
+  // API调用 - 获取待审核任务列表
+  useEffect(() => {
+    const fetchPendingTasks = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/task/pendingTasksList', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+
+        const data: PendingTasksListResponse = await response.json();
+        
+        if (data.success && data.data) {
+          // 直接使用API返回的数据，不需要额外转换
+          setAwaitingReviewOrders(data.data.list);
+        }
+      } catch (error) {
+        console.error('获取待审核任务列表失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingTasks();
+  }, []);
   // 图片查看器状态
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState('');
@@ -42,8 +66,8 @@ export default function AwaitingReviewTabPage({
   // 处理搜索函数已在其他位置定义
 
   // 处理订单审核
-  const handleOrderReview = (order: Task, action: string) => {
-    setCurrentOrderId(order.task_id.toString());
+  const handleOrderReview = (order: PendingTask, action: string) => {
+    setCurrentOrderId(order.b_task_id.toString());
     setCurrentOrder(order);
     if (action === 'approve') {
       setShowApproveModal(true);
@@ -57,15 +81,15 @@ export default function AwaitingReviewTabPage({
   const confirmApprove = async () => {
     if (!currentOrder) return;
     try {
-      // 构建请求参数
+      // 构建请求参数，使用正确的格式
       const requestData = {
-        subTaskId: currentOrderId,
-        verifyResult: 'PASS',
-        verifyNotes: verificationNotes[currentOrderId] || '',
-        evidenceImages: ''
+        b_task_id: currentOrder.b_task_id,
+        record_id: currentOrder.record_id,
+        action: 'approve',
+        reject_reason: verificationNotes[currentOrderId] || '默认审核通过'
       };
       
-      const response = await fetch('/api/task/reviewtask', {
+      const response = await fetch('/api/task/reviewTask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,11 +100,21 @@ export default function AwaitingReviewTabPage({
       
       const data = await response.json();
       
-      if (data.success || data.code === 1) {
-        showCopySuccess('订单已审核通过');
+      if (data.success) {
+        showCopySuccess(data.message || '订单已审核通过');
         setShowApproveModal(false);
-        
-        // 重新获取订单列表将由父组件处理，这里只需要显示成功提示
+        // 重新获取订单列表
+        const updatedResponse = await fetch('/api/task/pendingTasksList', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        const updatedData: PendingTasksListResponse = await updatedResponse.json();
+        if (updatedData.success && updatedData.data) {
+          setAwaitingReviewOrders(updatedData.data.list);
+        }
       } else {
         throw new Error(data.message || '审核失败');
       }
@@ -92,18 +126,51 @@ export default function AwaitingReviewTabPage({
 
   // 确认驳回
   const confirmReject = async () => {
+    if (!currentOrder) return;
+    // 使用模态框中的输入框的值作为驳回理由
     if (!rejectReason.trim()) {
       alert('请输入驳回理由');
       return;
     }
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 构建请求参数，使用正确的格式
+      const requestData = {
+        b_task_id: currentOrder.b_task_id,
+        record_id: currentOrder.record_id,
+        action: 'reject',
+        reject_reason: rejectReason
+      };
       
-      showCopySuccess('订单已驳回');
-      setShowRejectModal(false);
+      const response = await fetch('/api/task/reviewTask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+        credentials: 'include'
+      });
       
-      // 重新获取订单列表将由父组件处理，这里只需要显示成功提示
+      const data = await response.json();
+      
+      if (data.success) {
+        showCopySuccess(data.message || '订单已驳回');
+        setShowRejectModal(false);
+        // 重新获取订单列表
+        const updatedResponse = await fetch('/api/task/pendingTasksList', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        const updatedData: PendingTasksListResponse = await updatedResponse.json();
+        if (updatedData.success && updatedData.data) {
+          setAwaitingReviewOrders(updatedData.data.list);
+        }
+      } else {
+        throw new Error(data.message || '驳回失败');
+      }
     } catch (error) {
       console.error('驳回失败:', error);
       showCopySuccess('驳回失败，请重试');
@@ -123,33 +190,41 @@ export default function AwaitingReviewTabPage({
   };
 
   // 过滤最近订单
-  const filterRecentOrders = (orders: any[]) => {
+  const filterRecentOrders = (orders: PendingTask[]) => {
     return orders.filter(order => {
-      const orderTime = new Date(order.created_at).getTime();
+      if (!order.submitted_at) return false;
+      
+      const orderTime = new Date(order.submitted_at).getTime();
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
       return orderTime >= sevenDaysAgo;
     });
   };
 
   // 搜索订单
-  const searchOrders = (orders: Task[]) => {
+  const searchOrders = (orders: PendingTask[]) => {
     if (!searchTerm.trim()) return orders;
     
-    return orders.filter(order => 
-      order.task_id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.template_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.template_title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return orders.filter(order => {
+      return (
+        order.b_task_id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.template_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.recommend_mark?.comment?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
   };
 
   // 排序审核任务
-  const sortAuditTasks = (orders: any[]) => {
+  const sortAuditTasks = (orders: PendingTask[]) => {
     return [...orders].sort((a, b) => {
       switch (sortBy) {
         case 'time':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          // 只使用submitted_at字段
+          const timeA = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
+          const timeB = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
+          return timeB - timeA;
         case 'status':
-          return a.status_text.localeCompare(b.status_text);
+          // 待审核任务默认状态为待审核
+          return '待审核'.localeCompare('待审核');
         default:
           return 0;
       }
@@ -255,104 +330,129 @@ export default function AwaitingReviewTabPage({
 
       {/* 子订单列表 - 内联实现AuditOrderCard功能 */}
       {filteredOrders.map((order, index) => (
-        <div key={`pending-${order.task_id}-${index}`} className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
-          {/* 订单号 */}
-          <div className="flex items-center mb-1 overflow-hidden">
-            <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate">
-              订单号：{order.task_id}
+          <div key={`pending-${order.b_task_id}-${index}`} className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
+            {/* 订单号 */}
+            <div className="flex items-center mb-1 overflow-hidden">
+              <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate">
+                订单号：{order.b_task_id}
+              </div>
+              <div className="relative">
+                <button 
+                  className="text-blue-600 hover:text-blue-700 whitespace-nowrap text-sm"
+                  onClick={() => handleCopyOrderNumber(order.b_task_id.toString())}
+                >
+                  <span>⧉ 复制</span>
+                </button>
+              </div>
             </div>
-            <div className="relative">
-              <button 
-                className="text-blue-600 hover:text-blue-700 whitespace-nowrap text-sm"
-                onClick={() => handleCopyOrderNumber(order.task_id.toString())}
-              >
-                <span>⧉ 复制</span>
-              </button>
+            
+            {/* 订单状态和任务类型 - 同一行且独立占一行 */}
+            <div className="flex items-center mb-1 space-x-4">
+              <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                任务状态：待审核
+              </div>
+              <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                抖音
+              </div>
             </div>
-          </div>
-          
-          {/* 订单状态和任务类型 - 同一行且独立占一行 */}
-          <div className="flex items-center mb-1 space-x-4">
-            <div className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
-              {order.status_text}
+            
+            {/* 价格和状态信息 */}
+            <div className="mb-1">
+              <div className="flex items-center mb-1">
+                <span className="text-sm text-black font-medium">单价：</span>
+                <span className="text-sm text-black">¥{order.reward_amount}</span>
+              </div>
             </div>
-            <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-              抖音
+            
+            {/* 时间信息 - 各自独占一行 */}
+            <div className="text-sm text-black mb-1">
+              发布时间：{order.submitted_at}
             </div>
-          </div>
-          
-          {/* 价格和状态信息 */}
-          <div className="mb-1">
-            <div className="flex items-center mb-1">
-              <span className="text-sm text-black font-medium">单价：</span>
-              <span className="text-sm text-black">¥{order.unit_price}</span>
+            <div className="text-sm text-black mb-1">
+              截止时间：
             </div>
-          </div>
-          
-          {/* 时间信息 - 各自独占一行 */}
-          <div className="text-sm text-black mb-1">
-            发布时间：{order.created_at}
-          </div>
-          <div className="text-sm text-black mb-1">
-            截止时间：{order.deadline_text}
-          </div>
           
           {/* 领取用户信息展示 */}
           <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论员：未知
+              评论员：{order.c_username || '未知'}
           </div>
           <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论类型：评论任务
+              评论类型：{order.template_title}
           </div>
 
+          <div className="flex items-start justify-between mb-1 text-blue-600">
+              <p>任务的要求评论：{order.recommend_mark?.comment || ''}</p>
+            </div>
           <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频丢失，将以接单员完成任务截图为准给予审核结算</div>
           
-          {/* 评论展示和复制功能 */}
-          <div className="mb-3 p-2 border border-gray-200 rounded-lg bg-blue-50">
-            <div className="flex items-start justify-between mb-1">
-              <span className="text-sm font-medium text-blue-700">提交的评论：</span>
-              <button
-                className="text-blue-600 hover:text-blue-700 text-xs flex items-center"
-                onClick={() => handleCopyComment(order.template_title)}
-              >
-                <span className="mr-1">⧉</span> 复制评论
-              </button>
-            </div>
-            <p className="text-sm text-blue-700 whitespace-pre-wrap">{order.template_title}</p>
-          </div>
+        
 
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
             <p className='mb-1  text-sm text-blue-600'>已完成评论点击进入：</p>
-            <a 
-              href={order.video_url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-              onClick={(e) => {
-                e.preventDefault();
-                // 复制视频链接
-                navigator.clipboard.writeText(order.video_url).then(() => {
-                  showCopySuccess('视频链接已复制');
-                }).catch(() => {
-                  // 静默处理复制失败
-                });
-                // 设置当前视频URL并打开模态框
-                setCurrentVideoUrl(order.video_url);
-                setIsModalOpen(true);
-              }}
-            >
-              <span className="mr-1">⦿</span> 打开视频
-            </a>
+            <div className="flex gap-2 flex-wrap">
+              <a 
+                href={order.video_url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // 复制视频链接
+                  navigator.clipboard.writeText(order.video_url).then(() => {
+                    showCopySuccess('视频链接已复制');
+                  }).catch(() => {
+                    // 静默处理复制失败
+                  });
+                  // 设置当前视频URL并打开模态框
+                  setCurrentVideoUrl(order.video_url);
+                  setIsModalOpen(true);
+                }}
+              >
+               打开视频
+              </a>
+              
+              {/* 查看提交的图片组件 */}
+              {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
+                <button
+                  className="bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
+                  onClick={() => {
+                    // 打开图片查看器
+                    setCurrentImageUrl(order.screenshots![0]);
+                    setShowImageViewer(true);
+                  }}
+                >
+                  查看图片 ({order.screenshots.length})
+                </button>
+              )}
+            </div>
+            <p className='text-sm text-blue-600'>提交的截图：</p>
+            {/* 图片缩略图展示 */}
+            {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
+              <div className="mt-2 flex gap-2 flex-wrap">
+                {order.screenshots.map((imgUrl, index) => (
+                  <img
+                    key={index}
+                    src={imgUrl}
+                    alt={`提交的截图 ${index + 1}`}
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      setCurrentImageUrl(imgUrl);
+                      setShowImageViewer(true);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 审核备注输入框 */}
-          <div className="mb-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
-            <label className="block text-sm font-medium text-gray-700 mb-1">审核备注（选填）</label>
+          <div className="mb-4 border border-blue-500 rounded-lg p-2 bg-blue-50">
+            <label className="block text-sm font-medium text-blue-600 mb-1">审核备注</label>
             <textarea 
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y min-h-[80px]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y min-h-[50px]"
               placeholder="请输入审核备注信息..."
-              value={verificationNotes[order.task_id.toString()] || ''}
-              onChange={(e) => setVerificationNotes(prev => ({...prev, [order.task_id.toString()]: e.target.value}))}
+              value={verificationNotes[order.b_task_id.toString()] || ''}
+              onChange={(e) => setVerificationNotes(prev => ({...prev, [order.b_task_id.toString()]: e.target.value}))}
               disabled={false}
             />
           </div>

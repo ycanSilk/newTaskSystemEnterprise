@@ -134,7 +134,7 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
             任务状态：{task.status_text}
           </span>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm  bg-blue-100 text-blue-700">
-            任务类型：评论任务
+            任务类型：{task.template_title || '评论任务'}
           </span>
         </div>
         <div className="mb-1 text-sm text-black text-sm">

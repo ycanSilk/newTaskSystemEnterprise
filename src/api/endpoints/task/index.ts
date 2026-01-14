@@ -23,4 +23,11 @@ export const GET_COMBINED_TASK_ENDPOINT = '/b/v1/tasks.php';
 export const GET_PUBLISHED_TASKS_LIST_ENDPOINT = '/b/v1/tasks/list.php';
 
 
+//获取等待审核的任务列表
+export const GET_PENDING_TASKS_LIST_ENDPOINT = '/b/v1/tasks/pending.php';
+
+
+//审核任务端点
+export const APPROVE_TASK_ENDPOINT = '/b/v1/tasks/review.php';
+
 

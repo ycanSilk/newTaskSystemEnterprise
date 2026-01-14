@@ -62,6 +62,7 @@ export default function PublisherDashboardPage() {
       
       const result: GetTasksListResponse = await response.json();
       
+      console.log('dashboard fetchTasks: 后端返回数据:', result);
       if (result.code === 0) {
         setTasks(result.data.tasks);
       } else {
@@ -255,10 +256,7 @@ export default function PublisherDashboardPage() {
             />
           )}
           {activeTab === 'AwaitingReview' && (
-            <AwaitingReviewTabPage 
-              awaitingReviewOrders={awaitingReviewTasks}
-              loading={false}
-            />
+            <AwaitingReviewTabPage />
           )}
           {activeTab === 'Completed' && (
             <CompletedTabPage 
