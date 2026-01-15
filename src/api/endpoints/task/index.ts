@@ -15,8 +15,8 @@ export const PUBLISH_TASK_TEMPLATE_ENDPOINT = '/b/v1/task-templates.php';
 export const PUBLISH_SINGLE_TASK_ENDPOINT = '/b/v1/tasks.php';
 
 
-//获取组合任务请求端点
-export const GET_COMBINED_TASK_ENDPOINT = '/b/v1/tasks.php';
+//发布组合任务请求端点
+export const PUBLISH_COMBINED_TASK_ENDPOINT = '/b/v1/tasks.php';
 
 
 //获取已经发布的全部任务列表
