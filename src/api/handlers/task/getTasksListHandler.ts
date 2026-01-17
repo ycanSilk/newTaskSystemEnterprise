@@ -22,7 +22,8 @@ export async function handleGetTasksList(request: Request): Promise<NextResponse
     );
     
     // 直接返回标准化的API响应
-    // 响应拦截器已经处理了标准化，所以直接返回
+    // 响应拦截器已经处理了标准化，所以直接返回即可
+    console.log('获取任务列表API响应:', response.data);
     return NextResponse.json(response.data, { status: response.status });
   } catch (error) {
     // 统一处理错误，转换为标准化的ApiError对象

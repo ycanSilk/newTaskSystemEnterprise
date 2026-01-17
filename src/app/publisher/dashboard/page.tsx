@@ -32,6 +32,9 @@ export default function PublisherDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   
+  // 添加强制刷新状态，用于发布任务成功后刷新列表
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
   // 添加URL重定向提示框状态
   const [showRedirectModal, setShowRedirectModal] = useState(false);
 
@@ -55,7 +58,8 @@ export default function PublisherDashboardPage() {
         method: 'GET',
         credentials: 'include'
       });
-      
+      console.log('dashboard fetchTasks: 发送GET请求到 /api/task/getTasksList');
+      console.log(response.status, response.statusText);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -77,9 +81,34 @@ export default function PublisherDashboardPage() {
     }
   };
   
-  // 在组件挂载时获取任务列表
+  // 在组件挂载、URL参数变化或强制刷新时获取任务列表
   useEffect(() => {
     fetchTasks();
+  }, [searchParams, refreshTrigger]);
+  
+  // 添加页面可见性变化监听，当页面重新可见时刷新任务列表
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('dashboard handleVisibilityChange: 页面重新可见，刷新任务列表');
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  // 添加组件挂载后延迟刷新，确保能获取到最新数据
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRefreshTrigger(prev => prev + 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // 处理选项卡切换并更新URL参数
