@@ -11,8 +11,7 @@ import { handleCheckWalletPwd } from '../../../../api/handlers/paymentWallet/che
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return handleCheckWalletPwd(req);
 }
-console.log('GET /api/paymentWallet/checkWalletPwd 收到请求');
-console.log(NextResponse.json)
+
 /**
  * 处理其他HTTP方法请求
  * 返回405错误，表示方法不允许

@@ -64,7 +64,7 @@ export const isEncryptedRoute = (path: string): boolean => {
   }
   
   // 排除已知的一级路由
-  const knownRoutes = ['publisher', 'accountrental'];
+  const knownRoutes = ['publisher', 'rental'];
   if (knownRoutes.includes(path)) {
     return false;
   }

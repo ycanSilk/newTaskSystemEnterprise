@@ -31,7 +31,7 @@ export const PublisherBottomNavigation: React.FC = () => {
     },
     { icon: <WalletOutlined />, 
       label: '租赁市场', 
-      path: '/accountrental/account-rental-market?from=publisher-dashboard' },
+      path: '/rental/rental-market' },
     {
       icon: <UserOutlined />,
       label: '我的',
