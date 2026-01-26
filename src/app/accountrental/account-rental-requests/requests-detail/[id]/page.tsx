@@ -3,29 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MessageOutlined } from '@ant-design/icons';
-
-// 求租信息接口定义
-interface RentalRequest {
-  id: string;
-  userId: string;
-  platform: string;
-  accountType: string;
-  expectedPricePerDay: number;
-  budgetDeposit: number;
-  expectedLeaseDays: number;
-  description: string;
-  status: string;
-  createTime: string;
-}
-
-// API响应数据接口
-interface ApiResponse {
-  code: number;
-  message: string;
-  data: RentalRequest;
-  success: boolean;
-  timestamp: number;
-}
+import { GetRequestRentalInfoDetailResponse, RequestRentalInfoDetail } from '@/app/types/rental/requestRental/getRequestRentalInfoDetail';
 
 // 复制状态接口
 interface CopyStatus {
@@ -35,7 +13,7 @@ interface CopyStatus {
 const RentalRequestDetailPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
-  const [request, setRequest] = useState<RentalRequest | null>(null);
+  const [request, setRequest] = useState<RequestRentalInfoDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>({});
 
@@ -54,7 +32,8 @@ const RentalRequestDetailPage: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`/api/rental/getrequestinfodetail?rentRequestId=${id}`, {
+        // 调用中间件获取求租信息详情
+        const response = await fetch(`/api/rental/requestRental/getRequestRentalInfoDetail?demand_id=${id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -65,15 +44,15 @@ const RentalRequestDetailPage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const apiResponse: ApiResponse = await response.json();
+        const apiResponse: GetRequestRentalInfoDetailResponse = await response.json();
 
-        if (apiResponse.success && apiResponse.data) {
+        if (apiResponse.success && apiResponse.code === 0 && apiResponse.data) {
           setRequest(apiResponse.data);
         } else {
           setError(apiResponse.message || '获取求租信息详情失败');
         }
-      } catch (error) {
-        console.error('获取求租信息详情失败:', error);
+      } catch (err) {
+        console.error('获取求租信息详情失败:', err);
         setError('获取求租信息详情失败');
       } finally {
         setLoading(false);
@@ -87,7 +66,7 @@ const RentalRequestDetailPage: React.FC = () => {
   const handleCopyOrderNumber = (): void => {
     if (!request) return;
 
-    navigator.clipboard.writeText(request.id);
+    navigator.clipboard.writeText(request.id.toString());
     // 设置复制成功状态
     setCopyStatus(prev => ({ ...prev, orderNumber: true }));
     // 2秒后恢复原状态
@@ -99,8 +78,8 @@ const RentalRequestDetailPage: React.FC = () => {
   // 处理立即租赁
   const handleRentNow = (): void => {
     if (!request) return;
-    // 在实际项目中，应该跳转到租赁确认页
-    console.log('立即租赁请求:', request.id);
+    // 跳转到申请租赁页面，并传递订单ID
+    router.push(`/accountrental/account-rental-requests/applicationRent?demand_id=${request.id}`);
   };
 
   // 处理联系对方
@@ -128,7 +107,7 @@ const RentalRequestDetailPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
         <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">{error || '求租信息不存在'}</h3>
+          <h3 className=" text-gray-900 mb-2">{error || '求租信息不存在'}</h3>
           <button
             onClick={handleBack}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium shadow-sm active:scale-95 transition-all"
@@ -142,164 +121,189 @@ const RentalRequestDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 页面标题 */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-blue-100">
+        <h1 className="text-2xl font-semibold  mb-4">求租信息详情</h1>
+        
+        {/* 返回按钮 */}
+        <button
+          onClick={handleBack}
+          className="mb-4 flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          返回列表
+        </button>
+
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
           {/* 卡片头部 */}
-          <div className="bg-blue-50 p-4 border-b border-blue-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-base font-medium">账号平台：{request.platform}</h2>
-              </div>
-              <div className="text-red-600">
-                ¥{request.expectedPricePerDay.toFixed(2)}/天
-              </div>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 py-2 px-3">
+            <h2 className="text-xl font-semibold  mb-2">{request.title}</h2>
+            <div className="flex flex-wrap items-center gap-4 text-sm ">
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                发布时间：{request.created_at}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${request.status === 1 ? 'bg-green-100 text-green-800' : 'bg-gray-100 '}`}>
+                {request.status_text}
+              </span>
             </div>
           </div>
 
           {/* 订单基本信息 */}
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <div className="flex items-center space-x-1">
-                <span>订单ID：</span>
-                <span className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap max-w-xs">{request.id}</span>
+          <div className="py-2 px-3">
+            <h3 className="text-lg font-semibold  flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              基本信息
+            </h3>
+            
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center space-x-2 px-3 py-2 rounded-lg">
+                <span className="text-sm font-medium ">订单号：</span>
+                <span className="font-semibold ">{request.id}</span>
                 <button
                   onClick={handleCopyOrderNumber}
-                  className="flex items-center space-x-1 p-1 rounded hover:bg-blue-50 text-blue-600"
+                  className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                   title="复制订单ID"
                 >
-                  <span className="text-sm">复制</span>
+                  <span>复制</span>
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span>创建时间：</span>
-                <span>{request.createTime}</span>
-              </div>
-              <div>
-                <span>账户类型：</span>
-                <span>{request.accountType}</span>
-              </div>
-              <div>
-                <span>期望租期：</span>
-                <span>{request.expectedLeaseDays}天</span>
-              </div>
-              <div>
-                <span>预算押金：</span>
-                <span>¥{request.budgetDeposit.toFixed(2)}</span>
-              </div>
-              <div>
-                <span>状态：</span>
-                <span className="font-medium text-blue-600">{request.status}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 求租详情 */}
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="text-lg font-medium mb-3">求租信息描述</h3>
-            <div className="bg-blue-50 p-4 rounded-md">
-              <p className="leading-relaxed">{request.description?.split('\n')[0] || ''}</p>
+            <div className="grid grid-cols-1 space-y-2 space-x-2">  
+                <div className="">期望租期：{request.days_needed}天</div>
+                <div className="">预算金额：¥{request.budget_amount_yuan}/天</div>
+                <div className="">账户类型：{request.user_type_text}</div>
+                <div className="">截止时间：{request.deadline_datetime}</div>
             </div>
           </div>
 
           {/* 账号要求 */}
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="text-lg font-medium mb-3">账号要求</h3>
-            <div className="space-y-2">
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('修改抖音账号名称和头像') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('修改抖音账号名称和头像') ? '√' : 'X'}
-                </span>
-                <span className={request.description?.includes('修改抖音账号名称和头像') ? '' : 'text-gray-500'}>
-                  修改抖音账号名称和头像
-                </span>
-              </div>
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('修改账号简介') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('修改账号简介') ? '√' : 'X'}
-                </span>
-                <span className={request.description?.includes('修改账号简介') ? '' : 'text-gray-500'}>
-                  修改账号简介
-                </span>
-              </div>
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('支持发布评论') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('支持发布评论') ? '√' : 'X'}
-                </span>
-                <span className={request.description?.includes('支持发布评论') ? '' : 'text-gray-500'}>
-                  支持发布评论
-                </span>
-              </div>
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('支持发布视频') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('支持发布视频') ? '√' : 'X'}
-                </span>
-                <span className={request.description?.includes('支持发布视频') ? '' : 'text-gray-500'}>
-                  支持发布视频
-                </span>
-              </div>
+          <div className="py-2 px-3">
+            <h3 className="text-lg font-semibold  flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              账号描述
+            </h3>
+            <div className="bg-blue-50 rounded-lg p-4 shadow-sm">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{request.requirements_json.account_requirements}</p>
             </div>
           </div>
 
           {/* 登录方式 */}
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="text-lg font-medium mb-3">登录方式</h3>
-            <div className="space-y-2">
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('扫码登录') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('扫码登录') ? '√' : 'X'}
+          <div className="py-2 px-3">
+            <h3 className="text-lg font-semibold  flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+              </svg>
+              账号要求
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.scan_code_login === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.scan_code_login === 1 ? '✓' : '✗'}
                 </span>
-                <span className={request.description?.includes('扫码登录') ? '' : 'text-gray-500'}>
+                <span className={`${request.requirements_json.scan_code_login === 1 ? '' : 'text-gray-500'}`}>
                   扫码登录
                 </span>
               </div>
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('手机号+短信验证登录') || request.description?.includes('手机号') || request.description?.includes('短信验证') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('手机号+短信验证登录') || request.description?.includes('手机号') || request.description?.includes('短信验证') ? '√' : 'X'}
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.phone_message === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.phone_message === 1 ? '✓' : '✗'}
                 </span>
-                <span className={request.description?.includes('手机号+短信验证登录') || request.description?.includes('手机号') || request.description?.includes('短信验证') ? '' : 'text-gray-500'}>
+                <span className={`${request.requirements_json.phone_message === 1 ? '' : 'text-gray-500'}`}>
                   手机号+短信验证登录
                 </span>
               </div>
-              <div className="flex items-center text-sm">
-                <span className={`mr-2 ${request.description?.includes('不登录账号') ? 'text-green-500 font-medium' : 'text-red-500'}`}>
-                  {request.description?.includes('不登录账号') ? '√' : 'X'}
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.requested_all === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.requested_all === 1 ? '✓' : '✗'}
                 </span>
-                <span className={request.description?.includes('不登录账号') ? '' : 'text-gray-500'}>
-                  不登录账号，按照承租方要求完成租赁
+                <span className={`${request.requirements_json.requested_all === 1 ? '' : 'text-gray-500'}`}>
+                  按照承租方要求登录
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.deblocking === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.deblocking === 1 ? '✓' : '✗'}
+                </span>
+                <span className={`${request.requirements_json.deblocking === 1 ? '' : 'text-gray-500'}`}>
+                  账号解封
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.other_requirements === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.other_requirements === 1 ? '✓' : '✗'}
+                </span>
+                <span className={`${request.requirements_json.other_requirements === 1 ? '' : 'text-gray-500'}`}>
+                  需要实名认证
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full mr-3 ${request.requirements_json.basic_information === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {request.requirements_json.basic_information === 1 ? '✓' : '✗'}
+                </span>
+                <span className={`${request.requirements_json.basic_information === 1 ? '' : 'text-gray-500'}`}>
+                  修改账号基本信息
                 </span>
               </div>
             </div>
           </div>
-
+          
+          {/* 联系方式 */}
+          <div className="py-2 px-3">
+            <h3 className="text-lg font-semibold flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+              </svg>
+              联系方式
+            </h3>
+            <div className="grid grid-cols-1 pl-5">
+              <div className="text-sm ">手机号：{request.requirements_json.phone_number || '未提供'}</div>
+              <div className="text-sm ">邮箱：{request.requirements_json.email || '未提供'}</div>
+              <div className="text-sm ">QQ号：{request.requirements_json.qq_number || '未提供'}</div>
+            </div>
+          </div>
+          
           {/* 风险提示 */}
-          <div className="p-4 bg-red-50">
-            <h4 className="text-red-700 font-medium mb-2">风险提示</h4>
-            <p className="text-sm text-red-600">
-              出租账户期间账户可能被平台封禁风险，租赁期间如被封禁，租户需按照抖音平台要求进行验证解封
+          <div className="p-3 bg-red-50 border-b border-red-100">
+            <h4 className="text-red-700 font-semibold mb-3 flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              风险提示
+            </h4>
+            <p className="text-sm text-red-600 leading-relaxed">
+              出租账户期间账户可能被平台封禁风险，租赁期间如被封禁，租户需按照抖音平台要求进行验证解封。
               请确保您了解并同意平台的服务条款和风险提示后再进行租赁操作。
             </p>
           </div>
 
           {/* 按钮区域 */}
-          <div className="p-4 bg-gray-50 border-t border-gray-100">
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleContact}
-                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium shadow-sm active:scale-95 transition-all flex items-center"
-              >
-                <MessageOutlined className="mr-1" />
-                联系对方
-              </button>
-              <button
-                onClick={handleRentNow}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm active:scale-95 transition-all"
-              >
-                立即出租
-              </button>
-            </div>
+          <div className="p-3 bg-gray-50 flex justify-end space-x-4">
+            <button
+              onClick={handleContact}
+              className="px-6 py-2 bg-white border border-blue-500 text-blue-600 rounded-lg text-sm font-medium shadow-sm hover:bg-blue-50 active:scale-95 transition-all flex items-center"
+            >
+              <MessageOutlined className="mr-1" />
+              联系对方
+            </button>
+            <button
+              onClick={handleRentNow}
+              className="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-md active:scale-95 transition-all flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              立即应征
+            </button>
           </div>
         </div>
       </div>

@@ -20,8 +20,6 @@ const AccountRentalLayout = memo(({ children }: AccountRentalLayoutProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-
-
   const handleMarketClick = () => {
     router.push('/accountrental/account-rental-market');
   };
@@ -46,7 +44,7 @@ const AccountRentalLayout = memo(({ children }: AccountRentalLayoutProps) => {
   const isMyActive = pathname?.includes('my-account-rental') ?? false;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       {/* 顶部区域 - 使用动态导入的客户端Header组件，避免hydration错误 */}
       <Suspense fallback={<div style={{ height: '60px' }} />}>
         <ClientHeader user={user} />

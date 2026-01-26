@@ -24,32 +24,47 @@ const MyAccountRentalPage = () => {
   const menuItems: MenuItem[] = [
     {
       id: 'rental-orders',
-      title: '我出租的订单',
+      title: '我出售的租赁订单',
       icon: <ShopOutlined className="text-xl" />, // 保留ShopOutlined，适合表示出租业务
       color: 'bg-blue-100',
-      path: '/accountrental/my-account-rental/myrentalorder'
+      path: '/accountrental/my-account-rental/mysellerrentalorder'
     },
     {
       id: 'lease-orders',
-      title: '我租用的订单',
+      title: '我购买的租赁订单',
       icon: <TransactionOutlined className="text-xl" />, // 替换为TransactionOutlined，更适合表示交易/订单
       color: 'bg-green-100',
-      path: '/accountrental/my-account-rental/myrentedorder'
+      path: '/accountrental/my-account-rental/mybuysrentedorder'
     },
     {
       id: 'rental-info',
-      title: '我发布的出租',
+      title: '我发布的出租信息',
       icon: <DeploymentUnitOutlined className="text-xl" />, // 替换为DeploymentUnitOutlined，表示发布/上线
       color: 'bg-purple-100',
       path: '/accountrental/my-account-rental/rentaloffer'
     },
     {
       id: 'lease-info',
-      title: '我发布的求租',
+      title: '我发布的求租信息',
       icon: <SearchOutlined className="text-xl" />, // 替换为SearchOutlined，表示寻找/搜索
       color: 'bg-amber-100',
       path: '/accountrental/my-account-rental/rentalrequest'
+    },
+    {
+      id: 'help-center',
+      title: '我应征的求租信息',
+      icon: <SearchOutlined className="text-xl" />, // 替换为SearchOutlined，表示寻找/搜索
+      color: 'bg-yellow-100',
+      path: '/accountrental/my-account-rental/myapplication'
+    },
+    {
+      id: 'applied-lease-info',
+      title: '待审核的应征信息',
+      icon: <SearchOutlined className="text-xl" />, // 替换为SearchOutlined，表示寻找/搜索
+      color: 'bg-yellow-100',
+      path: '/accountrental/my-account-rental/reviewapplication'
     }
+
   ];
 
   // 处理菜单项点击

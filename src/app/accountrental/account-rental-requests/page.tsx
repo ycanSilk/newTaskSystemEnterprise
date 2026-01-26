@@ -4,60 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchOutlined, CopyOutlined } from '@ant-design/icons';
 import { Button } from '@/components/ui/Button';
-
-// API响应数据类型定义
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-  success: boolean;
-  timestamp: number;
-}
-
-// 账号租赁列表响应数据类型
-interface RentalListResponse {
-  list: AccountRentalInfo[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
-
-// 账号租赁信息接口
-interface AccountRequirements {
-  modifyNameAvatar: boolean;
-  modifyBio: boolean;
-  canComment: boolean;
-  canPostVideo: boolean;
-}
-
-interface LoginMethod {
-  scanCode: boolean;
-  phoneVerification: boolean;
-  noLogin: boolean;
-}
-
-interface AccountRentalInfo {
-  id: string;
-  userId: string;
-  platform: string;
-  accountType: string;
-  expectedPricePerDay: number;
-  budgetDeposit: number;
-  expectedLeaseDays: number;
-  description: string;
-  status: string;
-  createTime: string;
-  rentalDescription?: string;
-  price?: number;
-  publishTime?: string;
-  orderNumber?: string;
-  orderStatus?: string;
-  rentalDays?: number;
-  images?: string[];
-  accountRequirements?: AccountRequirements;
-  loginMethod?: LoginMethod;
-}
+import { GetRequestRentalMarketListResponse, RequestRentalItem } from '@/app/types/rental/requestRental/getRequestRentalMarketListTypes';
 
 // 格式化发布时间
 const formatPublishTime = (timeString: string | undefined): string => {
@@ -65,71 +12,35 @@ const formatPublishTime = (timeString: string | undefined): string => {
     return '未知时间';
   }
   
-  const date = new Date(timeString);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) {
-    return '今天';
-  } else if (diffDays === 1) {
-    return '昨天';
-  } else if (diffDays < 7) {
-    return `${diffDays}天前`;
-  } else {
-    return date.toLocaleDateString('zh-CN');
-  }
+  return timeString;
 };
-
-
 
 const RentalRequestsPage = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [rentalRequests, setRentalRequests] = useState<AccountRentalInfo[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [rentalRequests, setRentalRequests] = useState<RequestRentalItem[]>([]);
 
-  // 获取求租信息数据
+  // 获取求租市场列表数据
   useEffect(() => {
     const fetchRentalRequests = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        setLoading(true);
-        setError(null);
+        const response = await fetch('/api/rental/requestRental/getRequestRentalMarketList');
+        const data: GetRequestRentalMarketListResponse = await response.json();
         
-        // 调用后端API获取求租信息
-        const response = await fetch('/api/rental/requestrentalmarket', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ page: 0, size: 20 }), // 传递分页参数
-        });
-        
-        if (!response.ok) {
-          throw new Error('网络请求失败');
+        if (data.success && data.code === 0) {
+          setRentalRequests(data.data.list);
+        } else {
+          setError(data.message || '获取求租信息失败');
         }
-        
-        const responseData: ApiResponse<RentalListResponse> = await response.json();
-        console.log('API响应数据:', responseData);
-        if (!responseData.success) {
-          throw new Error(responseData.message || '获取求租信息失败');
-        }
-        
-        // 将API返回的list数据转换为页面所需格式
-        const formattedData = responseData.data.list.map(item => ({
-          ...item,
-          rentalDescription: item.description, // 保持与原代码的字段名一致
-          price: item.expectedPricePerDay, // 保持与原代码的字段名一致
-          publishTime: item.createTime, // 保持与原代码的字段名一致
-          rentalDays: item.expectedLeaseDays, // 保持与原代码的字段名一致
-        }));
-        
-        setRentalRequests(formattedData);
-      } catch (error) {
-        console.error('获取求租信息失败:', error);
-        setError(error instanceof Error ? error.message : '获取求租信息失败，请稍后重试');
+      } catch (err) {
+        setError('网络错误，无法获取求租信息');
+        console.error('获取求租信息失败:', err);
       } finally {
         setLoading(false);
       }
@@ -140,16 +51,13 @@ const RentalRequestsPage = () => {
 
   // 过滤求租信息
   const filteredRequests = rentalRequests.filter(request => 
-    request.rentalDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+    request.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // 处理查看详情
-  const handleViewDetail = (requestId: string) => {
+  const handleViewDetail = (requestId: number) => {
     router.push(`/accountrental/account-rental-requests/requests-detail/${requestId}`);
   };
-
-
 
   // 复制订单号
   const copyOrderNumber = (event: React.MouseEvent, orderNumber: string) => {
@@ -201,71 +109,38 @@ const RentalRequestsPage = () => {
                 key={request.id} 
                 className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => handleViewDetail(request.id)}
-              >
-                {/* 已移除图片显示区域 */}
-                
+              >                
                 {/* 求租要求显示模块 */}
                 <div className="mb-3 space-y-3">
                   {/* 账号要求 - 根据支持情况显示 */}
-                  {request.accountRequirements && (
-                    <div className="mb-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">账号要求</label>
-                      <div className="space-y-1">
-                        {request.accountRequirements.modifyNameAvatar && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 修改抖音账号名称和头像
-                          </div>
-                        )}
-                        {request.accountRequirements.modifyBio && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 修改账号简介
-                          </div>
-                        )}
-                        {request.accountRequirements.canComment && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 支持发布评论
-                          </div>
-                        )}
-                        {request.accountRequirements.canPostVideo && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 支持发布视频
-                          </div>
-                        )}
+                  <div className="mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">账号要求</label>
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-gray-700">
+                        ✓ 求租账号用于发布短视频推广
                       </div>
                     </div>
-                  )}
+                  </div>
                   
                   {/* 登录方式 - 根据支持情况显示 */}
-                  {request.loginMethod && (
-                    <div className="mb-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">登录方式</label>
-                      <div className="space-y-1">
-                        {request.loginMethod.scanCode && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 扫码登录
-                          </div>
-                        )}
-                        {request.loginMethod.phoneVerification && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 手机号+短信验证登录
-                          </div>
-                        )}
-                        {request.loginMethod.noLogin && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            ✓ 不登录账号，按照承租方要求完成租赁
-                          </div>
-                        )}
+                  <div className="mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">登录方式</label>
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-gray-700">
+                        ✓ 支持多种登录方式
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-                <h3 className="font-medium text-gray-800 mb-2 line-clamp-2">{request.rentalDescription}</h3>
+                <h3 className="font-medium text-gray-800 mb-2 line-clamp-2">{request.title}</h3>
                 <div className="flex justify-between items-center text-sm mb-2">
-                  <div>发布时间: {formatPublishTime(request.publishTime)}</div>
-                  <div>求租天数: {request.rentalDays}天</div>
+                  <div>发布时间: {formatPublishTime(request.created_at)}</div>
+                  <div>需要租赁天数: {request.days_needed}天</div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <div className="text-xl font-bold text-red-600">¥{request.price}/天</div>
+                  <div className="text-xl font-bold text-red-600">
+                    租赁价格：<span>¥{request.budget_amount_yuan}</span>/天
+                  </div>
                   <Button className="bg-blue-500 hover:bg-blue-600 text-white">查看详情</Button>
                 </div>
               </div>
@@ -277,7 +152,5 @@ const RentalRequestsPage = () => {
     </div>
   );
 };
-
-// 移除了不再需要的Toast组件和相关接口定义
 
 export default RentalRequestsPage;

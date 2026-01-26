@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ customBackHandler, user }) => {
   const router = useRouter();
 
   const handleDashboardClick = () => {
-    router.push('/publisher/dashboard');
+    router.push('/commenter/dashboard');
   };
 
   // 账号租赁相关的搜索模块配置

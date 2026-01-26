@@ -106,9 +106,9 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
     const decryptedPath = getDecryptedPath(pathname);
     const decryptedParts = decryptedPath.split('/').filter(Boolean);
 
-    // 只有当URL精确匹配这4个路径时，才返回publisher/dashboard
+    // 只有当URL精确匹配这4个路径时，才返回commenter/dashboard
     if (firstLevelPages.includes(decryptedPath)) {
-      router.push(getEncryptedPath('/publisher/dashboard?tab=overview'));
+      router.push(getEncryptedPath('/commenter/dashboard?tab=overview'));
       return;
     }
 
@@ -136,7 +136,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
       const parentPath = '/' + decryptedParts.slice(0, -1).join('/');
       router.push(getEncryptedPath(parentPath));
     } else {
-      router.push(getEncryptedPath('/publisher/dashboard?tab=OverView'));
+      router.push(getEncryptedPath('/commenter/dashboard?tab=overview'));
     }
   };
 
@@ -235,7 +235,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
   }, [showDropdown]);
 
   const handleDashboardClick = () => {  
-    router.push(getEncryptedPath('/publisher/dashboard'));
+    router.push(getEncryptedPath('/commenter/hall'));
   };
 
   const handleUserAvatarClick = () => {
@@ -246,7 +246,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
   const handleLogout = () => {
     // 清除用户登录状态（实际项目中可能需要调用API或清除本地存储）
     // 重定向到登录页面
-    router.push('/');
+    router.push('/commenter/auth/login');
   };
 
   return (
@@ -303,7 +303,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
           {showDropdown && (
             <div 
               ref={dropdownRef}
-              className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-10 transform transition-all duration-200 origin-top-right animate-fade-in-down"
+              className="absolute right-0 mt-2 w-[100px] bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-10 transform transition-all duration-200 origin-top-right animate-fade-in-down"
             >
               {/* 个人中心按钮 */}
               <button 
@@ -313,7 +313,7 @@ const ClientHeader: React.FC<ClientHeaderProps> = ({ user }) => {
                 }}
                 className="w-full text-left px-4 py-3 border-b border-gray-100 text-gray-800 font-medium text-sm hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
               >
-                个人中心
+                个人信息
               </button>
               
               {/* 退出登录按钮 */}

@@ -3,39 +3,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Textarea, NumberInput, Label, AlertModal } from '@/components/ui';
 import { CheckCircleOutlined, CloseCircleOutlined, CloseOutlined } from '@ant-design/icons';
-
-// 定义后端API返回的账号租赁数据结构
-export interface RentalPublishData {
-  id: string;
-  userId: string;
-  platform: string;
-  accountType: string;
-  pricePerDay: number;
-  budgetDeposit: number;
-  expectedLeaseDays: number;
-  description: string;
-  status: string;
-  createTime: string;
-}
-
-// 定义后端API返回的整体响应结构
-export interface RentalPublishResponse {
-  code: number;
-  message: string;
-  data: RentalPublishData | null;
-  success: boolean;
-  timestamp: number;
-}
+import { CreateOffersRentalInfoRequest, CreateOffersRentalInfoApiResponse } from '@/app/types/rental/rentOut/createOffersRentalnfoTypes';
+import ImageUpload from '@/components/imagesUpload/ImageUpload';
 
 // 定义抖音账号租赁表单类型
 interface DouyinAccountRentalForm {
   // 基础信息
-  description: string;
-  accountImages: File[];
-  accountVideo?: File | null;
+  title: string; // 新增：出租信息标题
+  description: string; // 账号信息
+  accountImages: string[];
   price: number;
   minLeaseDays: number;
   maxLeaseDays: number;
+  allowRenew: 0 | 1; // 新增：是否允许续租
   accountRequirements: {
     canChangeName: boolean;
     canIntroduction: boolean;
@@ -53,12 +33,13 @@ interface DouyinAccountRentalForm {
 export default function DouyinAccountRentalPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<DouyinAccountRentalForm>({
-    description: '',
+    title: '', // 新增：出租信息标题
+    description: '', // 账号信息
     accountImages: [],
-    accountVideo: null,
     price: 50,
     minLeaseDays: 1, 
     maxLeaseDays: 30,
+    allowRenew: 1, // 新增：是否允许续租，默认1=是
     accountRequirements: {
       canChangeName: false,
       canIntroduction: false,
@@ -83,6 +64,22 @@ export default function DouyinAccountRentalPage() {
     message: '',
     icon: null as React.ReactNode | null
   });
+  
+  // 处理图片变化
+  const handleImagesChange = (files: File[], urls: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      accountImages: urls
+    }));
+    
+    // 清除图片上传错误
+    if (errors.accountImages) {
+      setErrors(prev => ({
+        ...prev,
+        accountImages: ''
+      }));
+    }
+  };
 
   // 显示通用提示框
   const showAlert = (title: string, message: string, isSuccess: boolean) => {
@@ -99,10 +96,16 @@ export default function DouyinAccountRentalPage() {
     const newErrors: Record<string, string> = {};
     
     // 基础信息验证
+    if (!formData.title.trim()) {
+      newErrors.title = '请输入出租信息标题';
+    } else if (formData.title.length < 5 || formData.title.length > 100) {
+      newErrors.title = '出租信息标题长度需在5-100个字符之间';
+    }
+    
     if (!formData.description.trim()) {
-      newErrors.description = '请输入账号标题';
+      newErrors.description = '请输入账号信息';
     } else if (formData.description.length < 5 || formData.description.length > 300) {
-      newErrors.description = '账号标题长度需在5-300个字符之间';
+      newErrors.description = '账号信息长度需在5-300个字符之间';
     }
     
     if (formData.accountImages.length === 0) {
@@ -215,39 +218,6 @@ export default function DouyinAccountRentalPage() {
     });
   };
 
-  // 处理多张图片上传
-  const handleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      const remainingSlots = 6 - formData.accountImages.length; // 最多支持6张图片
-      const filesToAdd = newFiles.slice(0, remainingSlots);
-      
-      setFormData(prev => ({
-        ...prev,
-        accountImages: [...prev.accountImages, ...filesToAdd]
-      }));
-    }
-    
-    // 清除文件输入，允许重复选择相同的文件
-    if (e.target) {
-      e.target.value = '';
-    }
-  };
-
-  // 删除图片
-  const handleRemoveImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      accountImages: prev.accountImages.filter((_, i) => i !== index)
-    }));
-  };
-
-  // 获取图片的URL用于预览
-  const getImagePreviewUrl = (file: File) => {
-    return URL.createObjectURL(file);
-  };
-
   // 表单提交
   const handleSubmit = async () => {
     if (!validateForm()) {
@@ -259,20 +229,32 @@ export default function DouyinAccountRentalPage() {
     
     try {
       // 构建后端API所需的请求参数
-      const requestData = {
-        platform: 'DOUYIN', // 固定为抖音平台
-        accountType: 'Forrent', // 固定为抖音平台
-        pricePerDay: formData.price || 50,
-        budgetDeposit: formData.price*2 || 100, // 保证金设为价格的2倍
-        minLeaseDays: formData.minLeaseDays || 1, // 最小租赁天数设为1
-        maxLeaseDays: formData.maxLeaseDays || 30, // 最大租赁天数设为30
-        description: formData.description
+      const requestData: CreateOffersRentalInfoRequest = {
+        title: formData.title,
+        price_per_day: formData.price || 50,
+        min_days: formData.minLeaseDays || 1,
+        max_days: formData.maxLeaseDays || 30,
+        allow_renew: formData.allowRenew,
+        content_json: {
+          account_info: formData.description,
+          name_and_photo: formData.accountRequirements.canChangeName ? '1' : '0',
+          publish_comment: formData.accountRequirements.canPostComments ? '1' : '0',
+          publish_video: formData.accountRequirements.canPostVideos ? '1' : '0',
+          deblocking: formData.accountRequirements.canUnbanAccount ? '1' : '0',
+          scan_code_login: formData.loginMethods.includes('scan') ? '1' : '0',
+          phone_message: formData.loginMethods.includes('phone_sms') ? '1' : '0',
+          requested_all: formData.loginMethods.includes('no_login') ? '1' : '0',
+          images: formData.accountImages, // 直接使用上传后的图片URL列表
+          phone_number: formData.phone,
+          qq_number: formData.qq || '',
+          email: formData.email || ''
+        }
       };
       
       console.log('提交的API请求数据:', requestData);
       
       // 调用后端API提交数据
-      const response = await fetch('/api/rental/publishrental', {
+      const response = await fetch('/api/rental/rentOut/createOffersRentalnfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -284,10 +266,10 @@ export default function DouyinAccountRentalPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const result: RentalPublishResponse = await response.json();
+      const result: CreateOffersRentalInfoApiResponse = await response.json();
       
       if (result.success) {
-        showAlert('发布成功', '抖音账号租赁信息已成功发布', true);
+        showAlert('发布成功', result.message || '抖音账号租赁信息已成功发布', true);
         // 发布成功后跳转到账号租赁市场页面
         setTimeout(() => {
           router.push('/accountrental/account-rental-market');
@@ -323,7 +305,23 @@ export default function DouyinAccountRentalPage() {
           {/* 基础信息 */}
           <div className="space-y-1 mb-2">  
             <div className="space-y-1">
-              {/* 账号标题 - 修改为多行文本框 */}
+              {/* 出租信息标题 */}
+              <div className="space-y-1">
+                <Label htmlFor="title" required>出租信息标题</Label>
+                <input
+                  id="title"
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder="请输入出租信息标题，如：抖音高等级账号出租"
+                  className={`input ${errors.title ? 'border-red-500' : ''}`}
+                />
+                {errors.title && (
+                  <p className="text-red-500 text-sm">{errors.title}</p>
+                )}
+              </div>
+              
+              {/* 账号信息 */}
               <div className="space-y-1">
                 <Label htmlFor="description" required>账号信息</Label>
                 <Textarea
@@ -339,62 +337,17 @@ export default function DouyinAccountRentalPage() {
                 )}
               </div>
               
-              {/* 账号截图 - 修改为支持多张图片 */}
+              {/* 账号截图 - 使用ImageUpload组件 */}
               <div className="space-y-1">
                 <Label required>上传账号截图</Label>
-                <div 
-                  className={`rounded-lg p-3 border-2 transition-colors ${formData.accountImages.length >= 6 ? 'border-gray-200 bg-gray-50' : 'border-dashed border-gray-300 bg-white hover:border-blue-500'}`}
-                  style={{
-                    minHeight: 230,
-                    maxHeight: 'auto'
-                  }}
-                >
-                  <input
-                    id="accountImagesInput"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImagesUpload}
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 h-full">
-                    {formData.accountImages.map((file, index) => (
-                      <div key={index} className="relative rounded-md overflow-hidden shadow-sm border border-gray-100 max-w-[150px] max-h-[150px] min-w-[75px] min-h-[75px] flex-shrink-0 w-full">
-                        <img 
-                          src={getImagePreviewUrl(file)} 
-                          alt={`账号截图 ${index + 1}`} 
-                          className="w-full h-full object-contain"
-                          style={{ minHeight: 75, maxHeight: 150}}
-                        />
-                        <button 
-                          type="button"
-                          className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-black/70 border-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveImage(index);
-                          }}
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                        
-                    {formData.accountImages.length < 6 && (
-                      <div 
-                        className="border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center bg-gray-50 cursor-pointer hover:border-blue-500 w-[87px] h-[87px]"
-                        onClick={() => document.getElementById('accountImagesInput')?.click()}
-                      >
-                        <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span className="text-xs text-gray-400">添加图片</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageUpload
+                  maxCount={6}
+                  onImagesChange={handleImagesChange}
+                  title=""
+                  columns={3}
+                  gridWidth="100%"
+                  itemSize="100x100"
+                />
                 {errors.accountImages && (
                   <p className="text-red-500 text-sm">{errors.accountImages}</p>
                 )}
@@ -453,6 +406,35 @@ export default function DouyinAccountRentalPage() {
                 {errors.maxLeaseDays && (
                   <p className="text-red-500 text-sm">{errors.maxLeaseDays}</p>
                 )}
+              </div>
+              
+              {/* 是否允许续租 */}
+              <div className="space-y-1">
+                <Label required>是否允许续租</Label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="allowRenew"
+                      value={1}
+                      checked={formData.allowRenew === 1}
+                      onChange={() => handleInputChange('allowRenew', 1)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm">是</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="allowRenew"
+                      value={0}
+                      checked={formData.allowRenew === 0}
+                      onChange={() => handleInputChange('allowRenew', 0)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm">否</span>
+                  </label>
+                </div>
               </div>
               
 
@@ -622,7 +604,7 @@ export default function DouyinAccountRentalPage() {
                   发布中...
                 </>
               ) : (
-                `发布出租`
+                `发布出租信息`
               )}
             </Button>
           </div>

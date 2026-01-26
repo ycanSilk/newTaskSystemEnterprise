@@ -2,58 +2,133 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// 定义请求体接口
-export interface PublishRequestPayload {
-  platform: string;
-  accountType: string;
-  expectedPricePerDay: number;
-  budgetDeposit: number;
-  expectedLeaseDays: number;
-  description: string;
-}
-
-// 定义响应数据接口
-export interface PublishRequestResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-}
+import { CreateRequestRentalInfoParams } from '../../../types/rental/requestRental/createRequestRentalInfoTypes';
 
 const PublishForm = () => {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    price: '',
-    description: '',
-    duration: '1',
-    phoneNumber: '',
-    email: '',
-    qq: '',
-    platform: 'DOUYIN',
-    accountType: '个人账号', // 新增账号类型字段，默认值为个人账号
-    accountRequirements: {
-      canChangeName: false,
-      canPostComments: false,
-      canPostVideos: false,
-      canIntroduction: false
-    },
-    loginMethods: {
-      qrCode: false,
-      phoneSms: false,
-      noLogin: false
+  
+  // 表单状态，直接使用API接口类型
+  const [formData, setFormData] = useState<CreateRequestRentalInfoParams>({
+    title: '',
+    budget_amount: 0,
+    days_needed: 1,
+    deadline: 0,
+    requirements_json: {
+      account_requirements: '',   // 账号要求
+    basic_information:0,          //支持修改账号基本信息
+    other_requirements:0,          //需要实名认证
+    deblocking:0,                 //需要人脸验证解封
+    requested_all:0,           //按承租方要求登录
+    phone_message:0,           //手机号+短信验证登录
+    scan_code_login: 0,        // 扫码登录
+    qq_number:'',               //联系方式：手机号
+    phone_number:'',            //qq号
+    email:'',                   //邮箱
     }
   });
+
+  // 错误状态
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // 成功模态框状态
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // 手机号验证函数
+  const validatePhoneNumber = (phone: string): boolean => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    return phoneRegex.test(phone);
+  };
+  
+  // 邮箱验证函数
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  // QQ验证函数
+  const validateQQ = (qq: string): boolean => {
+    const qqRegex = /^[1-9]\d{4,10}$/;
+    return qqRegex.test(qq);
+  };
+  
+  // 表单验证函数
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    // 手机号验证（选填）
+    if (formData.requirements_json.phone_number.trim() && !validatePhoneNumber(formData.requirements_json.phone_number)) {
+      newErrors.phone_number = '请输入有效的手机号';
+    }
+    
+    // 邮箱验证（选填）
+    if (formData.requirements_json.email.trim() && !validateEmail(formData.requirements_json.email)) {
+      newErrors.email = '请输入有效的邮箱地址';
+    }
+    
+    // QQ验证（选填）
+    if (formData.requirements_json.qq_number.trim() && !validateQQ(formData.requirements_json.qq_number)) {
+      newErrors.qq = '请输入有效的QQ号码';
+    }
+    
+    // 至少填写一种联系方式
+    const hasPhone = formData.requirements_json.phone_number.trim() !== '';
+    const hasEmail = formData.requirements_json.email.trim() !== '';
+    const hasQQ = formData.requirements_json.qq_number.trim() !== '';
+    
+    if (!hasPhone && !hasEmail && !hasQQ) {
+      newErrors.contact = '请至少填写一种联系方式';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 输入变化处理函数
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
-    // 清除对应字段的错误
+    // 处理顶层字段
+    if (['title', 'budget_amount', 'days_needed', 'deadline'].includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: 
+          name === 'budget_amount' ? (value === '' ? 0 : parseFloat(value) || 0) : 
+          name === 'days_needed' ? (value === '' ? 0 : parseInt(value) || 0) :
+          name === 'deadline' ? parseInt(value) || 0 : value
+      }));
+    }
+    // 处理描述字段，映射到account_requirements
+    else if (name === 'description') {
+      setFormData(prev => ({
+        ...prev,
+        requirements_json: {
+          ...prev.requirements_json,
+          account_requirements: value
+        }
+      }));
+    }
+    // 处理QQ号码（表单字段名qq -> API字段名qq_number）
+    else if (name === 'qq') {
+      setFormData(prev => ({
+        ...prev,
+        requirements_json: {
+          ...prev.requirements_json,
+          qq_number: value
+        }
+      }));
+    }
+    // 处理其他requirements_json字段
+    else if (name in formData.requirements_json) {
+      setFormData(prev => ({
+        ...prev,
+        requirements_json: {
+          ...prev.requirements_json,
+          [name]: value
+        }
+      }));
+    }
+    
+    // 清除对应字段错误
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -61,164 +136,102 @@ const PublishForm = () => {
       }));
     }
   };
-  
-  const handleCheckboxChange = (type: 'accountRequirements' | 'loginMethods', field: string) => {
-    setFormData(prev => {
-      const updatedType = { ...prev[type] };
-      (updatedType as Record<string, boolean>)[field] = !(updatedType as Record<string, boolean>)[field];
-      return {
-        ...prev,
-        [type]: updatedType
-      };
-    });
-  };
-  
-  const validatePhoneNumber = (phone: string) => {
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    return phoneRegex.test(phone);
-  };
-  
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-  
-  const validateQQ = (qq: string) => {
-    const qqRegex = /^[1-9]\d{4,10}$/;
-    return qqRegex.test(qq);
-  };
-  
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    // 手机号变为非必填，但如果填写了则需要验证格式
-    if (formData.phoneNumber.trim() && !validatePhoneNumber(formData.phoneNumber)) {
-      newErrors.phoneNumber = '请输入有效的手机号';
-    }
-    
-    // 邮箱验证（如果填写）
-    if (formData.email.trim() && !validateEmail(formData.email)) {
-      newErrors.email = '请输入有效的邮箱地址';
-    }
-    
-    // QQ验证（如果填写）
-    if (formData.qq.trim() && !validateQQ(formData.qq)) {
-      newErrors.qq = '请输入有效的QQ号码';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+  // 复选框变化处理函数（0/1切换）
+  const handleCheckboxChange = (field: keyof CreateRequestRentalInfoParams['requirements_json']) => {
+    setFormData(prev => ({
+      ...prev,
+      requirements_json: {
+        ...prev.requirements_json,
+        [field]: prev.requirements_json[field] === 0 ? 1 : 0
+      }
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    // 拼接账号要求和登录方式到description
-    let requirementsText = '';
-    let loginMethodsText = '';
-    
-    // 处理账号要求
-    const accountRequirements = formData.accountRequirements;
-    const accountRequirementItems = [
-      accountRequirements.canChangeName ? '修改抖音账号名称和头像' : '',
-      accountRequirements.canIntroduction ? '修改账号简介' : '',
-      accountRequirements.canPostComments ? '支持发布评论' : '',
-      accountRequirements.canPostVideos ? '支持发布视频' : ''
-    ].filter(item => item !== '');
-    
-    if (accountRequirementItems.length > 0) {
-      requirementsText = `账号要求：\n${accountRequirementItems.join('\n')}\n`;
-    }
-    
-    // 处理登录方式
-    const loginMethods = formData.loginMethods;
-    const loginMethodItems = [
-      loginMethods.qrCode ? '扫码登录' : '',
-      loginMethods.phoneSms ? '手机号+短信验证登录' : '',
-      loginMethods.noLogin ? '不登录账号，按照承租方要求完成租赁' : ''
-    ].filter(item => item !== '');
-    
-    if (loginMethodItems.length > 0) {
-    loginMethodsText = `登录方式：\n${loginMethodItems.join('\n')}`;
-  }
-  
-  // 处理联系方式：拼接QQ号、手机号、邮箱到description
-  let contactInfoText = '';
-  const contactItems = [];
-  // 按要求顺序：QQ号 → 手机号 → 邮箱
-  if (formData.qq) contactItems.push(`QQ号: ${formData.qq}`);
-  if (formData.phoneNumber) contactItems.push(`手机号: ${formData.phoneNumber}`);
-  if (formData.email) contactItems.push(`邮箱: ${formData.email}`);
-  
-  if (contactItems.length > 0) {
-    contactInfoText = `联系方式：\n${contactItems.join('\n')}\n`;
-  }
-  
-  // 合并拼接后的内容到description，严格遵循顺序：求助信息描述 → 联系方式 → 账号要求 → 登录方式
-  const finalDescription = `${formData.description ? `${formData.description}\n` : ''}${contactInfoText}${requirementsText}${loginMethodsText}`.trim();
-    
-    // 构造请求数据
-    const publishData: PublishRequestPayload = {
-      platform: formData.platform,
-      accountType: formData.accountType,
-      expectedPricePerDay: parseFloat(formData.price) || 0,
-      expectedLeaseDays: parseInt(formData.duration) || 1,
-      // 自动计算预算存款
-      budgetDeposit: (parseFloat(formData.price) || 0) * (parseInt(formData.duration) || 1),
-      description: finalDescription
-    };
-    
-    // 发送API请求
-    try {
-      const response = await fetch('/api/rental/publishrequestrental', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(publishData)
-      });
-      
-      const responseData: PublishRequestResponse = await response.json();
-      
-      if (responseData.success) {
-        // 提交成功后显示成功模态框
-        setShowSuccessModal(true);
-      } else {
-        // 处理错误响应
-        alert(responseData.message || '发布失败，请稍后重试');
-      }
-    } catch (error) {
-      console.error('API请求失败:', error);
-      alert('发布失败，请稍后重试');
-    }
-  };
-  
+  // 成功确认处理函数
   const handleSuccessConfirm = () => {
     setShowSuccessModal(false);
     router.push('/accountrental/account-rental-requests');
   };
   
+  // 取消处理函数
   const handleCancel = () => {
     router.push('/accountrental/account-rental-publish');
   };
 
+  // 表单提交处理函数
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 验证表单
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      // 准备请求体，确保预算金额和天数转换为数字类型
+      const requestBody: CreateRequestRentalInfoParams = {
+        ...formData,
+        days_needed: formData.days_needed === 0 ? 1 : formData.days_needed, // 确保最小天数为1
+        budget_amount: formData.budget_amount * 100 // 转换为分
+      };
+      
+      // 调用API
+      const response = await fetch('/api/rental/requestRental/createRequestRentalInfo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      const result = await response.json();
+      
+      // 处理响应
+      if (result.success) {
+        setShowSuccessModal(true);
+      } else {
+        alert(result.message || '发布失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('发布求租信息失败:', error);
+      alert('发布失败，请稍后重试');
+    }
+  };
+
+  // 渲染函数，所有函数定义在return之前
   return (
     <div className="min-h-screen bg-gray-50 py-3">
       <div className="max-w-3xl mx-auto px-1">
         <h1 className="text-2xl font-semibold text-gray-800 mb-3">填写发布信息</h1>
         
         <div className="px-4 py-2">
-        <div className="bg-blue-50 border border-blue-200 p-2">
-              <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
-              <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
+          <div className="bg-blue-50 border border-blue-200 p-2">
+            <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
+            <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
+          </div>
         </div>
-      </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
+          {/* 标题输入 */}
+          <div className="mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              求租标题 <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              value={formData.title}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+              placeholder="请输入求租标题"
+              maxLength={50}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">{formData.title.length}/50 字</p>
+          </div>
+
           {/* 描述输入 */}
           <div className="mb-1">
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
@@ -227,7 +240,7 @@ const PublishForm = () => {
             <textarea
               id="description"
               name="description"
-              value={formData.description}
+              value={formData.requirements_json.account_requirements}
               onChange={handleInputChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
               placeholder="填写抖音账号求租的详细信息，保信息真实有效，账号无异常,及时响应"
@@ -235,61 +248,84 @@ const PublishForm = () => {
               maxLength={150}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">{formData.description.length}/150 字</p>
+            <p className="text-xs text-gray-500 mt-1">{formData.requirements_json.account_requirements.length}/150 字</p>
           </div>
 
-           {/* 价格输入 */}
+          {/* 预算金额 */}
           <div className="mb-1">
-            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-              价格 (元/天) <span className="text-red-500">*</span>
+            <label htmlFor="budget_amount" className="block text-sm font-medium text-gray-700 mb-1">
+              预算金额 (元)/天 <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
-              id="price"
-              name="price"
-              value={formData.price}
+              id="budget_amount"
+              name="budget_amount"
+              value={formData.budget_amount === 0 ? '' : formData.budget_amount}
               onChange={handleInputChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              placeholder="请输入价格"
+              placeholder="请输入预算金额"
               min="0"
               step="0.01"
               required
             />
           </div>
 
-          {/* 租赁时长 */}
+          {/* 需要天数 */}
           <div className="mb-1">
-            <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-              租赁时长 (天)
+            <label htmlFor="days_needed" className="block text-sm font-medium text-gray-700 mb-1">
+              需要租赁天数 <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
-              id="duration"
-              name="duration"
-              value={formData.duration}
+              id="days_needed"
+              name="days_needed"
+              value={formData.days_needed === 0 ? '' : formData.days_needed}
               onChange={handleInputChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              placeholder="请输入租赁时长"
+              placeholder="请输入需要天数"
               min="1"
+              required
+            />
+          </div>
+
+          {/* 截止时间 */}
+          <div className="mb-1">
+            <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
+              截止时间 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              id="deadline"
+              name="deadline"
+              onChange={(e) => {
+                // 将选择的日期转换为当天0点0分0秒的时间戳
+                const selectedDate = new Date(e.target.value);
+                // 设置为当天0点
+                selectedDate.setHours(0, 0, 0, 0);
+                const timestamp = Math.floor(selectedDate.getTime() / 1000);
+                setFormData(prev => ({ ...prev, deadline: timestamp }));
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+              required
             />
           </div>
 
           {/* 手机号 */}
           <div className="mb-1">
-            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
               联系电话（选填）
             </label>
             <input
               type="tel"
-              id="phoneNumber"
-              name="phoneNumber"
-              value={formData.phoneNumber}
+              id="phone_number"
+              name="phone_number"
+              value={formData.requirements_json.phone_number}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2 border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+              className={`w-full px-4 py-2 border ${errors.phone_number ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
               placeholder="请输入手机号"
             />
-            {errors.phoneNumber && (
-              <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>
+            {errors.phone_number && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>
             )}
           </div>
           
@@ -302,7 +338,7 @@ const PublishForm = () => {
               type="email"
               id="email"
               name="email"
-              value={formData.email}
+              value={formData.requirements_json.email}
               onChange={handleInputChange}
               className={`w-full px-4 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
               placeholder="请输入邮箱地址"
@@ -321,7 +357,7 @@ const PublishForm = () => {
               type="text"
               id="qq"
               name="qq"
-              value={formData.qq}
+              value={formData.requirements_json.qq_number}
               onChange={handleInputChange}
               className={`w-full px-4 py-2 border ${errors.qq ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
               placeholder="请输入QQ号码"
@@ -329,41 +365,10 @@ const PublishForm = () => {
             {errors.qq && (
               <p className="text-red-500 text-xs mt-1">{errors.qq}</p>
             )}
-            <p className="text-blue-600 text-xs mt-1">如有需要添加客服QQ ： 88888888联系沟通</p>
-          </div>
-          
-          {/* 平台选择 */}
-          <div className="mb-1">
-            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">
-              平台选择 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="platform"
-              name="platform"
-              value={formData.platform}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              required
-            >
-              <option value="douyin">抖音平台</option>
-            </select>
-          </div>
-
-          {/* 账号类型选择 */}
-          <div className="mb-1">
-            <label htmlFor="accountType" className="block text-sm font-medium text-gray-700 mb-1">
-              账号类型 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="accountType"
-              name="accountType"
-              value={formData.accountType}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              required
-            >
-              <option value="个人账号">个人账号</option>
-            </select>
+            {errors.contact && (
+              <p className="text-red-500 text-xs mt-1">{errors.contact}</p>
+            )}
+            <p className="text-red-600 text-xs mt-2">*请留下最少一种联系方式，以便我们与您联系</p>
           </div>
           
           {/* 账号要求 */}
@@ -375,38 +380,29 @@ const PublishForm = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.accountRequirements.canChangeName}
-                  onChange={() => handleCheckboxChange('accountRequirements', 'canChangeName')}
+                  checked={formData.requirements_json.basic_information === 1}
+                  onChange={() => handleCheckboxChange('basic_information')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-700">修改抖音账号名称和头像</span>
+                <span className="ml-2 text-sm text-gray-700">支持修改账号基本信息</span>
               </label>
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.accountRequirements.canIntroduction}
-                  onChange={() => handleCheckboxChange('accountRequirements', 'canIntroduction')}
+                  checked={formData.requirements_json.deblocking === 1}
+                  onChange={() => handleCheckboxChange('deblocking')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-700">修改账号简介</span>
+                <span className="ml-2 text-sm text-gray-700">需要人脸验证解封</span>
               </label>
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.accountRequirements.canPostComments}
-                  onChange={() => handleCheckboxChange('accountRequirements', 'canPostComments')}
+                  checked={formData.requirements_json.other_requirements === 1}
+                  onChange={() => handleCheckboxChange('other_requirements')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-700">支持发布评论</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.accountRequirements.canPostVideos}
-                  onChange={() => handleCheckboxChange('accountRequirements', 'canPostVideos')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">支持发布视频</span>
+                <span className="ml-2 text-sm text-gray-700">需要实名认证</span>
               </label>
             </div>
           </div>
@@ -420,8 +416,8 @@ const PublishForm = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.loginMethods.qrCode}
-                  onChange={() => handleCheckboxChange('loginMethods', 'qrCode')}
+                  checked={formData.requirements_json.scan_code_login === 1}
+                  onChange={() => handleCheckboxChange('scan_code_login')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">扫码登录</span>
@@ -429,8 +425,8 @@ const PublishForm = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.loginMethods.phoneSms}
-                  onChange={() => handleCheckboxChange('loginMethods', 'phoneSms')}
+                  checked={formData.requirements_json.phone_message === 1}
+                  onChange={() => handleCheckboxChange('phone_message')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">手机号+短信验证登录</span>
@@ -438,11 +434,11 @@ const PublishForm = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.loginMethods.noLogin}
-                  onChange={() => handleCheckboxChange('loginMethods', 'noLogin')}
+                  checked={formData.requirements_json.requested_all === 1}
+                  onChange={() => handleCheckboxChange('requested_all')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-700">不登录账号，按照承租方要求完成租赁</span>
+                <span className="ml-2 text-sm text-gray-700">按承租方要求登录</span>
               </label>
             </div>
           </div>
@@ -460,7 +456,7 @@ const PublishForm = () => {
               type="submit"
               className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 font-medium"
             >
-              发布求租
+              发布求租信息
             </button>
           </div>
         </form>

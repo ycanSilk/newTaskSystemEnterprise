@@ -29,7 +29,7 @@ export interface AccountRentalInfo {
   publishTime: string;    // 发布时间
   status: string;         // 状态
   images: string[];       // 图片URL数组
-  publisherName: string;  // 发布者名称
+  commenterName: string;  // 发布者名称
   // 向后兼容的字段
   orderNumber?: string;   // 订单号
   orderStatus?: string;   // 订单状态

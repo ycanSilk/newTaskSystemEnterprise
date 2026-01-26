@@ -1,4 +1,4 @@
-import { EncryptedLink } from '@/components/layout/EncryptedLink';
+import EncryptedLink from '@/components/layout/EncryptedLink';
 
 const AccountRentalPublishPage = () => {
   return (

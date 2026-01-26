@@ -16,7 +16,7 @@ interface PublishedAccount {
   maxRentalDays?: number;
   rentalCount?: number;
   rating?: number;
-  publisherName?: string;
+  commenterName?: string;
   sellerName?: string;
   sellerAvatar?: string;
   hasReturnInsurance?: boolean;
