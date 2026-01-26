@@ -23,14 +23,19 @@ const xorEncrypt = (text: string, key: string): string => {
  * @returns 加密后的路由路径
  */
 export const encryptRoute = (path: string): string => {
+  console.log('加密前路径:', path);
   // 移除开头的斜杠
   const pathWithoutSlash = path.startsWith('/') ? path.slice(1) : path;
+  console.log('移除斜杠后:', pathWithoutSlash);
   // 先使用XOR加密
   const xorEncrypted = xorEncrypt(pathWithoutSlash, SECRET_KEY);
+  console.log('XOR加密后:', xorEncrypted);
   // 再使用Base64编码，明确指定UTF-8
   const encoded = Buffer.from(xorEncrypted, 'utf-8').toString('base64');
+  console.log('Base64编码后:', encoded);
   // 替换URL中可能出现的特殊字符
   const result = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  console.log('最终加密路径:', result);
   return result;
 };
 
@@ -40,14 +45,19 @@ export const encryptRoute = (path: string): string => {
  * @returns 原始路由路径
  */
 export const decryptRoute = (encryptedPath: string): string => {
+  console.log('解密前路径:', encryptedPath);
   // 还原Base64编码
   const padded = encryptedPath.padEnd(encryptedPath.length + (4 - encryptedPath.length % 4) % 4, '=');
+  console.log('添加padding后:', padded);
   // 明确指定使用UTF-8解码
   const base64Decoded = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+  console.log('Base64解码后:', base64Decoded);
   // 使用XOR解密
   const decrypted = xorEncrypt(base64Decoded, SECRET_KEY);
+  console.log('XOR解密后:', decrypted);
   // 添加开头的斜杠
   const result = `/${decrypted}`;
+  console.log('最终解密路径:', result);
   return result;
 };
 
@@ -57,39 +67,46 @@ export const decryptRoute = (encryptedPath: string): string => {
  * @returns 是否已加密
  */
 export const isEncryptedRoute = (path: string): boolean => {
+  console.log('检查路径是否加密:', path);
   // 排除已知的静态资源路径
   const staticPaths = ['images', 'database', 'software', 'uploads', '_next', 'api'];
   if (staticPaths.includes(path)) {
+    console.log('路径是静态资源，不是加密路由:', path);
     return false;
   }
   
   // 排除已知的一级路由
   const knownRoutes = ['publisher', 'rental'];
   if (knownRoutes.includes(path)) {
+    console.log('路径是已知一级路由，不是加密路由:', path);
     return false;
   }
   
   // 检查是否符合Base64URL格式
   const base64UrlPattern = /^[A-Za-z0-9-_]+$/;
   if (!base64UrlPattern.test(path)) {
+    console.log('路径不符合Base64URL格式，不是加密路由:', path);
     return false;
   }
   
   // 尝试验解密，如果解密后的路径包含乱码或不符合预期格式，则认为不是加密路由
   try {
     const decrypted = decryptRoute(path);
+    console.log('解密测试结果:', decrypted);
     
     // 检查解密后的路径是否包含预期的一级路由
     const decryptedParts = decrypted.split('/').filter(Boolean);
+    console.log('解密后路径部分:', decryptedParts);
     if (decryptedParts.length > 0 && knownRoutes.includes(decryptedParts[0])) {
+      console.log('解密后路径包含已知一级路由，是加密路由:', path);
       return true;
     }
+    console.log('解密后路径不包含已知一级路由，不是加密路由:', path);
     return false;
   } catch (error) {
+    console.log('解密测试失败，不是加密路由:', path, error);
     return false;
   }
-
-  return base64UrlPattern.test(path);
 };
 
 /**

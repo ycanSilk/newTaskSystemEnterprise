@@ -18,6 +18,7 @@ export default function PublisherLoginPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [captchaCode, setCaptchaCode] = useState('');
   const [countdown, setCountdown] = useState(60);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   
   // 使用useUser钩子检查登录状态
@@ -138,7 +139,7 @@ export default function PublisherLoginPage() {
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 pt-12 pb-16">
         <div className="max-w-md mx-auto px-4 text-center">
           <div className="text-white font-bold text-4xl mb-3">
-            微任务系统平台
+            任务发布系统
           </div>
         </div>
       </div>
@@ -176,16 +177,34 @@ export default function PublisherLoginPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   密码
                 </label>
-                <input
-                  type="password"
-                  placeholder="请输入密码"
-                  autoComplete="current-password"
-                  value={formData.password}
-                  onChange={(e) => {
-                    setFormData({...formData, password: e.target.value});
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="请输入密码"
+                    autoComplete="current-password"
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({...formData, password: e.target.value});
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none"
+                    aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 transition-colors"
+                      viewBox="0 0 20 20" 
+                      fill={showPassword ? "currentColor" : "currentColor"}
+                      style={{ color: showPassword ? "#3b82f6" : "#6b7280" }}
+                    >
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               
               {/* 验证码输入 */}

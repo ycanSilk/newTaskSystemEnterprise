@@ -8,7 +8,7 @@ const AccountRentalPage = () => {
 
   // 重定向到租赁市场页面
   useEffect(() => {
-    router.replace('/accountrental/account-rental-market');
+    router.replace('/rental/rental_market');
   }, [router]);
 
   return (

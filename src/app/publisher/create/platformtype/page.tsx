@@ -18,7 +18,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'douyin',
     title: '抖音',
-    description: '在抖音平台发布各类任务，包括评论、账号出租、视频发送等',
+    description: '在抖音平台发布各类任务，包括评论、账号出租',
     taskCount: 5,
     color: 'from-red-500 to-pink-600'
   },

@@ -1,49 +1,50 @@
-// 获取出租市场列表API路由
+// 上下架出租信息API路由
 
 // 导入Next.js响应对象
 import { NextResponse } from 'next/server';
 // 导入处理函数
-import { handleGetOffersRentalMarketList } from '@/api/handlers/rental/rentOut/getOffersRentalMarketListHandlers';
+import { handleToggleOffersRentalInfoStatus } from '@/api/handlers/rental/rentOut/toggleOffersRentalInfoStatusHandlers';
+// 导入类型定义
+import { ToggleOffersRentalInfoStatusRequest } from '@/api/types/rental/rentOut/toggleOffersRentalInfoStatusTypes';
 
 /**
- * GET方法处理函数
- * 获取出租市场列表
- * @returns NextResponse对象，包含出租市场列表数据
+ * POST方法处理函数
+ * 上下架出租信息
+ * @returns NextResponse对象，包含上下架结果
  */
-export async function GET(request: Request): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
-    // 获取查询参数my，默认值为空字符串
-    const { searchParams } = new URL(request.url);
-    const my = searchParams.get('my') || '';
+    // 解析请求体
+    const requestBody = await request.json() as ToggleOffersRentalInfoStatusRequest;
     
-    // 将my参数传递给处理函数
-    return await handleGetOffersRentalMarketList(my);
+    // 调用处理函数
+    return await handleToggleOffersRentalInfoStatus(requestBody);
   } catch (error) {
     // 返回错误响应
     return NextResponse.json(
       {
         success: false,
-        code: 500,
-        message: '服务器内部错误',
+        code: 400,
+        message: '请求参数错误',
         timestamp: Date.now(),
         data: null
       },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }
 
 /**
- * POST方法处理函数
- * 不支持POST请求
+ * GET方法处理函数
+ * 不支持GET请求
  * @returns NextResponse对象，包含错误信息
  */
-export async function POST(): Promise<NextResponse> {
+export async function GET(): Promise<NextResponse> {
   return NextResponse.json(
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -61,7 +62,7 @@ export async function PUT(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -79,7 +80,7 @@ export async function DELETE(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -97,7 +98,7 @@ export async function PATCH(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },

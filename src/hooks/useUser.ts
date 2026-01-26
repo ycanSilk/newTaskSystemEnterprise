@@ -188,8 +188,6 @@ export function useUser(): UseUserReturn {
       
       // 根据user判断用户是否已登录
       const loggedIn = !!user;
-      console.log('useUser checkLoginStatus: 登录状态 -', loggedIn);
-      console.log('设置用户信息到store:', user);
       // 更新userStore中的用户信息
       if (user) {
         setUser(user);

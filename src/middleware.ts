@@ -5,7 +5,7 @@ import { decryptRoute, isEncryptedRoute, encryptRoute } from './lib/routeEncrypt
 
 // 需要加密的一级路由列表（包含所有页面路由）
 // 这里定义了哪些路由需要进行加密处理
-const encryptableRoutes = ['publisher', 'accountrental'];
+const encryptableRoutes = ['publisher', 'rental'];
 
 // 定义公共路径（不需要登录即可访问）
 // 这些路径任何人都可以访问，不需要登录验证
@@ -13,7 +13,7 @@ const publicPaths = ['/publisher/auth/login', '/publisher/auth/register', ];
 
 // 定义需要保护的路径前缀
 // 这些路径需要用户登录后才能访问
-const protectedPathPrefixes = ['/publisher', '/accountrental'];
+const protectedPathPrefixes = ['/publisher', '/rental'];
 
 /**
  * 检查路径是否为公共路径
@@ -44,10 +44,8 @@ const isProtectedPath = (path: string): boolean => {
 const validateToken = async (token: string, origin: string): Promise<boolean> => {
   try {
     // 向服务器发送请求，验证Token是否有效
-    const response = await fetch(`${origin}/api/auth/me`, {
+    const response = await fetch(`${origin}/api/auth/checkToken`, {
       headers: {
-        // 设置Authorization头，使用Bearer Token格式
-        'Authorization': `Bearer ${token}`,
         // 设置Content-Type头为JSON格式
         'Content-Type': 'application/json',
       },
