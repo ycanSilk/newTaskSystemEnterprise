@@ -16,9 +16,10 @@ export async function handleGetRequestRentalMarketList(request: NextRequest): Pr
     // 从查询参数中获取分页信息
     const page = request.nextUrl.searchParams.get('page') || '1';
     const pageSize = request.nextUrl.searchParams.get('page_size') || '20';
+    const mynumber = request.nextUrl.searchParams.get('my') || '';
     
     // 构建请求URL，添加分页参数
-    const requestUrl = `${GET_REQUEST_RENTAL_MARKET_LIST_ENDPOINT}?page=${page}&page_size=${pageSize}`;
+    const requestUrl = `${GET_REQUEST_RENTAL_MARKET_LIST_ENDPOINT}?page=${page}&page_size=${pageSize}&my=${mynumber}`;
     
     // 使用API客户端发送GET请求
     const response = await apiClient.get<GetRequestRentalMarketListResponse>(requestUrl);

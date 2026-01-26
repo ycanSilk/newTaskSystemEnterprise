@@ -10,6 +10,10 @@ export const GET_OFFERS_RENTAL_MARKET_LIST_ENDPOINT = `/rental/offers/list.php`;
 //获取账号出租信息详情信息
 export const GET_OFFERS_RENTAL_INFO_DETAIL_ENDPOINT = `/rental/offers/detail.php`;
 
+//上下架出租信息
+export const TOGGLE_OFFERS_RENTAL_INFO_STATUS_ENDPOINT = `/rental/offers/toggle-status.php`;
+
+
 
 
 
@@ -22,12 +26,14 @@ export const GET_OFFERS_RENTAL_INFO_DETAIL_ENDPOINT = `/rental/offers/detail.php
 //创建求租信息
 export const CREATE_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/demands/create.php`;
 
-
 //获取求租市场列表
 export const GET_REQUEST_RENTAL_MARKET_LIST_ENDPOINT = `/rental/demands/list.php`;
 
 //获取求租信息详情信息
 export const GET_REQUEST_RENTAL_INFO_DETAIL_ENDPOINT = `/rental/demands/detail.php`;
+
+//上下架求租信息
+export const TOGGLE_REQUEST_RENTAL_INFO_STATUS_ENDPOINT = `/rental/demands/toggle-status.php`;
 
 //求租信息应征申请请求端点
 export const APPLY_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/applications/apply.php`;
@@ -35,8 +41,9 @@ export const APPLY_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/applications/apply.ph
 //求租信息应征申请列表
 export const GET_APPLIED_REQUEST_RENTAL_INFO_LIST_ENDPOINT = `/rental/applications/list.php`;
 
-//审核求租信息应征申请
+//审核通过或拒绝求租信息应征申请
 export const REVIEW_APPLIED_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/applications/review.php`;
+
 
 
 
