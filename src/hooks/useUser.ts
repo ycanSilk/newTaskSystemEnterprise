@@ -8,27 +8,12 @@ import { User, UserRole } from '@/types';
 import { CheckTokenResponse } from '@/types/checkTokenTypes/checkTokenTypes';
 // 导入userStore
 import { useUserStore } from '@/store/userStore';
-// 导入路由解密工具函数
-import { decryptRoute, isEncryptedRoute } from '@/lib/routeEncryption';
 
 // 从API获取用户信息的函数
 const fetchUserInfoFromApi = async (): Promise<User | null> => {
   // 每次调用都重新检查当前页面是否为登录或注册页面，如果是则直接返回null，不进行任何API调用
   if (typeof window !== 'undefined') {
-    let pathname = window.location.pathname;
-    
-    // 解密路径，以便正确判断页面类型
-    const pathParts = pathname.split('/').filter(Boolean);
-    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-      try {
-        const decryptedPath = decryptRoute(pathParts[0]);
-        const decryptedParts = decryptedPath.split('/').filter(Boolean);
-        const remainingPath = pathParts.slice(1).join('/');
-        pathname = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
-      } catch (error) {
-        console.error('解密路径失败:', error);
-      }
-    }
+    const pathname = window.location.pathname;
     
     if (pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register')) {
       return null;
@@ -124,6 +109,7 @@ interface UseUserReturn {
   isLoading: boolean; // 是否正在加载用户信息
   isLoggedIn: boolean; // 用户是否已登录
   refreshUser: () => void; // 刷新用户信息函数
+  refreshToken: () => Promise<boolean>; // 刷新Token函数
   isAuthenticated: boolean; // 用户是否已认证（等同于isLoggedIn && !!user）
 }
 
@@ -144,20 +130,7 @@ export function useUser(): UseUserReturn {
   const checkIfLoginPage = () => {
     if (typeof window === 'undefined') return false;
     
-    let pathname = window.location.pathname;
-    
-    // 解密路径，以便正确判断页面类型
-    const pathParts = pathname.split('/').filter(Boolean);
-    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-      try {
-        const decryptedPath = decryptRoute(pathParts[0]);
-        const decryptedParts = decryptedPath.split('/').filter(Boolean);
-        const remainingPath = pathParts.slice(1).join('/');
-        pathname = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
-      } catch (error) {
-        console.error('解密路径失败:', error);
-      }
-    }
+    const pathname = window.location.pathname;
     
     return pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register');
   };
@@ -265,12 +238,59 @@ export function useUser(): UseUserReturn {
     await checkLoginStatus();
   };
 
+  // 刷新Token函数
+  const refreshToken = async (): Promise<boolean> => {
+    // 如果是登录页面，直接返回true
+    if (checkIfLoginPage()) {
+      return true;
+    }
+
+    try {
+      // 调用验证Token有效性的API端点
+      const response = await fetch('/api/auth/checkToken', {
+        method: 'GET',
+        credentials: 'include', // 包含cookie
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      });
+      
+      // 如果响应状态为401，Token无效
+      if (response.status === 401) {
+        clearUser();
+        setIsLoggedIn(false);
+        return false;
+      }
+      
+      // 解析API响应
+      const data = await response.json();
+      console.log('Token校验响应数据:', data);
+      
+      // 如果API返回成功，且token有效，返回true
+      if (data.success && data.data && data.data.valid) {
+        return true;
+      }
+      
+      // 如果API返回失败，或token无效，返回false
+      clearUser();
+      setIsLoggedIn(false);
+      return false;
+    } catch (error) {
+      console.error('Token校验失败:', error);
+      clearUser();
+      setIsLoggedIn(false);
+      return false;
+    }
+  };
+
   // 返回useUser钩子的结果
   return {
     user: currentUser,
     isLoading,
     isLoggedIn,
     refreshUser,
+    refreshToken,
     isAuthenticated: isLoggedIn && !!currentUser
   };
 }

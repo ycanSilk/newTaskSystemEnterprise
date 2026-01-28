@@ -10,7 +10,7 @@ import {
   routeHierarchyMap, 
   firstLevelPages
 } from '../config/routes';
-import { decryptRoute, isEncryptedRoute, encryptRoute } from '../../../lib/routeEncryption';
+
 import { useUserStore } from '@/store/userStore';
 
 interface PublisherHeaderProps {
@@ -33,33 +33,13 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   const [pageTitle, setPageTitle] = useState('发布者中心');
   const [showDropdown, setShowDropdown] = useState(false);
   
-  // 获取解密后的路径
+  // 获取路径（移除加密逻辑，直接返回路径）
   const getDecryptedPath = (path: string) => {
-    if (!path) return path;
-    
-    const pathParts = path.split('/').filter(Boolean);
-    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-      try {
-        return decryptRoute(pathParts[0]);
-      } catch (error) {
-        console.error('Failed to decrypt route:', error);
-        return path;
-      }
-    }
     return path;
   };
   
-  // 获取加密后的路径
+  // 获取路径（移除加密逻辑，直接返回路径）
   const getEncryptedPath = (path: string) => {
-    if (!path) return path;
-    
-    const pathParts = path.split('/').filter(Boolean);
-    if (pathParts.length >= 2) {
-      const firstTwoLevels = `/${pathParts[0]}/${pathParts[1]}`;
-      const encrypted = encryptRoute(firstTwoLevels);
-      const remainingPath = pathParts.slice(2).join('/');
-      return `/${encrypted}${remainingPath ? `/${remainingPath}` : ''}`;
-    }
     return path;
   };
 
@@ -353,13 +333,15 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
       document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'X-Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'token-front=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-     console.log('Logout successful');
+      
+      // 清除支付密码提示标记
+      localStorage.removeItem('hasPromptedPaymentPassword');
+      
+      console.log('Logout successful');
       // 无论API调用结果如何，都跳转到登录页
       router.push('/publisher/auth/login');
-   
-        console.log('跳转登录页成功')
-  
-
+      
+      console.log('跳转登录页成功');
     }
   };
 

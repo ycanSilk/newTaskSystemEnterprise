@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+// 导入React Query的useQuery hook
+import { useQuery } from '@tanstack/react-query';
 // 导入四个对应状态的页面组件
 import OverViewTabPage from './OverView/page';
 import ActiveTabPage from './InProgress/page';
@@ -27,11 +29,6 @@ export default function PublisherDashboardPage() {
   // 设置当前激活的tab状态
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   
-  // API请求状态管理
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  
   // 添加强制刷新状态，用于发布任务成功后刷新列表
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
@@ -47,12 +44,15 @@ export default function PublisherDashboardPage() {
     }
   }, []);
   
-  // 获取任务列表数据
-  const fetchTasks = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
+  // 使用React Query获取任务列表数据
+  const {
+    data: tasksData,
+    isLoading: loading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['tasks', refreshTrigger],
+    queryFn: async (): Promise<Task[]> => {
       // 调用后端API获取任务列表
       const response = await fetch('/api/task/getTasksList', {
         method: 'GET',
@@ -66,30 +66,24 @@ export default function PublisherDashboardPage() {
       const result: GetTasksListResponse = await response.json();
       
       if (result.code === 0) {
-        setTasks(result.data.tasks);
+        return result.data.tasks;
       } else {
         throw new Error(result.message || '获取任务列表失败');
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '获取数据失败';
-      console.error('获取任务列表失败:', errorMessage, err);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    staleTime: 30 * 1000, // 30秒的缓存时间
+    refetchOnWindowFocus: true, // 窗口聚焦时重新请求
+  });
   
-  // 在组件挂载、URL参数变化或强制刷新时获取任务列表
-  useEffect(() => {
-    fetchTasks();
-  }, [searchParams, refreshTrigger]);
+  // 获取任务数据
+  const tasks = tasksData || [];
   
   // 添加页面可见性变化监听，当页面重新可见时刷新任务列表
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('dashboard handleVisibilityChange: 页面重新可见，刷新任务列表');
-        setRefreshTrigger(prev => prev + 1);
+        refetch();
       }
     };
     
@@ -98,16 +92,16 @@ export default function PublisherDashboardPage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [refetch]);
   
   // 添加组件挂载后延迟刷新，确保能获取到最新数据
   useEffect(() => {
     const timer = setTimeout(() => {
-      setRefreshTrigger(prev => prev + 1);
+      refetch();
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [refetch]);
 
   // 处理选项卡切换并更新URL参数
   const handleTabChange = (tab: string) => {
@@ -119,14 +113,22 @@ export default function PublisherDashboardPage() {
     window.history.replaceState({}, '', newUrl.toString());
   };
 
-  // 检查用户是否设置了支付密码
-  const checkWalletPassword = async () => {
-    // 只有在浏览器环境中才调用API
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    try {
+  // 使用React Query检查支付密码状态
+  const { refetch: refetchWalletPassword } = useQuery({
+    queryKey: ['walletPassword'],
+    queryFn: async (): Promise<boolean> => {
+      // 只有在浏览器环境中才调用API
+      if (typeof window === 'undefined') {
+        return true; // 默认认为已设置
+      }
+
+      // 检查是否已经提示过支付密码设置
+      const hasPromptedPaymentPassword = localStorage.getItem('hasPromptedPaymentPassword');
+      if (hasPromptedPaymentPassword) {
+        console.log('dashboard checkWalletPassword: 已经提示过支付密码设置，跳过检查');
+        return true;
+      }
+      
       // 调用检查支付密码API，使用正确的端点
       const response = await fetch('/api/paymentWallet/checkWalletPwd', {
         method: 'GET',
@@ -144,23 +146,29 @@ export default function PublisherDashboardPage() {
         // 显示自定义提示弹窗
         setShowRedirectModal(true);
         console.log('dashboard checkWalletPassword: 用户未设置支付密码，显示提示弹窗');
+        // 标记已经提示过
+        localStorage.setItem('hasPromptedPaymentPassword', 'true');
+        return false;
       } else {
         console.log('dashboard checkWalletPassword: 用户已设置支付密码，不显示提示弹窗');
         console.log('当前登录用户是否设置里密码',result.data?.has_password);
+        // 标记已经检查过
+        localStorage.setItem('hasPromptedPaymentPassword', 'true');
         // 如果已经显示了弹窗，关闭它
         if (showRedirectModal) {
           setShowRedirectModal(false);
         }
+        return true;
       }
-    } catch (error) {
-      console.error('dashboard checkWalletPassword: 检查支付密码失败:', error);
-    }
-  };
+    },
+    enabled: false, // 手动触发
+    staleTime: 5 * 60 * 1000, // 5分钟的缓存时间
+  });
 
   // 在组件挂载时检查支付密码
   useEffect(() => {
     console.log('dashboard useEffect: 开始检查支付密码');
-    checkWalletPassword();
+    refetchWalletPassword();
   }, []);
 
   // 监听页面可见性变化，当页面重新可见时检查支付密码
@@ -173,7 +181,7 @@ export default function PublisherDashboardPage() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('dashboard handleVisibilityChange: 页面重新可见，检查支付密码');
-        checkWalletPassword();
+        refetchWalletPassword();
       }
     };
 
@@ -184,7 +192,7 @@ export default function PublisherDashboardPage() {
       // 清理事件监听器
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [refetchWalletPassword]);
 
   // 计算统计数据
   const calculateTaskStats = (): TaskStats => {
@@ -265,7 +273,7 @@ export default function PublisherDashboardPage() {
         </div>
       ) : error ? (
         <div className="flex justify-center items-center py-20">
-          <div className="text-red-500">{error}</div>
+          <div className="text-red-500">{error instanceof Error ? error.message : '获取数据失败'}</div>
         </div>
       ) : (
         // 直接嵌入4个对应状态的页面组件，并传递数据

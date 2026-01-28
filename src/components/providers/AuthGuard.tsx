@@ -44,7 +44,7 @@ const isPublicRoute = (path: string | undefined): boolean => {
 export const AuthGuard = ({ children, requiredRole, allowedRoles }: AuthGuardProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading, isAuthenticated } = useUser();
+  const { user, isLoading, isAuthenticated, refreshToken } = useUser();
 
   // 检查当前路径是否为公开路由
   const currentIsPublicRoute = isPublicRoute(pathname);
@@ -79,16 +79,37 @@ export const AuthGuard = ({ children, requiredRole, allowedRoles }: AuthGuardPro
     }
   }, [isLoading, isAuthenticated, user, pathname, router, requiredRole, allowedRoles]);
 
-  // 1. 加载状态：显示加载动画
+  // 添加1小时定时轮询，检查token有效性
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // 定时轮询函数
+    const checkTokenValidity = async () => {
+      try {
+        // 调用refreshToken方法检查token有效性
+        if (refreshToken) {
+          await refreshToken();
+        }
+      } catch (error) {
+        console.error('Token检查失败:', error);
+        // Token无效时，跳转到登录页
+        router.push('/publisher/auth/login');
+      }
+    };
+
+    // 初始检查
+    checkTokenValidity();
+
+    // 设置1小时轮询
+    const pollingInterval = setInterval(checkTokenValidity, 60 * 60 * 1000);
+
+    // 清理函数
+    return () => clearInterval(pollingInterval);
+  }, [isAuthenticated, refreshToken, router]);
+
+  // 1. 加载状态：显示子组件（实现无感校验）
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loading size="lg" />
-          <p className="mt-4 text-gray-600">正在验证身份...</p>
-        </div>
-      </div>
-    );
+    return <>{children}</>;
   }
 
   // 2. 公开路由或已登录状态：显示子组件

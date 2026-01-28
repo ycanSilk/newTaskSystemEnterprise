@@ -2,8 +2,6 @@
 import { create } from 'zustand';
 // 导入用户信息类型定义
 import { User } from '@/types';
-// 导入路由解密工具函数
-import { decryptRoute, isEncryptedRoute } from '@/lib/routeEncryption';
 
 // 定义Store的状态和方法
 interface UserState {
@@ -41,44 +39,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     
     // 每次调用都重新检查当前页面是否为登录或注册页面，如果是则直接返回，不进行API调用
     if (typeof window !== 'undefined') {
-      let currentPath = window.location.pathname;
-      
-      // 解密路径，以便正确判断页面类型
-      const pathParts = currentPath.split('/').filter(Boolean);
-      if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-        try {
-          const decryptedPath = decryptRoute(pathParts[0]);
-          const decryptedParts = decryptedPath.split('/').filter(Boolean);
-          const remainingPath = pathParts.slice(1).join('/');
-          currentPath = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
-        } catch (error) {
-          console.error('解密路径失败:', error);
-        }
-      }
-      
-      console.log('解密后路径:', currentPath);
+      const currentPath = window.location.pathname;
       
       // 检查是否为登录或注册页面
       if (currentPath.includes('/publisher/auth/login') || currentPath.includes('/publisher/auth/register')) {
-        set({ isLoading: false });
-        return;
-      }
-      
-      // 再次确认，防止在调用过程中页面路径发生变化
-      let updatedPath = window.location.pathname;
-      const updatedPathParts = updatedPath.split('/').filter(Boolean);
-      if (updatedPathParts.length > 0 && isEncryptedRoute(updatedPathParts[0])) {
-        try {
-          const decryptedUpdatedPath = decryptRoute(updatedPathParts[0]);
-          const decryptedUpdatedParts = decryptedUpdatedPath.split('/').filter(Boolean);
-          const updatedRemainingPath = updatedPathParts.slice(1).join('/');
-          updatedPath = `/${decryptedUpdatedParts.join('/')}${updatedRemainingPath ? `/${updatedRemainingPath}` : ''}`;
-        } catch (error) {
-          console.error('解密路径失败:', error);
-        }
-      }
-      
-      if (updatedPath.includes('/publisher/auth/login') || updatedPath.includes('/publisher/auth/register')) {
         set({ isLoading: false });
         return;
       }

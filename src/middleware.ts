@@ -1,11 +1,5 @@
 // 导入Next.js的请求和响应类型，用于处理HTTP请求和响应
 import { NextRequest, NextResponse } from 'next/server';
-// 导入路由加密和解密工具函数，用于处理路由的加密和解密
-import { decryptRoute, isEncryptedRoute, encryptRoute } from './lib/routeEncryption';
-
-// 需要加密的一级路由列表（包含所有页面路由）
-// 这里定义了哪些路由需要进行加密处理
-const encryptableRoutes = ['publisher', 'rental'];
 
 // 定义公共路径（不需要登录即可访问）
 // 这些路径任何人都可以访问，不需要登录验证
@@ -69,85 +63,7 @@ const validateToken = async (token: string, origin: string): Promise<boolean> =>
 // @returns 处理后的响应对象
 export async function middleware(request: NextRequest) {
   // 从请求URL中获取路径名、搜索参数和来源地址
-  const { pathname, search, origin } = request.nextUrl;
-  // 将路径名按'/'分割成数组，并过滤掉空字符串
-  // 例如，'/publisher/dashboard'会变成['publisher', 'dashboard']
-  const pathParts = pathname.split('/').filter(Boolean);
-
-  // 检查是否需要解密（如果第一部分是加密的）
-  // 例如，路径是'/encrypted-string/dashboard'，第一部分是加密的
-  if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-    try {
-      // 解密路由的第一部分
-      const decryptedPath = decryptRoute(pathParts[0]);
-      // 将解密后的路径按'/'分割成数组
-      const decryptedParts = decryptedPath.split('/').filter(Boolean);
-      
-      // 构建新的路径
-      // 获取除了第一部分之外的剩余路径
-      const remainingPath = pathParts.slice(1).join('/');
-      // 构建完整的新路径
-      // 例如，解密后是'/publisher'，剩余路径是'dashboard'，则新路径是'/publisher/dashboard'
-      const newPath = `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
-      
-      // 创建新的URL对象
-      const newUrl = new URL(request.nextUrl.origin + newPath + search);
-      
-      // 返回重写后的响应，将请求指向解密后的路径
-      // rewrite不会改变URL，但会渲染解密后的路径对应的页面
-      return NextResponse.rewrite(newUrl);
-    } catch (error) {
-      // 如果解密失败，继续处理请求
-      // 可能是因为路由不是加密的，或者解密密钥不正确
-      return NextResponse.next();
-    }
-  }
-
-  // 检查是否需要加密（如果路径至少有两级，且不是已加密的路由）
-  // 例如，路径是'/publisher/dashboard'，有两级，且第一部分不是加密的
-  if (pathParts.length >= 2 && !isEncryptedRoute(pathParts[0])) {
-    // 检查请求头，避免无限重定向
-    // 如果请求已经来自中间件，就不再处理，防止循环
-    const isFromMiddleware = request.headers.get('x-from-middleware') === '1';
-    
-    // 如果不是来自中间件的请求
-    if (!isFromMiddleware) {
-      try {
-        // 如果是一级路由，不加密
-        // 例如，'/publisher'只有一级，不需要加密
-        if (pathParts.length === 1) {
-          // 继续处理请求
-          return NextResponse.next();
-        }
-        
-        // 加密前两级路由
-        // 例如，'/publisher/dashboard'的前两级是'/publisher/dashboard'
-        const firstTwoLevels = `/${pathParts[0]}/${pathParts[1]}`;
-        // 使用加密函数加密前两级路由
-        const encrypted = encryptRoute(firstTwoLevels);
-        
-        // 构建新的路径
-        // 获取除了前两级之外的剩余路径
-        const remainingPath = pathParts.slice(2).join('/');
-        // 构建完整的新路径
-        // 例如，加密后是'encrypted-string'，剩余路径是'detail'，则新路径是'/encrypted-string/detail'
-        const newPath = `/${encrypted}${remainingPath ? `/${remainingPath}` : ''}`;
-        
-        // 创建新的URL对象
-        const newUrl = new URL(request.nextUrl.origin + newPath + search);
-        
-        // 返回重定向到加密后的路由
-        // redirect会改变浏览器的URL，并跳转到加密后的路径
-        const response = NextResponse.redirect(newUrl);
-        // 设置请求头，标记这个请求来自中间件，避免无限重定向
-        response.headers.set('x-from-middleware', '1');
-        return response;
-      } catch (error) {
-        // 如果加密失败，继续处理请求
-        return NextResponse.next();
-      }
-    }
-  }
+  const { pathname, origin } = request.nextUrl;
 
   // ===== Token验证逻辑 =====
   

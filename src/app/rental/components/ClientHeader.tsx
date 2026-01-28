@@ -8,8 +8,7 @@ import SearchBar from '../../../components/button/SearchBar';
 import { BellOutlined } from '@ant-design/icons';
 // 导入useUserStore状态管理
 import { useUserStore } from '@/store/userStore';
-// 导入路由加密解密工具
-import { decryptRoute, isEncryptedRoute } from '@/lib/routeEncryption';
+
 
 
 
@@ -29,22 +28,8 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
   const { currentUser } = useUserStore();
   const userWithUnreadCount = currentUser;
 
-  // 获取实际路径（处理加密路由）
+  // 获取实际路径
   const getActualPath = () => {
-    const pathParts = pathname.split('/').filter(Boolean);
-    
-    // 检查是否为加密路由
-    if (pathParts.length > 0 && isEncryptedRoute(pathParts[0])) {
-      try {
-        const decryptedPath = decryptRoute(pathParts[0]);
-        const decryptedParts = decryptedPath.split('/').filter(Boolean);
-        const remainingPath = pathParts.slice(1).join('/');
-        return `/${decryptedParts.join('/')}${remainingPath ? `/${remainingPath}` : ''}`;
-      } catch (error) {
-        // 解密失败，返回原始路径
-        return pathname;
-      }
-    }
     return pathname;
   };
 
