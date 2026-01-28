@@ -1,402 +1,41 @@
 'use client';
 
 // 导入React钩子：useState用于状态管理，useEffect用于处理副作用
-import { useState, useEffect, useRef } from 'react';
-// 导入User和UserRole类型定义
-import { User, UserRole } from '@/types';
-// 导入CheckTokenResponse类型
-import { CheckTokenResponse } from '@/types/checkTokenTypes/checkTokenTypes';
-// 导入userStore
-import { useUserStore } from '@/store/userStore';
-// 导入API缓存工具
-import { fetchWithCache, invalidateCache } from '@/utils/apiCache';
-
-// 缓存键
-const USER_CACHE_KEY = 'user_info_cache';
-// 缓存有效期（毫秒）
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5分钟
-
-// 从API获取用户信息的函数
-const fetchUserInfoFromApi = async (): Promise<User | null> => {
-  // 每次调用都重新检查当前页面是否为登录或注册页面，如果是则直接返回null，不进行任何API调用
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    
-    if (pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register')) {
-      return null;
-    }
-  }
-  
-  try {
-    // 使用fetchWithCache处理API请求
-    const data = await fetchWithCache<any>('/api/auth/checkToken', {
-      method: 'GET',
-      credentials: 'include', // 包含cookie
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }, {
-      expiry: CACHE_EXPIRY,
-      enableCache: true,
-      enableDeduplication: true,
-    });
-    
-    console.log('GET /api/auth/checkToken 响应数据:', data);
-    
-    // 如果API返回成功，且token有效，返回用户信息
-    if (data.success && data.data && data.data.valid) {
-      // 从响应中提取用户信息
-      const userInfo: User = {
-        // 从响应中实际存在的字段映射
-        id: data.data.user_id.toString(),
-        username: data.data.username,
-        email: data.data.email,
-        user_id: data.data.user_id,
-        organization_name: data.data.organization_name,
-        organization_leader: data.data.organization_leader,
-        
-        // User类型必需的字段，使用默认值
-        role: 'publisher' as UserRole, // 默认角色
-        balance: 0, // 默认余额
-        status: 'active', // 默认状态
-        createdAt: new Date().toISOString() // 默认创建时间
-      };
-      
-      // 缓存用户信息
-      if (typeof window !== 'undefined') {
-        const cacheData = {
-          user: userInfo,
-          timestamp: Date.now()
-        };
-        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(cacheData));
-      }
-      
-      return userInfo;
-    }
-    
-    // 如果API返回失败，或token无效，返回null
-    return null;
-  } catch (error) {
-    console.error('Token校验失败:', error);
-    return null;
-  }
-};
-
-// 从缓存获取用户信息
-const getUserFromCache = (): User | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  
-  try {
-    const cachedData = localStorage.getItem(USER_CACHE_KEY);
-    if (!cachedData) {
-      return null;
-    }
-    
-    const { user, timestamp } = JSON.parse(cachedData);
-    
-    // 检查缓存是否过期
-    if (Date.now() - timestamp > CACHE_EXPIRY) {
-      localStorage.removeItem(USER_CACHE_KEY);
-      return null;
-    }
-    
-    return user;
-  } catch (error) {
-    console.error('从缓存获取用户信息失败:', error);
-    localStorage.removeItem(USER_CACHE_KEY);
-    return null;
-  }
-};
-
-// 清除用户缓存
-const clearUserCache = () => {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(USER_CACHE_KEY);
-  }
-};
-
-// 获取当前登录用户
-const getCurrentLoggedInUser = async (): Promise<User | null> => {
-  try {
-    // 如果在服务器端渲染，返回null
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    
-    // 先尝试从缓存获取
-    const cachedUser = getUserFromCache();
-    if (cachedUser) {
-      return cachedUser;
-    }
-    
-    // 缓存未命中，从API获取
-    const user = await fetchUserInfoFromApi();
-    return user;
-  } catch (error) {
-    console.error('Failed to get current logged in user:', error);
-    return null;
-  }
-};
-
-// 检查是否有任何用户登录
-const isAnyUserLoggedIn = async (): Promise<boolean> => {
-  try {
-    // 如果在服务器端渲染，返回false
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    
-    // 先尝试从缓存获取
-    const cachedUser = getUserFromCache();
-    if (cachedUser) {
-      return true;
-    }
-    
-    // 缓存未命中，从API获取
-    const user = await fetchUserInfoFromApi();
-    return !!user;
-  } catch (error) {
-    console.error('Failed to check if any user is logged in:', error);
-    return false;
-  }
-};
+import { useState, useEffect } from 'react';
+// 导入User类型定义
+import { User } from '@/types';
+// 导入userStore和登录成功后保存用户信息的辅助函数
+import { useUserStore, saveUserOnLoginSuccess } from '@/store/userStore';
 
 // 定义useUser钩子返回值的类型
 interface UseUserReturn {
   user: User | null; // 用户信息，未登录时为null
   isLoading: boolean; // 是否正在加载用户信息
   isLoggedIn: boolean; // 用户是否已登录
-  refreshUser: () => Promise<void>; // 刷新用户信息函数
-  refreshToken: () => Promise<boolean>; // 刷新Token函数
   isAuthenticated: boolean; // 用户是否已认证（等同于isLoggedIn && !!user）
-  clearUserCache: () => void; // 清除用户缓存函数
+  clearUser: () => void; // 清除用户信息函数
+  saveUserOnLogin: (userData: any) => void; // 登录成功后保存用户信息
 }
 
 // 导出useUser钩子，用于管理用户登录状态
 export function useUser(): UseUserReturn {
   // 从userStore获取状态和方法
-  const { currentUser, setUser, clearUser, fetchUser } = useUserStore();
+  const { currentUser, setUser, clearUser, isLoginSuccess } = useUserStore();
   // 定义加载状态
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   // 定义登录状态
   const [isLoggedIn, setIsLoggedIn] = useState(!!currentUser);
-  // 请求防抖定时器引用
-  const requestDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  // 上次请求时间引用
-  const lastRequestTimeRef = useRef<number>(0);
-  // 轮询定时器引用
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 检查当前页面是否为登录或注册页面的辅助函数
-  const checkIfLoginPage = () => {
-    if (typeof window === 'undefined') return false;
-    
-    const pathname = window.location.pathname;
-    
-    return pathname.includes('/publisher/auth/login') || pathname.includes('/publisher/auth/register');
-  };
-
-  // 检查用户登录状态的函数
-  const checkLoginStatus = async () => {
-    // 如果是登录页面，直接返回，不进行任何API调用
-    if (checkIfLoginPage()) {
-      setIsLoading(false);
-      return;
-    }
-
-    // 防抖：如果在短时间内已经请求过，跳过
-    const now = Date.now();
-    if (now - lastRequestTimeRef.current < 1000) {
-      return;
-    }
-    
-    console.log('useUser checkLoginStatus: 开始检查登录状态');
-    // 设置加载状态为true
-    setIsLoading(true);
-    lastRequestTimeRef.current = now;
-
-    try {
-      // 获取当前登录用户
-      const user = await getCurrentLoggedInUser();
-      console.log('useUser checkLoginStatus: 获取到的用户信息 -', user);
-      
-      // 根据user判断用户是否已登录
-      const loggedIn = !!user;
-      // 更新userStore中的用户信息
-      if (user) {
-        setUser(user);
-      } else {
-        clearUser();
-        clearUserCache();
-      }
-      
-      // 更新本地状态
-      setIsLoggedIn(loggedIn);
-      console.log('useUser checkLoginStatus: 登录状态更新完成');
-    } catch (error) {
-      console.error('useUser checkLoginStatus: 检查登录状态出错 -', error);
-      // 发生错误时，将用户信息和登录状态重置为默认值
-      clearUser();
-      clearUserCache();
-      setIsLoggedIn(false);
-    } finally {
-      // 设置加载状态为false
-      setIsLoading(false);
-      console.log('useUser checkLoginStatus: 检查登录状态完成，isLoading设置为false');
-    }
-  };
-
-  // 初始化时检查用户登录状态
+  // 初始化时同步状态
   useEffect(() => {
-    // 如果是登录页面，直接设置为未加载状态，不调用API
-    if (checkIfLoginPage()) {
-      setIsLoading(false);
-      return;
-    }
+    setIsLoggedIn(!!currentUser);
+  }, [currentUser]);
 
-    // 异步函数包装器，用于在useEffect中调用异步函数
-    const initialize = async () => {
-      // 尝试从缓存获取用户信息
-      const cachedUser = getUserFromCache();
-      if (cachedUser) {
-        setUser(cachedUser);
-        setIsLoggedIn(true);
-        setIsLoading(false);
-      } else {
-        // 缓存未命中，调用API检查登录状态
-        await checkLoginStatus();
-      }
-    };
-    
-    // 调用初始化函数
-    initialize();
-    
-    // 创建事件处理函数，添加防抖
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // 防抖：300ms内只执行一次
-        if (requestDebounceRef.current) {
-          clearTimeout(requestDebounceRef.current);
-        }
-        requestDebounceRef.current = setTimeout(() => {
-          // 每次调用前都检查当前页面是否为登录页面
-          if (!checkIfLoginPage()) {
-            checkLoginStatus();
-          }
-        }, 300);
-      }
-    };
-    
-    // 监听visibilitychange事件，当页面重新可见时检查登录状态
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // 启动定时轮询（60秒）
-    pollingTimerRef.current = setInterval(() => {
-      if (!checkIfLoginPage()) {
-        checkLoginStatus();
-      }
-    }, 60000);
-    
-    return () => {
-      // 清除事件监听器
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      // 清除防抖定时器
-      if (requestDebounceRef.current) {
-        clearTimeout(requestDebounceRef.current);
-      }
-      // 清除轮询定时器
-      if (pollingTimerRef.current) {
-        clearInterval(pollingTimerRef.current);
-      }
-    };
-  }, [setUser, clearUser]);
-
-  // 刷新用户信息函数
-  const refreshUser = async () => {
-    // 如果是登录页面，直接返回，不进行任何API调用
-    if (checkIfLoginPage()) {
-      return;
-    }
-    
-    // 清除缓存
-    clearUserCache();
-    // 重新检查登录状态
-    await checkLoginStatus();
-  };
-
-  // 刷新Token函数
-  const refreshToken = async (): Promise<boolean> => {
-    // 如果是登录页面，直接返回true
-    if (checkIfLoginPage()) {
-      return true;
-    }
-
-    try {
-      // 使用fetchWithCache处理API请求
-      const data = await fetchWithCache<any>('/api/auth/checkToken', {
-        method: 'GET',
-        credentials: 'include', // 包含cookie
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, {
-        expiry: CACHE_EXPIRY,
-        enableCache: true,
-        enableDeduplication: true,
-      });
-      
-      console.log('Token校验响应数据:', data);
-      
-      // 如果API返回成功，且token有效，返回true
-      if (data.success && data.data && data.data.valid) {
-        // 更新用户信息
-        if (data.data.user_id) {
-          const userInfo: User = {
-            id: data.data.user_id.toString(),
-            username: data.data.username,
-            email: data.data.email,
-            user_id: data.data.user_id,
-            organization_name: data.data.organization_name,
-            organization_leader: data.data.organization_leader,
-            role: 'publisher' as UserRole,
-            balance: 0,
-            status: 'active',
-            createdAt: new Date().toISOString()
-          };
-          setUser(userInfo);
-          
-          // 更新缓存
-          if (typeof window !== 'undefined') {
-            const cacheData = {
-              user: userInfo,
-              timestamp: Date.now()
-            };
-            localStorage.setItem(USER_CACHE_KEY, JSON.stringify(cacheData));
-          }
-        }
-        return true;
-      }
-      
-      // 如果API返回失败，或token无效，返回false
-      clearUser();
-      clearUserCache();
-      setIsLoggedIn(false);
-      return false;
-    } catch (error) {
-      console.error('Token校验失败:', error);
-      clearUser();
-      clearUserCache();
-      setIsLoggedIn(false);
-      return false;
-    }
-  };
-
-  // 清除用户缓存
-  const handleClearUserCache = () => {
-    clearUserCache();
-    console.log('用户缓存已清除');
+  // 登录成功后保存用户信息
+  const saveUserOnLogin = (userData: any) => {
+    console.log('登录成功后保存用户信息:', userData);
+    saveUserOnLoginSuccess(userData);
+    setIsLoggedIn(true);
   };
 
   // 返回useUser钩子的结果
@@ -404,9 +43,11 @@ export function useUser(): UseUserReturn {
     user: currentUser,
     isLoading,
     isLoggedIn,
-    refreshUser,
-    refreshToken,
-    isAuthenticated: isLoggedIn && !!currentUser,
-    clearUserCache: handleClearUserCache
+    isAuthenticated: !!currentUser,
+    clearUser,
+    saveUserOnLogin
   };
 }
+
+// 导出登录成功后保存用户信息的函数，方便在登录页面直接使用
+export { saveUserOnLoginSuccess };

@@ -1,5 +1,6 @@
 // 用户信息状态管理
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 // 导入用户信息类型定义
 import { User } from '@/types';
 
@@ -9,93 +10,73 @@ interface UserState {
   currentUser: User | null;
   isLoading: boolean;
   error: string | null;
+  isLoginSuccess: boolean; // 登录成功标记
 
   // 方法 (Actions)
-  // 用于设置用户信息
+  // 用于设置用户信息（登录成功后调用）
   setUser: (user: User) => void;
   // 用于清除用户信息（登出时用）
   clearUser: () => void;
-  // 用于获取用户信息，如果内存中没有，则从API获取
-  fetchUser: () => Promise<void>;
+  // 用于设置登录成功状态
+  setLoginSuccess: (success: boolean) => void;
 }
 
 // 创建并导出Zustand store
-export const useUserStore = create<UserState>((set, get) => ({
-  // 初始状态
-  currentUser: null,
-  isLoading: false,
-  error: null,
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
+      // 初始状态
+      currentUser: null,
+      isLoading: false,
+      error: null,
+      isLoginSuccess: false,
 
-  // 方法的实现
-  setUser: (user) => set({ currentUser: user, isLoading: false, error: null }),
+      // 方法的实现
+      setUser: (user) => {
+        console.log('设置用户信息:', user);
+        // 保存到内存中，同时通过persist中间件持久化到localStorage
+        set({ currentUser: user, isLoading: false, error: null, isLoginSuccess: true });
+      },
 
-  clearUser: () => set({ currentUser: null, error: null }),
+      clearUser: () => {
+        console.log('清除用户信息');
+        set({ currentUser: null, error: null, isLoginSuccess: false });
+      },
 
-  fetchUser: async () => {
-    // 如果已经有用户信息了，就不再请求
-    if (get().currentUser) {
-      return;
+      setLoginSuccess: (success) => {
+        console.log('设置登录成功状态:', success);
+        set({ isLoginSuccess: success });
+      },
+    }),
+    {
+      name: 'publisher-user-storage', // localStorage中的键名
+      partialize: (state) => ({
+        currentUser: state.currentUser, // 只持久化currentUser
+        isLoginSuccess: state.isLoginSuccess, // 持久化登录成功状态
+      }),
     }
-    
-    // 每次调用都重新检查当前页面是否为登录或注册页面，如果是则直接返回，不进行API调用
-    if (typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
-      
-      // 检查是否为登录或注册页面
-      if (currentPath.includes('/publisher/auth/login') || currentPath.includes('/publisher/auth/register')) {
-        set({ isLoading: false });
-        return;
-      }
-    }
-    
-    set({ isLoading: true, error: null });
-    
-    try {
-      // 调用API获取用户信息
-      const response = await fetch('/api/users/getUserInfo', {
-        method: 'GET',
-        credentials: 'include', // 包含cookie
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+  )
+);
 
-      console.log('调用API获取用户信息', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`获取用户信息失败: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.code === 0 && result.data) {
-        // 将API响应数据转换为User类型
-        const userData: User = {
-          id: result.data.id || '',
-          username: result.data.username || '',
-          email: result.data.email,
-          phone: result.data.phone,
-          role: (result.data.role as 'admin' | 'publisher' | 'commenter') || 'publisher',
-          balance: result.data.balance || result.data.wallet?.balance || 0,
-          status: (result.data.status as 'active' | 'inactive' | 'banned') || 'active',
-          createdAt: result.data.createdAt || result.data.created_at || new Date().toISOString()
-        };
-        
-        // 设置用户信息到store
-        set({ 
-          currentUser: userData, 
-          isLoading: false, 
-          error: null 
-        });
-      } else {
-        throw new Error(result.message || '获取用户信息失败');
-      }
-    } catch (error) {
-      console.error('获取用户信息出错:', error);
-      set({ 
-        isLoading: false, 
-        error: error instanceof Error ? error.message : '获取用户信息失败' 
-      });
-    }
-  },
-}));
+// 导出登录成功后保存用户信息的辅助函数
+export const saveUserOnLoginSuccess = (userData: any) => {
+  const { setUser } = useUserStore.getState();
+  
+  // 从登录响应中提取用户信息
+  const user: User = {
+    id: userData.user_id?.toString() || '',
+    username: userData.username || '',
+    email: userData.email || '',
+    phone: userData.phone || '',
+    user_id: userData.user_id || 0,
+    organization_name: userData.organization_name || '',
+    organization_leader: userData.organization_leader || '',
+    role: 'publisher' as const,
+    balance: 0,
+    status: 'active' as const,
+    createdAt: new Date().toISOString()
+  };
+  
+  setUser(user);
+  console.log('登录成功后保存用户信息到内存:', user);
+};

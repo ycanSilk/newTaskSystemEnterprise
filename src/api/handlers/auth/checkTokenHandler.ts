@@ -13,6 +13,7 @@ import { CheckTokenApiResponse } from '../../types/auth/checkTokenTypes';
 export async function handleCheckToken(): Promise<NextResponse> {
   try {
     // 使用apiClient发送检查Token请求
+    // apiClient会自动从Cookie获取Token并添加到请求头
     const response = await apiClient.get<CheckTokenApiResponse>(CHECK_TOKEN_ENDPOINT);
     
     // 返回标准化的成功响应

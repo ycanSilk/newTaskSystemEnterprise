@@ -92,6 +92,8 @@ export default function PublisherDashboardPage() {
       setLoading(true);
       setError(null);
       
+      console.log('开始获取任务列表数据');
+      
       // 使用全局fetch包装器，获得缓存和重试等优化功能
       const result: GetTasksListResponse = await globalFetch('/api/task/getTasksList', {
         method: 'GET'
@@ -105,6 +107,8 @@ export default function PublisherDashboardPage() {
         retryDelay: 1000
       });
       
+      console.log('获取任务列表数据成功:', result);
+      
       if (result.code === 0) {
         // 保存页面状态
         savePageState({ tasks: result.data.tasks, activeTab });
@@ -114,9 +118,11 @@ export default function PublisherDashboardPage() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取任务列表失败';
+      console.error('获取任务列表失败:', errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
+      console.log('获取任务列表数据完成，设置loading为false');
       setLoading(false);
     }
   };
@@ -125,6 +131,8 @@ export default function PublisherDashboardPage() {
   useEffect(() => {
     const initialize = async () => {
       try {
+        console.log('开始初始化任务列表');
+        
         // 检查是否是回退导航
         if (isBackNavigation) {
           // 尝试从localStorage获取缓存数据
@@ -136,6 +144,7 @@ export default function PublisherDashboardPage() {
               const parsedData = JSON.parse(cachedData);
               setCachedTasks(parsedData.tasks || []);
               setIsUsingCache(true);
+              setLoading(false); // 立即设置loading为false，使用缓存数据
               
               // 恢复滚动位置
               if (parsedData.scrollPosition) {
@@ -162,13 +171,17 @@ export default function PublisherDashboardPage() {
         // 重置回退状态
         setIsBackNavigation(false);
         setIsUsingCache(false);
+        
+        console.log('初始化任务列表成功');
       } catch (error) {
         console.error('初始化任务列表失败:', error);
+        // 确保在错误情况下也设置loading为false
+        setLoading(false);
       }
     };
 
     initialize();
-  }, [activeTab, isBackNavigation]);
+  }, [activeTab]); // 移除isBackNavigation依赖，避免重复执行
 
   // 监听路由变化，检测回退导航
   useEffect(() => {
@@ -192,7 +205,7 @@ export default function PublisherDashboardPage() {
         setTasks(tasksData);
       }
     }, {
-      interval: 60000, // 60秒轮询
+      interval: 3600000, // 1小时轮询
       debounceTime: 300, // 300ms防抖
       enabled: true
     });
@@ -203,7 +216,7 @@ export default function PublisherDashboardPage() {
       const tasksData = await fetchTasks();
       setTasks(tasksData);
     }, {
-      interval: 60000, // 60秒轮询
+      interval: 3600000, // 1小时轮询
       enabled: true
     });
 
@@ -230,10 +243,10 @@ export default function PublisherDashboardPage() {
       return true;
     }
 
-    // 检查是否已提示过
-    const hasPrompted = localStorage.getItem('hasPromptedPaymentPassword');
+    // 检查是否已提示过（会话级别，使用sessionStorage）
+    const hasPrompted = sessionStorage.getItem('hasPromptedPaymentPassword');
     if (hasPrompted) {
-      console.log('dashboard: 已提示过支付密码设置，跳过检查');
+      console.log('dashboard: 本次会话已提示过支付密码设置，跳过检查');
       return true;
     }
     
@@ -250,10 +263,10 @@ export default function PublisherDashboardPage() {
       if (result.success && result.data && !result.data.has_password) {
         setShowRedirectModal(true);
         console.log('dashboard: 用户未设置支付密码，显示提示');
-        localStorage.setItem('hasPromptedPaymentPassword', 'true');
+        sessionStorage.setItem('hasPromptedPaymentPassword', 'true');
         return false;
       } else {
-        localStorage.setItem('hasPromptedPaymentPassword', 'true');
+        sessionStorage.setItem('hasPromptedPaymentPassword', 'true');
         return true;
       }
     } catch (error) {
@@ -262,23 +275,10 @@ export default function PublisherDashboardPage() {
     }
   };
 
-  // 组件挂载时检查支付密码
+  // 组件挂载时检查支付密码（只检查一次）
   useEffect(() => {
     console.log('dashboard: 开始检查支付密码');
     checkWalletPassword();
-  }, []);
-
-  // 页面可见性变化时检查支付密码
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('dashboard: 页面可见性变化时检查支付密码');
-        checkWalletPassword();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // 计算统计数据

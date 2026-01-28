@@ -231,7 +231,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
             onClick={(e) => {
               e.preventDefault();
               // 复制评论（不使用await，避免返回Promise）
-              handleCopyComment(task.template_title).then(() => {
+              handleCopyComment(task.video_url).then(() => {
                 // 设置当前视频URL并打开模态框
                 setCurrentVideoUrl(task.video_url);
                 setIsModalOpen(true);
@@ -240,7 +240,6 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
           >
              打开视频
           </a>
-          <p>视频评论链接：<span>{task.video_url}</span></p>
         </div>
         
         {/* 子任务状态统计 */}
@@ -273,7 +272,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
             <span className="text-white text-sm block">{task.task_count}</span>
           </div>
         </div>
-
+          {/*
         <div className="flex justify-end">
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white  py-2 px-4 rounded-md transition-colors"
@@ -282,6 +281,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
             查看详情
           </button>
         </div>
+        */}
       </div>
     );
   };

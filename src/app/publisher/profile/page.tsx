@@ -25,16 +25,15 @@ export default function PublisherProfilePage() {
   const router = useRouter();
   const [balance, setBalance] = useState<BalanceData>({ balance: 0 });
   // 从Zustand store获取用户信息
-  const { currentUser, fetchUser } = useUserStore();
+  const { currentUser } = useUserStore();
   // 未读通知数量
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   
-  // 组件挂载时，确保用户信息已加载
+  // 组件挂载时的初始化逻辑
   useEffect(() => {
-    if (!currentUser) {
-      fetchUser();
-    }
-  }, [currentUser, fetchUser]);
+    // 用户信息由登录时直接保存到内存，无需额外加载
+    console.log('Profile页面 - 用户信息:', currentUser);
+  }, [currentUser]);
 
   // 获取余额数据和未读通知数量
   useEffect(() => {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 // 导入登录页面类型定义
 import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
 // 导入useUser钩子，用于检查登录状态
-import { useUser } from '@/hooks/useUser';
+import { useUser, saveUserOnLoginSuccess } from '@/hooks/useUser';
 // 导入优化工具
 import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
@@ -28,23 +28,16 @@ export default function PublisherLoginPage() {
   // 使用优化工具
   const { globalFetch, savePageState } = useOptimization();
   
-  // 获取redirect参数
-  const getRedirectUrl = () => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirect = urlParams.get('redirect');
-      return redirect && redirect.startsWith('/') ? redirect : '/publisher/dashboard';
-    }
-    return '/publisher/dashboard';
-  };
+
   
   // 如果用户已登录，重定向到目标页面
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
       console.log('isAuthenticated:', isAuthenticated);
       console.log('用户已登录，重定向到目标页面');
-      const redirectUrl = getRedirectUrl();
-      router.push(redirectUrl);
+      // 使用replace代替push，避免浏览器历史记录中留下登录页
+      // 确保只执行一次重定向
+      router.replace('/publisher/dashboard');
     }
   }, [isAuthLoading, isAuthenticated, router]);
   
@@ -138,15 +131,18 @@ export default function PublisherLoginPage() {
         retryDelay: 1000
       });
 
-      
-      if (result.success) {
-        // 登录成功，跳转到目标页面
-        const redirectUrl = getRedirectUrl();
-        router.push(redirectUrl);
+      if (result.code===0) {
+        console.log('登录成功，跳转到目标页面/publisher/dashboard');
+        // 登录成功后保存用户信息到内存
+        saveUserOnLoginSuccess(result.data);
+        // 使用replace代替push，避免浏览器历史记录中留下登录页
+        // 确保只执行一次重定向
+        router.replace('/publisher/dashboard');
       } else {
         // 登录失败，显示错误信息
+        console.log('登录失败:', result.message);
         setErrorMessage(result.message || '登录失败，请检查输入信息');
-        refreshCaptcha(); // 刷新验证码
+        refreshCaptcha(); // 验证码错误时刷新
       }
     } catch (error) {
       setErrorMessage('网络连接失败，请检查网络设置后重试');

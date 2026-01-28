@@ -181,7 +181,7 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
             <span className="text-white text-sm block">{task.task_count}</span>
           </div>
         </div>
-
+          {/* 
         <div className="flex justify-end">
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white  py-2 px-4 rounded-md transition-colors"
@@ -196,6 +196,7 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
             再次下单
           </button>
         </div>
+        */}
       </div>
     );
   };

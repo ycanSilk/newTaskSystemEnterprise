@@ -17,20 +17,11 @@ interface ProvidersProps {
 // 目前包含Toast消息提示功能和用户信息状态管理
 // 后续可以添加更多全局功能，如主题管理、国际化等
 export function Providers({ children }: ProvidersProps) {
-  // 从Zustand store获取fetchUser方法
-  const fetchUser = useUserStore(state => state.fetchUser);
-
-  // 应用加载时调用fetchUser方法获取用户信息，但登录页面除外
+  // 简化处理：不再需要自动获取用户信息
+  // 用户信息由登录成功后直接保存到内存
   useEffect(() => {
-    // 检查当前页面是否为登录页面，如果是则不调用API
-    if (typeof window !== 'undefined') {
-      const isLoginPage = window.location.pathname.includes('/auth/login');
-      if (!isLoginPage) {
-        console.log('Providers: 初始化获取用户信息');
-        fetchUser();
-      }
-    }
-  }, [fetchUser]);
+    console.log('Providers: 应用加载，用户信息由登录时管理');
+  }, []);
 
   return (
     <ToastProvider>

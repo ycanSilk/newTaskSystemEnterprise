@@ -10,7 +10,9 @@ export default function PersonalInfoPage() {
   const router = useRouter();
   
   // 从Zustand store获取用户信息
-  const { currentUser, fetchUser, isLoading } = useUserStore();
+  const { currentUser } = useUserStore();
+  // 加载状态
+  const [isLoading, setIsLoading] = useState(false);
   
   // 用户个人信息状态
   const [userProfile, setUserProfile] = useState({

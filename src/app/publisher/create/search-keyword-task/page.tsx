@@ -1,42 +1,45 @@
 'use client';
 
 import { Button, Input, AlertModal } from '@/components/ui';
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+// 定义API请求参数类型
+interface PublishSingleTaskRequest {
+  template_id: number;
+  video_url: string;
+  deadline: number;
+  task_count: number;
+  total_price: number;
+  pswd: string;
+  recommend_marks: Array<{
+    comment: string;
+    image_url: string;
+    keyword: string;
+  }>;
+}
 
+// 定义API响应类型
+interface PublishSingleTaskResponse {
+  code: number;
+  message: string;
+  data?: any;
+}
 
 export default function PublishSearchKeywordTaskPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   
-  // 从URL参数获取任务信息，确保searchParams不为null
-  const getSearchParam = (key: string) => {
-    return searchParams?.get(key) || '';
-  };
-  
-  const taskId = getSearchParam('taskId').trim();
-  const taskTitle = getSearchParam('title').trim() || '放大镜搜索词任务发布页';
-  const taskIcon = getSearchParam('icon').trim() || '🔍';
-  const taskPrice = parseFloat(getSearchParam('price').trim() || '5');
-  const taskDescription = getSearchParam('description').trim() || '任务描述';
-  
-  // 新的表单数据结构，包含搜索词和视频链接信息
+  // 表单状态
   const [formData, setFormData] = useState({
     videoUrl: '',
-    quantity: 1, // 任务数量
-    searchKeywords: [
-      {
-        content: '请输入需要搜索的关键词'
-      }
-    ],
-    deadline: '24'
+    deadline: '24',
+    searchKeywords: '',
+    quantity: 1
   });
 
-  const [isPublishing, setIsPublishing] = useState(false);
-
-  // 通用提示框状态
-  const [showAlertModal, setShowAlertModal] = useState(false);
+  // API调用状态
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
     title: '',
     message: '',
@@ -45,198 +48,97 @@ export default function PublishSearchKeywordTaskPage() {
     onButtonClick: () => {}
   });
 
-  // 显示通用提示框
-  const showAlert = (
-    title: string, 
-    message: string, 
-    icon: string, 
-    buttonText?: string, 
-    onButtonClick?: () => void
-  ) => {
-    setAlertConfig({
-      title, 
-      message, 
-      icon,
-      buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => {})
-    });
-    setShowAlertModal(true);
-  };
+  // 任务单价
+  const taskPrice = 5;
+
+  // 计算任务基础费用（总计费用）
+  const baseCost = taskPrice * formData.quantity;
+  const totalCost = baseCost.toFixed(2);
 
   // 任务数量变化处理 - 允许1-10个任务
   const handleQuantityChange = (newQuantity: number) => {
     // 限制数量在1-10之间
     const quantity = Math.max(1, Math.min(10, newQuantity));
     
-    setFormData(prevData => {return { ...prevData, quantity };});
+    setFormData(prevData => ({ ...prevData, quantity }));
   };
-  
 
+  // 显示提示框
+  const showAlertModal = (title: string, message: string, icon: string, buttonText?: string, onButtonClick?: () => void) => {
+    setAlertConfig({
+      title,
+      message,
+      icon,
+      buttonText: buttonText || '确认',
+      onButtonClick: onButtonClick || (() => {})
+    });
+    setShowAlert(true);
+  };
+
+  // 页面加载时不调用API，只在点击发布按钮时调用
 
   // 发布任务
   const handlePublish = async () => {
-    // 防止重复提交
-    if (isPublishing) {
-      return;
-    }
-    
-    // 表单验证 - 完整验证逻辑
-    if (!formData.videoUrl) {
-      showAlert('输入错误', '请输入视频链接', '⚠️');
-      return;
-    }
-    
-    // 验证任务数量
-    if (formData.quantity === undefined) {
-      showAlert('输入错误', '请输入任务数量', '⚠️');
-      return;
-    }
-    
-    // 验证搜索词
-    const hasEmptyKeyword = formData.searchKeywords.some(keyword => !keyword.content.trim());
-    if (hasEmptyKeyword) {
-      showAlert('输入错误', '请填写所有搜索词内容', '⚠️');
-      return;
-    }
-
-    // 显示加载状态
-    setIsPublishing(true);
-    
-    // 生成唯一请求ID用于跟踪，确保在整个函数作用域可用
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`[任务发布-${requestId}] 开始发布任务...`);
-    console.log(`[任务发布-${requestId}] 表单数据:`, formData);
-    console.log(`[任务发布-${requestId}] 任务ID:`, taskId);
-
     try {
-      // 移除token获取逻辑，后端API会自动处理认证
-
-      // 计算总费用（不包含平台手续费）
-      const totalCost = taskPrice * formData.quantity;
+      setIsLoading(true);
       
-      // 余额校验 - 获取当前用户的可用余额
-      console.log('[任务发布] 开始余额校验，总费用:', totalCost);
-      const balanceResponse = await fetch('/api/finance', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-store'
-      });
-      
-      const balanceData = await balanceResponse.json();
-      console.log('[任务发布] 余额校验结果:', balanceData);
-      
-      if (!balanceData.success || !balanceData.data) {
-        console.log('[任务发布] 获取余额失败');
-        showAlert('系统错误', '获取账户余额失败，请稍后重试', '❌');
+      // 表单验证
+      if (!formData.videoUrl) {
+        showAlertModal('验证失败', '请输入视频链接', '⚠️');
         return;
       }
       
-      // 获取可用余额
-      const availableBalance = balanceData.data.balance?.available || 0;
-      console.log('[任务发布] 当前可用余额:', availableBalance);
-      
-      // 比较余额和总费用
-      if (availableBalance < totalCost) {
-        console.log('[任务发布] 余额不足，可用余额:', availableBalance, '总费用:', totalCost);
-        showAlert(
-          '余额不足', 
-          `您的账户可用余额为 ¥${availableBalance.toFixed(2)}，完成此任务需要 ¥${totalCost.toFixed(2)}，请先充值再发布任务。`, 
-          '⚠️'
-        );
+      if (!formData.searchKeywords.trim()) {
+        showAlertModal('验证失败', '请输入搜索词内容', '⚠️');
         return;
       }
       
-      console.log('[任务发布] 余额充足，继续发布流程');
-
-      // 构建API请求体 - 将所有搜索词合并为一个requirements字段
-      const requirements = formData.searchKeywords.map(keyword => keyword.content).join('\n\n');
-      const requestBody = {
-        taskId: taskId || '',
-        taskTitle,
-        taskPrice: taskPrice,
-        requirements: requirements,
-        videoUrl: formData.videoUrl,
-        quantity: formData.quantity,
-        deadline: formData.deadline,
-        needSearchKeyword: true // 标识为搜索词任务
+      // 构建请求体
+      const requestBody: PublishSingleTaskRequest = {
+        template_id: 3,
+        video_url: formData.videoUrl,
+        deadline: Math.floor(Date.now() / 1000) + parseInt(formData.deadline) * 60,
+        task_count: formData.quantity,
+        total_price: baseCost,
+        pswd: '123456',
+        recommend_marks: [
+          {
+            comment: '',
+            image_url: '',
+            keyword: formData.searchKeywords
+          }
+        ]
       };
 
-      console.log('API请求体:', requestBody);
+      console.log('发布任务API请求体:', requestBody);
       
-      console.log(`[任务发布-${requestId}] 即将发送API请求，时间戳: ${Date.now()}`);
-      
-      // 调用API发布任务
-      const response = await fetch('/api/comment-order', {
+      // 调用API
+      const response = await fetch('/api/task/publishSingleTask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Request-ID': requestId // 添加请求ID头
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
-      
-      console.log(`[任务发布-${requestId}] API响应状态: ${response.status}, 接收时间: ${Date.now()}`);
 
-      const result = await response.json();
-      console.log(`[任务发布-${requestId}] API响应结果:`, result);
+      const result: PublishSingleTaskResponse = await response.json();
+      console.log('发布任务API响应结果:', result);
       
-      if (result.success) {
-        console.log(`[任务发布-${requestId}] 任务发布成功，即将显示成功提示`);
-        // 修改为用户点击确认后才跳转
-        showAlert(
-          '发布成功', 
-          `任务发布成功！订单号：${result.order?.orderNumber || ''}`, 
-          '✅',
-          '确定',
-          () => {
-            console.log(`[任务发布-${requestId}] 用户确认成功，准备跳转`);
-            // 在用户点击确认按钮后跳转
-            router.push('/publisher/dashboard');
-          }
-        );
+      // 显示API响应结果
+      if (result.code === 0) {
+        showAlertModal('发布成功', result.message, '✅', '确定', () => {
+          router.push('/publisher/dashboard');
+        });
       } else {
-        // 发布失败，显示错误提示
-        if (result.errorType === 'InsufficientBalance') {
-          // 特定处理余额不足的情况
-          showAlert('账户余额不足', '您的账户余额不足以支付任务费用，请先充值后再尝试发布任务。', '⚠️', '前往充值', () => {
-            router.push('/publisher/finance');
-          });
-        } else {
-          showAlert('发布失败', `任务发布失败: ${result.message || '未知错误'}`, '❌');
-        }
+        showAlertModal('发布失败', result.message, '❌');
       }
     } catch (error) {
-      console.error(`[任务发布-${requestId}] 发布任务时发生错误:`, error);
-      showAlert('网络错误', '发布任务时发生错误，请稍后重试', '⚠️');
+      console.error('发布任务错误:', error);
+      showAlertModal('网络错误', '发布任务失败，请稍后重试', '⚠️');
     } finally {
-      console.log(`[任务发布-${requestId}] 发布流程结束，重置发布状态`);
-      setIsPublishing(false);
+      setIsLoading(false);
     }
   };
-
-  // 计算任务基础费用（总计费用）
-  const baseCost = taskPrice * formData.quantity;
-  const totalCost = baseCost.toFixed(2);
-
-  // 如果没有找到任务类型，返回错误页面
-  if (!taskId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-2xl mb-2">❌</div>
-          <div className="text-lg font-medium text-gray-800 mb-2">任务信息不完整</div>
-          <Button 
-            onClick={() => router.push('/publisher/create')}
-            className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            返回选择任务
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -282,20 +184,14 @@ export default function PublishSearchKeywordTaskPage() {
             指定搜索词内容 <span className="text-red-500">*</span>
           </label>
           
-
-          
           {/* 搜索词输入框 */}
           <div className="mb-2">
             <textarea
               className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               rows={3}
               placeholder="请输入需要搜索的关键词，完成后系统会自动生成相应的搜索词"
-              value={formData.searchKeywords[0].content}
-              onChange={(e) => {
-                const newKeywords = [...formData.searchKeywords];
-                newKeywords[0] = {...newKeywords[0], content: e.target.value};
-                setFormData({...formData, searchKeywords: newKeywords});
-              }}
+              value={formData.searchKeywords}
+              onChange={(e) => setFormData({...formData, searchKeywords: e.target.value})}
             />
           </div>
         </div>
@@ -356,10 +252,10 @@ export default function PublishSearchKeywordTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button 
           onClick={handlePublish}
-          disabled={!formData.videoUrl || formData.quantity === undefined || isPublishing || formData.searchKeywords.some(keyword => !keyword.content.trim())}
+          disabled={!formData.videoUrl || !formData.searchKeywords.trim() || isLoading}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
-          立即发布任务 - ¥{totalCost}
+          {isLoading ? '发布中...' : `立即发布任务 - ¥${totalCost}`}
         </Button>
         <Button 
           onClick={() => router.back()}
@@ -372,16 +268,16 @@ export default function PublishSearchKeywordTaskPage() {
 
       {/* 通用提示框组件 */}
       <AlertModal
-        isOpen={showAlertModal}
+        isOpen={showAlert}
         title={alertConfig.title}
         message={alertConfig.message}
         icon={alertConfig.icon}
         buttonText={alertConfig.buttonText}
         onButtonClick={() => {
           alertConfig.onButtonClick();
-          setShowAlertModal(false);
+          setShowAlert(false);
         }}
-        onClose={() => setShowAlertModal(false)}
+        onClose={() => setShowAlert(false)}
       />
     </div>
   );
