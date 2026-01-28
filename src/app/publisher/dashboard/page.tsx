@@ -1,18 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-// 导入React Query的useQuery hook
-import { useQuery } from '@tanstack/react-query';
-// 导入四个对应状态的页面组件
-import OverViewTabPage from './OverView/page';
-import ActiveTabPage from './InProgress/page';
-import AwaitingReviewTabPage from './AwaitingReview/page';
-import CompletedTabPage from './Completed/page';
+import dynamic from 'next/dynamic';
+// 导入优化工具
+import { useOptimization } from '@/components/optimization/OptimizationProvider';
+// 懒加载四个对应状态的页面组件
+const OverViewTabPage = dynamic(() => import('./OverView/page'), {
+  loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
+  ssr: false
+});
+const ActiveTabPage = dynamic(() => import('./InProgress/page'), {
+  loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
+  ssr: false
+});
+const AwaitingReviewTabPage = dynamic(() => import('./AwaitingReview/page'), {
+  loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
+  ssr: false
+});
+const CompletedTabPage = dynamic(() => import('./Completed/page'), {
+  loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
+  ssr: false
+});
+// 懒加载URL重定向提示框组件
+const URLRedirection = dynamic(() => import('../../../components/promptBox/URLRedirection'), {
+  loading: () => null,
+  ssr: false
+});
+
 // 导入检查支付密码的API响应类型
 import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWalletPwdTypes';
-// 导入URL重定向提示框组件
-import URLRedirection from '../../../components/promptBox/URLRedirection';
 
 // 导入加载组件，用于状态加载中显示
 import { Loading } from '@/components/ui';
@@ -34,6 +51,16 @@ export default function PublisherDashboardPage() {
   
   // 添加URL重定向提示框状态
   const [showRedirectModal, setShowRedirectModal] = useState(false);
+  // 页面回退缓存状态
+  const [isBackNavigation, setIsBackNavigation] = useState(false);
+  const [cachedTasks, setCachedTasks] = useState<Task[]>([]);
+  const [isUsingCache, setIsUsingCache] = useState(false);
+  
+  // 滚动位置缓存
+  const scrollPositionRef = useRef<number>(0);
+  
+  // 使用优化工具
+  const { globalFetch, savePageState, addRefreshTask, removeRefreshTask, refreshTask } = useOptimization();
 
   // 确保页面加载时默认显示tab=OverView参数
   useEffect(() => {
@@ -44,166 +71,227 @@ export default function PublisherDashboardPage() {
     }
   }, []);
   
-  // 使用React Query获取任务列表数据
-  const {
-    data: tasksData,
-    isLoading: loading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['tasks', refreshTrigger],
-    queryFn: async (): Promise<Task[]> => {
-      // 调用后端API获取任务列表
-      const response = await fetch('/api/task/getTasksList', {
-        method: 'GET',
-        credentials: 'include'
+  // 使用原生状态管理获取任务列表数据
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 保存滚动位置
+  useEffect(() => {
+    const handleScroll = () => {
+      scrollPositionRef.current = window.scrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // 获取任务列表数据的函数
+  const fetchTasks = async (): Promise<Task[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 使用全局fetch包装器，获得缓存和重试等优化功能
+      const result: GetTasksListResponse = await globalFetch('/api/task/getTasksList', {
+        method: 'GET'
+      }, {
+        // 启用缓存，缓存时间5分钟
+        enableCache: true,
+        expiry: 5 * 60 * 1000,
+        // 启用自动重试
+        enableRetry: true,
+        retryCount: 3,
+        retryDelay: 1000
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result: GetTasksListResponse = await response.json();
-      
       if (result.code === 0) {
+        // 保存页面状态
+        savePageState({ tasks: result.data.tasks, activeTab });
         return result.data.tasks;
       } else {
         throw new Error(result.message || '获取任务列表失败');
       }
-    },
-    staleTime: 30 * 1000, // 30秒的缓存时间
-    refetchOnWindowFocus: true, // 窗口聚焦时重新请求
-  });
-  
-  // 获取任务数据
-  const tasks = tasksData || [];
-  
-  // 添加页面可见性变化监听，当页面重新可见时刷新任务列表
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '获取任务列表失败';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 组件挂载时获取任务列表
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('dashboard handleVisibilityChange: 页面重新可见，刷新任务列表');
-        refetch();
+    const initialize = async () => {
+      try {
+        // 检查是否是回退导航
+        if (isBackNavigation) {
+          // 尝试从localStorage获取缓存数据
+          const cacheKey = `dashboard_cache_${activeTab}`;
+          const cachedData = localStorage.getItem(cacheKey);
+          
+          if (cachedData) {
+            try {
+              const parsedData = JSON.parse(cachedData);
+              setCachedTasks(parsedData.tasks || []);
+              setIsUsingCache(true);
+              
+              // 恢复滚动位置
+              if (parsedData.scrollPosition) {
+                window.scrollTo(0, parsedData.scrollPosition);
+              }
+            } catch (e) {
+              console.error('解析缓存失败:', e);
+            }
+          }
+        }
+        
+        // 获取最新数据
+        const tasksData = await fetchTasks();
+        setTasks(tasksData);
+        
+        // 缓存数据
+        const cacheKey = `dashboard_cache_${activeTab}`;
+        localStorage.setItem(cacheKey, JSON.stringify({
+          tasks: tasksData,
+          scrollPosition: window.scrollY,
+          timestamp: Date.now()
+        }));
+        
+        // 重置回退状态
+        setIsBackNavigation(false);
+        setIsUsingCache(false);
+      } catch (error) {
+        console.error('初始化任务列表失败:', error);
       }
     };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refetch]);
-  
-  // 添加组件挂载后延迟刷新，确保能获取到最新数据
+
+    initialize();
+  }, [activeTab, isBackNavigation]);
+
+  // 监听路由变化，检测回退导航
   useEffect(() => {
-    const timer = setTimeout(() => {
-      refetch();
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [refetch]);
+    const handlePopState = () => {
+      if (history.state && history.state.navigationType === 'back') {
+        setIsBackNavigation(true);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 组件挂载时添加刷新任务
+  useEffect(() => {
+    // 添加页面可见性刷新任务
+    addRefreshTask('dashboard_visibility_refresh', async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('dashboard: 页面重新可见，刷新任务列表');
+        const tasksData = await fetchTasks();
+        setTasks(tasksData);
+      }
+    }, {
+      interval: 60000, // 60秒轮询
+      debounceTime: 300, // 300ms防抖
+      enabled: true
+    });
+
+    // 添加定时轮询任务
+    addRefreshTask('dashboard_polling_refresh', async () => {
+      console.log('dashboard: 定时刷新任务列表');
+      const tasksData = await fetchTasks();
+      setTasks(tasksData);
+    }, {
+      interval: 60000, // 60秒轮询
+      enabled: true
+    });
+
+    // 清理函数
+    return () => {
+      removeRefreshTask('dashboard_visibility_refresh');
+      removeRefreshTask('dashboard_polling_refresh');
+    };
+  }, []);
 
   // 处理选项卡切换并更新URL参数
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     
-    // 使用URL参数格式更新当前页面的选项卡状态
+    // 更新URL参数
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('tab', tab);
     window.history.replaceState({}, '', newUrl.toString());
   };
 
-  // 使用React Query检查支付密码状态
-  const { refetch: refetchWalletPassword } = useQuery({
-    queryKey: ['walletPassword'],
-    queryFn: async (): Promise<boolean> => {
-      // 只有在浏览器环境中才调用API
-      if (typeof window === 'undefined') {
-        return true; // 默认认为已设置
-      }
+  // 检查支付密码状态
+  const checkWalletPassword = async (): Promise<boolean> => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
 
-      // 检查是否已经提示过支付密码设置
-      const hasPromptedPaymentPassword = localStorage.getItem('hasPromptedPaymentPassword');
-      if (hasPromptedPaymentPassword) {
-        console.log('dashboard checkWalletPassword: 已经提示过支付密码设置，跳过检查');
-        return true;
-      }
-      
-      // 调用检查支付密码API，使用正确的端点
+    // 检查是否已提示过
+    const hasPrompted = localStorage.getItem('hasPromptedPaymentPassword');
+    if (hasPrompted) {
+      console.log('dashboard: 已提示过支付密码设置，跳过检查');
+      return true;
+    }
+    
+    try {
       const response = await fetch('/api/paymentWallet/checkWalletPwd', {
         method: 'GET',
         credentials: 'include'
       });
       
-      // 解析API响应
       const result: CheckWalletPwdApiResponse = await response.json();
       
-      console.log('dashboard checkWalletPassword: 检查结果:', result);
-      console.log('当前登录用户是否设置里密码',result.data?.has_password);
+      console.log('dashboard: 支付密码检查结果:', result);
       
-      // 如果请求成功且用户未设置支付密码
       if (result.success && result.data && !result.data.has_password) {
-        // 显示自定义提示弹窗
         setShowRedirectModal(true);
-        console.log('dashboard checkWalletPassword: 用户未设置支付密码，显示提示弹窗');
-        // 标记已经提示过
+        console.log('dashboard: 用户未设置支付密码，显示提示');
         localStorage.setItem('hasPromptedPaymentPassword', 'true');
         return false;
       } else {
-        console.log('dashboard checkWalletPassword: 用户已设置支付密码，不显示提示弹窗');
-        console.log('当前登录用户是否设置里密码',result.data?.has_password);
-        // 标记已经检查过
         localStorage.setItem('hasPromptedPaymentPassword', 'true');
-        // 如果已经显示了弹窗，关闭它
-        if (showRedirectModal) {
-          setShowRedirectModal(false);
-        }
         return true;
       }
-    },
-    enabled: false, // 手动触发
-    staleTime: 5 * 60 * 1000, // 5分钟的缓存时间
-  });
+    } catch (error) {
+      console.error('支付密码检查失败:', error);
+      return true;
+    }
+  };
 
-  // 在组件挂载时检查支付密码
+  // 组件挂载时检查支付密码
   useEffect(() => {
-    console.log('dashboard useEffect: 开始检查支付密码');
-    refetchWalletPassword();
+    console.log('dashboard: 开始检查支付密码');
+    checkWalletPassword();
   }, []);
 
-  // 监听页面可见性变化，当页面重新可见时检查支付密码
+  // 页面可见性变化时检查支付密码
   useEffect(() => {
-    // 只有在浏览器环境中才添加事件监听器
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('dashboard handleVisibilityChange: 页面重新可见，检查支付密码');
-        refetchWalletPassword();
+        console.log('dashboard: 页面可见性变化时检查支付密码');
+        checkWalletPassword();
       }
     };
 
-    // 监听visibilitychange事件
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      // 清理事件监听器
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refetchWalletPassword]);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // 计算统计数据
   const calculateTaskStats = (): TaskStats => {
-    // 这里可以根据实际需求计算统计数据
-    // 暂时返回模拟数据
+    // 使用当前任务或缓存任务
+    const currentTasks = tasks.length > 0 ? tasks : cachedTasks;
+    
     return {
-      publishedCount: tasks.length,
-      acceptedCount: tasks.reduce((sum, task) => sum + task.task_doing, 0),
-      submittedCount: tasks.reduce((sum, task) => sum + task.task_reviewing, 0),
-      completedCount: tasks.reduce((sum, task) => sum + task.task_done, 0),
-      totalEarnings: parseFloat(tasks.reduce((sum, task) => sum + parseFloat(task.total_price), 0).toFixed(2)),
+      publishedCount: currentTasks.length,
+      acceptedCount: currentTasks.reduce((sum, task) => sum + task.task_doing, 0),
+      submittedCount: currentTasks.reduce((sum, task) => sum + task.task_reviewing, 0),
+      completedCount: currentTasks.reduce((sum, task) => sum + task.task_done, 0),
+      totalEarnings: parseFloat(currentTasks.reduce((sum, task) => sum + parseFloat(task.total_price), 0).toFixed(2)),
       pendingEarnings: 0,
       todayEarnings: 0,
       monthEarnings: 0,
@@ -217,28 +305,38 @@ export default function PublisherDashboardPage() {
       invitedUsersCount: 0
     };
   };
-  
+
   // 计算订单统计数据
   const calculateOrderStats = (): OrderStats => {
+    const currentTasks = tasks.length > 0 ? tasks : cachedTasks;
+    
     return {
-      acceptedCount: tasks.reduce((sum, task) => sum + task.task_doing, 0),
-      submittedCount: tasks.reduce((sum, task) => sum + task.task_reviewing, 0),
-      completedCount: tasks.reduce((sum, task) => sum + task.task_done, 0)
+      acceptedCount: currentTasks.reduce((sum, task) => sum + task.task_doing, 0),
+      submittedCount: currentTasks.reduce((sum, task) => sum + task.task_reviewing, 0),
+      completedCount: currentTasks.reduce((sum, task) => sum + task.task_done, 0)
     };
   };
-  
+
   // 根据状态过滤任务
-  const inProgressTasks = tasks.filter(task => task.status === 1 && task.status_text === '进行中');
-  const awaitingReviewTasks = tasks.filter(task => task.task_reviewing > 0);
-  const completedTasks = tasks.filter(task => task.status !== 1 || task.status_text === '已完成');
-  
+  const inProgressTasks = (tasks.length > 0 ? tasks : cachedTasks).filter(task => 
+    task.status === 1 && task.status_text === '进行中'
+  );
+
+  const awaitingReviewTasks = (tasks.length > 0 ? tasks : cachedTasks).filter(task => 
+    task.task_reviewing > 0
+  );
+
+  const completedTasks = (tasks.length > 0 ? tasks : cachedTasks).filter(task => 
+    task.status !== 1 || task.status_text === '已完成'
+  );
+
   // 生成统计数据
   const taskStats = calculateTaskStats();
   const orderStats = calculateOrderStats();
 
   return (
     <div className="pb-20">
-      {/* 只保留这4个切换按钮的布局和框架 */}
+      {/* 只保留4个切换按钮 */}
       <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
         <button
           onClick={() => handleTabChange('OverView')}
@@ -273,42 +371,41 @@ export default function PublisherDashboardPage() {
         </div>
       ) : error ? (
         <div className="flex justify-center items-center py-20">
-          <div className="text-red-500">{error instanceof Error ? error.message : '获取数据失败'}</div>
+          <div className="text-red-500">{error}</div>
         </div>
       ) : (
-        // 直接嵌入4个对应状态的页面组件，并传递数据
-        <>
+        <Suspense fallback={<div className="flex justify-center items-center py-20">加载中...</div>}>
           {activeTab === 'OverView' && (
             <OverViewTabPage 
               taskStats={taskStats}
               orderStats={orderStats}
-              loading={false}
+              loading={isUsingCache}
             />
           )}
           {activeTab === 'InProgress' && (
-            <ActiveTabPage 
-              tasks={inProgressTasks}
-            />
+            <ActiveTabPage tasks={inProgressTasks} />
           )}
           {activeTab === 'AwaitingReview' && (
             <AwaitingReviewTabPage />
           )}
           {activeTab === 'Completed' && (
-            <CompletedTabPage 
-              tasks={completedTasks}
-            />
+            <CompletedTabPage tasks={completedTasks} />
           )}
-        </>
+        </Suspense>
       )}
-      
-      {/* URL重定向提示框组件 */}
-      <URLRedirection
-        isOpen={showRedirectModal}
-        message="您尚未设置支付密码，请先设置支付密码"
-        buttonText="前往设置"
-        redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
-        onClose={() => setShowRedirectModal(false)}
-      />
+
+      {/* URL重定向提示框 */}
+      <Suspense fallback={null}>
+        {URLRedirection && (
+          <URLRedirection
+            isOpen={showRedirectModal}
+            message="您尚未设置支付密码，请先设置"
+            buttonText="前往设置"
+            redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
+            onClose={() => setShowRedirectModal(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

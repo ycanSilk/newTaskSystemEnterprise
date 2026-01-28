@@ -32,6 +32,7 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
 
   // 过滤最近订单
   const filterRecentOrders = (tasks: Task[]) => {
+    if (!tasks || !Array.isArray(tasks)) return [];
     return tasks.filter(task => {
       const taskTime = new Date(task.created_at).getTime();
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -41,6 +42,7 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
 
   // 搜索订单
   const searchOrders = (tasks: Task[]) => {
+    if (!tasks || !Array.isArray(tasks)) return [];
     if (!searchTerm.trim()) return tasks;
     return tasks.filter(task => 
       task.task_id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
 // 导入useUser钩子，用于检查登录状态
 import { useUser } from '@/hooks/useUser';
+// 导入优化工具
+import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
 export default function PublisherLoginPage() {
   
@@ -23,13 +25,26 @@ export default function PublisherLoginPage() {
   
   // 使用useUser钩子检查登录状态
   const { isAuthenticated, isLoading: isAuthLoading } = useUser();
+  // 使用优化工具
+  const { globalFetch, savePageState } = useOptimization();
   
-  // 如果用户已登录，重定向到仪表盘页面
+  // 获取redirect参数
+  const getRedirectUrl = () => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get('redirect');
+      return redirect && redirect.startsWith('/') ? redirect : '/publisher/dashboard';
+    }
+    return '/publisher/dashboard';
+  };
+  
+  // 如果用户已登录，重定向到目标页面
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
       console.log('isAuthenticated:', isAuthenticated);
-      console.log('用户已登录，重定向到仪表盘页面');
-      router.push('/publisher/dashboard');
+      console.log('用户已登录，重定向到目标页面');
+      const redirectUrl = getRedirectUrl();
+      router.push(redirectUrl);
     }
   }, [isAuthLoading, isAuthenticated, router]);
   
@@ -102,7 +117,8 @@ export default function PublisherLoginPage() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/auth/login', {
+      // 使用全局fetch包装器，获得缓存和重试等优化功能
+      const result: LoginApiResponse = await globalFetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -110,17 +126,23 @@ export default function PublisherLoginPage() {
         body: JSON.stringify({
           account: formData.account.trim(),
           password: formData.password.trim()
-        }),
-        credentials: 'include' // 确保携带cookie
+        })
+      }, {
+        // 登录请求不使用缓存
+        enableCache: false,
+        // 启用自动重试
+        enableRetry: true,
+        // 重试3次
+        retryCount: 3,
+        // 重试延迟1秒
+        retryDelay: 1000
       });
 
       
-      // 解析响应数据
-      const result: LoginApiResponse = await response.json();
-      
       if (result.success) {
-        // 登录成功，跳转到仪表盘
-        router.push('/publisher/dashboard');
+        // 登录成功，跳转到目标页面
+        const redirectUrl = getRedirectUrl();
+        router.push(redirectUrl);
       } else {
         // 登录失败，显示错误信息
         setErrorMessage(result.message || '登录失败，请检查输入信息');

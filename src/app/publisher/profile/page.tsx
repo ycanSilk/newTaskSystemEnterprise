@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ShopOutlined, WalletOutlined, EditOutlined, OrderedListOutlined, BarChartOutlined, CreditCardOutlined, RightOutlined, BellOutlined, MessageOutlined, UserAddOutlined, DownloadOutlined } from '@ant-design/icons';
 import { message } from 'antd';
 // 导入Zustand用户状态存储
@@ -145,7 +146,7 @@ export default function PublisherProfilePage() {
         >
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-white bg-opacity-20 rounded-lg flex items-center justify-center text-2xl">
-              <img src="/images/default.png" alt="" className="w-full h-full overflow-hidden rounded-lg" />
+              <Image src="/images/default.png" alt="Default avatar" width={64} height={64} className="rounded-lg" />
             </div>
             <div>
               <span className="flex font-bold text-lg items-center">

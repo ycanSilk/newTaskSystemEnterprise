@@ -33,11 +33,8 @@ export function Providers({ children }: ProvidersProps) {
   }, [fetchUser]);
 
   return (
-    {/* ToastProvider是Toast功能的上下文提供者 */}
     <ToastProvider>
-      {/* 渲染子组件，即整个应用的内容 */}
       {children}
-      {/* Toaster组件用于显示Toast消息 */}
       <Toaster />
     </ToastProvider>
   );

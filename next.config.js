@@ -1,11 +1,19 @@
 /** @type {import('next').NextConfig} */
 const TerserPlugin = require('terser-webpack-plugin');
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: true,
+  analyzerMode: 'static',
+  reportFilename: 'bundle-analysis.html',
+});
 
 const nextConfig = {
   eslint: {
     // 禁用Next.js默认的lint配置，使用项目自定义配置
     ignoreDuringBuilds: true
   },
+  // 启用压缩
+  compress: true,
   experimental: {
     typedRoutes: true,
   },
@@ -63,6 +71,36 @@ const nextConfig = {
       },
     ];
   },
+  // 构建优化
+  webpack: (config, { isServer }) => {
+    // 启用持久化缓存
+    config.cache = {
+      type: 'filesystem',
+      buildDependencies: {
+        config: [__filename],
+      },
+    };
+    
+    // 生产环境优化
+    if (config.mode === 'production') {
+      // 移除控制台日志
+      config.optimization.minimizer?.forEach((minimizer) => {
+        if (minimizer instanceof TerserPlugin) {
+          minimizer.options.terserOptions = {
+            ...minimizer.options.terserOptions,
+            compress: {
+              ...minimizer.options.terserOptions?.compress,
+              drop_console: true,
+            },
+          };
+        }
+      });
+    }
+    
+    return config;
+  },
+  // 启用SWC编译器
+  swcMinify: true,
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

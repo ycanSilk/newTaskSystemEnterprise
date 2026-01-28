@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 export default function DouyinVersionPage() {
   // 软件信息
   const softwareInfo = {
@@ -23,7 +25,7 @@ export default function DouyinVersionPage() {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           {/* 抖音Logo区域 */}
             <div className="flex items-center justify-center w-full mb-8">
-              <img src="/images/douyin-logo.png" alt="抖音Logo" className="mx-auto" />
+              <Image src="/images/douyin-logo.png" alt="抖音Logo" width={120} height={40} className="mx-auto" />
             </div>
 
           {/* 平台选择按钮 */}
@@ -34,10 +36,12 @@ export default function DouyinVersionPage() {
                 onClick={() => handleDownload(softwareInfo.ios.downloadUrl)}
                 className="p-2 bg-transparent border-none focus:outline-none"
               >
-                <img 
+                <Image 
                   src="/images/iPhone.png" 
                   alt="iOS Logo" 
-                  className="w-12 h-12 object-contain" 
+                  width={48} 
+                  height={48} 
+                  className="object-contain" 
                 />
               </button>
               <span className="text-gray-700 font-medium mt-2">iOS</span>
@@ -49,10 +53,12 @@ export default function DouyinVersionPage() {
                 onClick={() => handleDownload(softwareInfo.android.downloadUrl)}
                 className="p-2 bg-transparent border-none focus:outline-none"
               >
-                <img 
+                <Image 
                   src="/images/Android.png" 
                   alt="Android Logo" 
-                  className="w-12 h-12 object-contain" 
+                  width={48} 
+                  height={48} 
+                  className="object-contain" 
                 />
               </button>
               <span className="text-gray-700 font-medium mt-2">Android</span>

@@ -64,6 +64,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
 
   // 过滤最近订单 - 允许未来日期的任务
   const filterRecentOrders = (tasks: Task[]) => {
+    if (!tasks || !Array.isArray(tasks)) return [];
     return tasks.filter(task => {
       try {
         const taskTime = new Date(task.created_at).getTime();
@@ -77,6 +78,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
 
   // 搜索订单
   const searchOrders = (tasks: Task[]) => {
+    if (!tasks || !Array.isArray(tasks)) return [];
     if (!searchTerm.trim()) return tasks;
     return tasks.filter(task => 
       task.task_id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
