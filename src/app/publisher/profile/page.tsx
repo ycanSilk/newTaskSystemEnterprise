@@ -79,6 +79,7 @@ export default function PublisherProfilePage() {
       color: 'bg-purple-100',
       path: '/publisher/profile/paymentsettings'
     },
+    /*
     {
       id: 'order-management',
       title: '订单管理',
@@ -93,6 +94,7 @@ export default function PublisherProfilePage() {
       color: 'bg-blue-100',
       path: '/publisher/profile/data-stats'
     },
+    */
     {
       id: 'notifications',
       title: '通知提醒',

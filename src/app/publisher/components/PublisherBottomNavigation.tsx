@@ -27,11 +27,11 @@ export const PublisherBottomNavigation: React.FC = () => {
     {
       icon: <PlusCircleOutlined />,
       label: '发布评论',
-      path: '/publisher/create/platformtype'
+      path: '/publisher/create'
     },
     { icon: <WalletOutlined />, 
       label: '租赁市场', 
-      path: '/accountrental/account-rental-market?from=publisher-dashboard' },
+      path: '/rental/rental_market' },
     {
       icon: <UserOutlined />,
       label: '我的',

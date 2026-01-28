@@ -18,7 +18,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'douyin',
     title: '抖音',
-    description: '在抖音平台发布各类任务，包括评论、账号出租、视频发送等',
+    description: '在抖音平台发布各类任务，包括评论、账号出租',
     taskCount: 5,
     color: 'from-red-500 to-pink-600'
   },
@@ -58,8 +58,7 @@ const PlatformCard = ({ platform, onClick }: { platform: Platform, onClick: () =
       {/* 进入按钮 */}
       <div className="flex items-center justify-end">
         <div className="bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-2">
-          <span>进入平台</span>
-          <span>→</span>
+          <span>进入</span>
         </div>
       </div>
     </div>
@@ -73,7 +72,7 @@ export default function CreateTask() {
   const handlePlatformClick = (platform: Platform) => {
     // 只有抖音平台可以正常跳转，其他平台显示维护提示
     if (platform.id === 'douyin') {
-      router.push(`/publisher/create/platform-task/${platform.id}`);
+      router.push(`/publisher/create/${platform.id}`);
     } else {
       setIsModalOpen(true);
     }

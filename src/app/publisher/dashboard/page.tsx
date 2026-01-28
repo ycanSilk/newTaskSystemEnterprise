@@ -58,15 +58,13 @@ export default function PublisherDashboardPage() {
         method: 'GET',
         credentials: 'include'
       });
-      console.log('dashboard fetchTasks: 发送GET请求到 /api/task/getTasksList');
-      console.log(response.status, response.statusText);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const result: GetTasksListResponse = await response.json();
       
-      console.log('dashboard fetchTasks: 后端返回数据:', result);
       if (result.code === 0) {
         setTasks(result.data.tasks);
       } else {
