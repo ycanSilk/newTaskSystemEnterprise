@@ -19,9 +19,6 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   // 简化处理：不再需要自动获取用户信息
   // 用户信息由登录成功后直接保存到内存
-  useEffect(() => {
-    console.log('Providers: 应用加载，用户信息由登录时管理');
-  }, []);
 
   return (
     <ToastProvider>

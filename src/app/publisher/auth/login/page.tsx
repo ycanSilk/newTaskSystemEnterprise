@@ -210,7 +210,7 @@ export default function PublisherLoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 focus:outline-none ${showPassword ? 'bg-blue-100 text-blue-600 p-1 rounded-full' : 'text-gray-500 hover:text-gray-700'}`}
                     aria-label={showPassword ? "隐藏密码" : "显示密码"}
                   >
                     <svg
@@ -225,7 +225,7 @@ export default function PublisherLoginPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878l3.125-3.125M8.25 3a10.05 10.05 0 00-7.5 11.227m13.5-4.073a10.05 10.05 0 01-7.5-11.227M8.25 3a11.94 11.94 0 015.547 2.912" 
                         />
                       ) : (
                         <path
