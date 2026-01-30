@@ -41,6 +41,14 @@ export const useUserStore = create<UserState>()(
       clearUser: () => {
         console.log('清除用户信息');
         set({ currentUser: null, error: null, isLoginSuccess: false });
+        // 清除localStorage中的持久化数据
+        try {
+          localStorage.removeItem('publisher-user-storage');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } catch (error) {
+          console.error('清除本地存储失败:', error);
+        }
       },
 
       setLoginSuccess: (success) => {
