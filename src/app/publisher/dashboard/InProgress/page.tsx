@@ -6,6 +6,8 @@ import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
 import { Task } from '../../../types/task/getTasksListTypes';
 
+const dyurl = "https://www.douyin.com/root/search/%E5%8E%86%E5%8F%B2?aid=f899c1f2-9412-482f-899a-707dc155272c&modal_id=7401070415860239656&type=general"
+
 // 获取平台中文名称
 const getPlatformName = (platform: string): string => {
   const platformMap: Record<string, string> = {
@@ -316,10 +318,22 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
               <button 
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
                 onClick={() => {
+                  console.log("传递的url",currentVideoUrl)
+                  // 打开视频链接，确保使用完整的URL格式
+                  let videoUrl = dyurl;
+                  // 清理URL，移除可能的localhost前缀
+                  if (videoUrl.includes('localhost:3000')) {
+                    videoUrl = videoUrl.replace(/http:\/\/localhost:3000/, '');
+                  }
+                  // 确保URL以http://或https://开头
+                  if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
+                    videoUrl = 'http://' + videoUrl;
+                  }
                   // 打开视频链接
-                  window.open(currentVideoUrl, '_blank');
+                  window.open(videoUrl);
                   // 关闭模态框
                   setIsModalOpen(false);
+                  
                 }}
               >
                 确定
