@@ -24,7 +24,9 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // 使用useUserStore获取用户信息和方法
   const { currentUser, clearUser } = useUserStore();
@@ -32,6 +34,27 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  // 客户端加载完成后获取未读消息数量并设置定时轮询
+  useEffect(() => {
+    if (!isClient) return;
+    
+    // 初始获取未读消息数量
+    fetchUnreadCount();
+    
+    // 设置定时轮询，每隔10分钟获取一次未读消息数量
+    const pollingInterval = 10 * 60 * 1000; // 10分钟
+    pollingIntervalRef.current = setInterval(() => {
+      fetchUnreadCount();
+    }, pollingInterval);
+    
+    // 清理函数
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [isClient]);
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -44,6 +67,31 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // 监听 localStorage 变化，当标记全部已读时更新未读消息数量
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const markedAllAsRead = localStorage.getItem('notificationMarkedAllAsRead');
+        if (markedAllAsRead === 'true') {
+          // 重新获取未读消息数量
+          fetchUnreadCount();
+          // 清除标记
+          localStorage.removeItem('notificationMarkedAllAsRead');
+        }
+      } catch (error) {
+        console.error('处理 storage 变化失败:', error);
+      }
+    };
+    
+    // 监听 storage 事件
+    window.addEventListener('storage', handleStorageChange);
+    
+    // 清理函数
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -103,6 +151,27 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
     ];
     
     return !noBackButtonRoutes.includes(pathWithoutQuery);
+  };
+
+  // 获取未读消息数量
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/getNotificationsList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setUnreadCount(data.data.unread_count || 0);
+      }
+    } catch (error) {
+      console.error('获取未读消息数量失败:', error);
+    }
   };
 
   // 处理退出登录
@@ -207,9 +276,11 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
             <BellOutlined className="text-3xl text-white" />
           </button>
           {/* 通知数量提示 */}
-          <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-            3
-          </div>
+          {unreadCount > 0 && (
+            <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </div>
+          )}
         </div>
 
         {/* 用户头像和下拉菜单 */}

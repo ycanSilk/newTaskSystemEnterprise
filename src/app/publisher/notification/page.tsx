@@ -14,15 +14,17 @@ export default function NotificationPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   // 页面加载时获取通知列表
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (page: number = 1) => {
       setLoading(true);
       setError(null);
       
       try {
-        const response = await fetch('/api/notifications/getNotificationsList', {
+        const response = await fetch(`/api/notifications/getNotificationsList?page=${page}&limit=20`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -34,6 +36,8 @@ export default function NotificationPage() {
         if (data.success && data.data) {
           setNotifications(data.data.list);
           setUnreadCount(data.data.unread_count);
+          setTotalPages(data.data.pagination?.total_pages || 1);
+          setCurrentPage(page);
         } else {
           setError(data.message || '获取通知列表失败');
         }
@@ -45,8 +49,8 @@ export default function NotificationPage() {
       }
     };
     
-    fetchNotifications();
-  }, []);
+    fetchNotifications(currentPage);
+  }, [currentPage]);
 
   const handleBack = () => {
     router.back();
@@ -108,12 +112,23 @@ export default function NotificationPage() {
         // 更新本地状态，将所有消息标记为已读
         setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
         setUnreadCount(0);
+        
+        // 通知 PublisherHeader 组件更新未读消息数量
+        try {
+          localStorage.setItem('notificationMarkedAllAsRead', 'true');
+          // 触发 storage 事件，确保 PublisherHeader 组件能够监听到
+          window.dispatchEvent(new Event('storage'));
+        } catch (error) {
+          console.error('设置本地存储失败:', error);
+        }
       } else {
         addToast({
           title: '失败',
           message: data.message || '标记全部已读失败',
           type: 'error'
         });
+
+        
       }
     } catch (error) {
       // 处理API调用错误
@@ -230,6 +245,31 @@ export default function NotificationPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               <p className="text-gray-500">暂无通知消息</p>
+            </div>
+          )}
+          
+          {/* 分页控件 */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center mt-6 space-x-2">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-md border ${currentPage === 1 ? 'border-gray-300 text-gray-400 cursor-not-allowed' : 'border-blue-500 text-blue-600 hover:bg-blue-50'}`}
+              >
+                上一页
+              </button>
+              
+              <span className="text-gray-600">
+                {currentPage} / {totalPages}
+              </span>
+              
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-md border ${currentPage === totalPages ? 'border-gray-300 text-gray-400 cursor-not-allowed' : 'border-blue-500 text-blue-600 hover:bg-blue-50'}`}
+              >
+                下一页
+              </button>
             </div>
           )}
         </div>
