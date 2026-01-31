@@ -1,7 +1,7 @@
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { Providers } from '@/components/providers/Providers';
 import { OptimizationProvider } from '@/components/optimization/OptimizationProvider';
+import { ToastProvider, Toaster } from '@/components/ui/Toast';
 
 // 尝试使用next/font导入Inter字体，如果失败则使用系统字体
 let interFontConfig = {};
@@ -62,9 +62,10 @@ export default function RootLayout({
         'font-[var(--font-inter),sans-serif]'
       )}>
         <OptimizationProvider>
-          <Providers>
+          <ToastProvider>
             {children}
-          </Providers>
+            <Toaster />
+          </ToastProvider>
         </OptimizationProvider>
       </body>
     </html>

@@ -11,7 +11,8 @@ import { handleGetTasksList } from '../../../../api/handlers/task/getTasksListHa
  * @returns NextResponse - API响应
  */
 export async function GET(request: Request): Promise<NextResponse> {
-  // 调用处理函数，不包含业务逻辑
+  // 调用处理函数，传递完整的请求对象，包含查询参数
+  // 这样处理函数可以获取并使用 status 参数
   return handleGetTasksList(request);
 }
 

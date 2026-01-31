@@ -67,7 +67,7 @@ export const useUserStore = create<UserState>()(
 );
 
 // 导出登录成功后保存用户信息的辅助函数
-export const saveUserOnLoginSuccess = (userData: any) => {
+export const saveUserOnLoginSuccess = (userData: any, token: string) => {
   const { setUser } = useUserStore.getState();
   
   // 从登录响应中提取用户信息
@@ -85,6 +85,10 @@ export const saveUserOnLoginSuccess = (userData: any) => {
     createdAt: new Date().toISOString()
   };
   
+  // 保存token到cookie
+  document.cookie = `PublishTask_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+  
   setUser(user);
   console.log('登录成功后保存用户信息到内存:', user);
+  console.log('登录成功后保存token到cookie:', token);
 };

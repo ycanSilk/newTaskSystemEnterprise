@@ -2,31 +2,11 @@
 
 import * as React from 'react';
 // 导入类型定义
-import { OrderStats } from '../../../types/task/getTasksListTypes';
-
-// 任务统计数据类型
-interface TaskStats {
-  publishedCount: number;
-  acceptedCount: number;
-  submittedCount: number;
-  completedCount: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  todayEarnings: number;
-  monthEarnings: number;
-  passedCount: number;
-  rejectedCount: number;
-  passRate: number;
-  avgCompletionTime: number;
-  ranking: number;
-  agentTasksCount: number;
-  agentEarnings: number;
-  invitedUsersCount: number;
-}
+import { Pagination, OrderStats } from '../../../types/task/getTasksListTypes';
 
 // 组件Props接口
 interface OverviewTabPageProps {
-  taskStats: TaskStats;
+  taskStats: Pagination;
   orderStats: OrderStats;
   loading?: boolean;
   error?: string | null;
@@ -38,11 +18,8 @@ export default function OverviewTabPage({
   loading = false, 
   error = null 
 }: OverviewTabPageProps) {
-  
-  // 格式化金额显示
-  const formatCurrency = (amount: number) => {
-    return `¥${amount.toFixed(2)}`;
-  };
+
+
 
   return (
     <div className="mx-4 mt-6 space-y-6">
@@ -82,7 +59,7 @@ export default function OverviewTabPage({
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-green-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-green-300">
                 <div className="text-sm text-green-600 mb-1">总任务数</div>
-                <div className="text-xl text-green-600">{taskStats.publishedCount}</div>
+                <div className="text-xl text-green-600">{taskStats.total}</div>
               </div>
               
               <div className="bg-blue-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-blue-300">

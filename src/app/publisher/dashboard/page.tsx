@@ -22,19 +22,34 @@ const CompletedTabPage = dynamic(() => import('./Completed/page'), {
   loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
   ssr: false
 });
-// 懒加载URL重定向提示框组件
-const URLRedirection = dynamic(() => import('../../../components/promptBox/URLRedirection'), {
-  loading: () => null,
-  ssr: false
-});
 
-// 导入检查支付密码的API响应类型
-import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWalletPwdTypes';
+
+
 
 // 导入加载组件，用于状态加载中显示
 import { Loading } from '@/components/ui';
 // 导入任务列表API响应类型
-import { GetTasksListResponse, Task, OrderStats } from '../../types/task/getTasksListTypes';
+import { GetTasksListResponse, Task, OrderStats,Pagination } from '../../types/task/getTasksListTypes';
+
+// 任务统计数据类型
+interface TaskStats {
+  publishedCount: number;
+  acceptedCount: number;
+  submittedCount: number;
+  completedCount: number;
+  totalEarnings: number;
+  pendingEarnings: number;
+  todayEarnings: number;
+  monthEarnings: number;
+  passedCount: number;
+  rejectedCount: number;
+  passRate: number;
+  avgCompletionTime: number;
+  ranking: number;
+  agentTasksCount: number;
+  agentEarnings: number;
+  invitedUsersCount: number;
+}
 
 export default function PublisherDashboardPage() {
   // 获取搜索参数，用于从URL中读取tab值
@@ -49,8 +64,6 @@ export default function PublisherDashboardPage() {
   // 添加强制刷新状态，用于发布任务成功后刷新列表
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // 添加URL重定向提示框状态
-  const [showRedirectModal, setShowRedirectModal] = useState(false);
   // 页面回退缓存状态
   const [isBackNavigation, setIsBackNavigation] = useState(false);
   const [cachedTasks, setCachedTasks] = useState<Task[]>([]);
@@ -237,52 +250,9 @@ export default function PublisherDashboardPage() {
     window.history.replaceState({}, '', newUrl.toString());
   };
 
-  // 检查支付密码状态
-  const checkWalletPassword = async (): Promise<boolean> => {
-    if (typeof window === 'undefined') {
-      return true;
-    }
-
-    // 检查是否已提示过（会话级别，使用sessionStorage）
-    const hasPrompted = sessionStorage.getItem('hasPromptedPaymentPassword');
-    if (hasPrompted) {
-      console.log('dashboard: 本次会话已提示过支付密码设置，跳过检查');
-      return true;
-    }
-    
-    try {
-      const response = await fetch('/api/paymentWallet/checkWalletPwd', {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      const result: CheckWalletPwdApiResponse = await response.json();
-      
-      console.log('dashboard: 支付密码检查结果:', result);
-      
-      if (result.success && result.data && !result.data.has_password) {
-        setShowRedirectModal(true);
-        console.log('dashboard: 用户未设置支付密码，显示提示');
-        sessionStorage.setItem('hasPromptedPaymentPassword', 'true');
-        return false;
-      } else {
-        sessionStorage.setItem('hasPromptedPaymentPassword', 'true');
-        return true;
-      }
-    } catch (error) {
-      console.error('支付密码检查失败:', error);
-      return true;
-    }
-  };
-
-  // 组件挂载时检查支付密码（只检查一次）
-  useEffect(() => {
-    console.log('dashboard: 开始检查支付密码');
-    checkWalletPassword();
-  }, []);
 
   // 计算统计数据
-  const calculateTaskStats = () => {
+  const calculateTaskStats = (): TaskStats => {
     // 使用当前任务或缓存任务
     const currentTasks = tasks.length > 0 ? tasks : cachedTasks;
     
@@ -377,35 +347,23 @@ export default function PublisherDashboardPage() {
         <Suspense fallback={<div className="flex justify-center items-center py-20">加载中...</div>}>
           {activeTab === 'OverView' && (
             <OverViewTabPage 
-              taskStats={taskStats}
+              taskStats={{ current_page: 1, page_size: 10, total: taskStats.publishedCount, total_pages: 1 }}
               orderStats={orderStats}
               loading={isUsingCache}
             />
           )}
           {activeTab === 'InProgress' && (
-            <ActiveTabPage />
+            <ActiveTabPage  />
           )}
           {activeTab === 'AwaitingReview' && (
             <AwaitingReviewTabPage />
           )}
           {activeTab === 'Completed' && (
-            <CompletedTabPage tasks={completedTasks} />
+            <CompletedTabPage  />
           )}
         </Suspense>
       )}
 
-      {/* URL重定向提示框 */}
-      <Suspense fallback={null}>
-        {URLRedirection && (
-          <URLRedirection
-            isOpen={showRedirectModal}
-            message="您尚未设置支付密码，请先设置"
-            buttonText="前往设置"
-            redirectUrl="/publisher/profile/paymentsettings/setpaymentpwd"
-            onClose={() => setShowRedirectModal(false)}
-          />
-        )}
-      </Suspense>
     </div>
   );
 }

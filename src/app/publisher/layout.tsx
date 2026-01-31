@@ -4,8 +4,6 @@ import React, { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { PublisherBottomNavigation } from './components/PublisherBottomNavigation';
 import { PublisherHeader } from '@/app/publisher/components/PublisherHeader';
-// 导入AuthGuard组件，用于保护发布者路由
-import { AuthGuard } from '@/components/providers/AuthGuard';
 
 export default function PublisherLayout({
   children,
@@ -30,25 +28,22 @@ export default function PublisherLayout({
   }
   
   // 对于其他页面，渲染完整布局（头部、内容、底部导航）
-  // 使用AuthGuard组件保护所有非认证页面
   return (
-    <AuthGuard>
-      <div className="min-h-screen bg-gray-50">
-        {/* 使用可复用的顶部导航栏组件 - 固定在头部 */}
-        <div className="fixed top-0 left-0 right-0 z-50">
-          <PublisherHeader />
-        </div>
-
-        {/* 主要内容区域 - 为固定头部留出空间 */}
-        <main className="flex-1 pt-[60px] pb-20">
-          <Suspense fallback={<div className="w-full h-64 flex items-center justify-center">Loading...</div>}>
-            {children}
-          </Suspense>
-        </main>
-
-        {/* 底部导航栏 - 使用可复用组件 */}
-        <PublisherBottomNavigation />
+    <div className="min-h-screen bg-gray-50">
+      {/* 使用可复用的顶部导航栏组件 - 固定在头部 */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <PublisherHeader />
       </div>
-    </AuthGuard>
+
+      {/* 主要内容区域 - 为固定头部留出空间 */}
+      <main className="flex-1 pt-[60px] pb-20">
+        <Suspense fallback={<div className="w-full h-64 flex items-center justify-center">Loading...</div>}>
+          {children}
+        </Suspense>
+      </main>
+
+      {/* 底部导航栏 - 使用可复用组件 */}
+      <PublisherBottomNavigation />
+    </div>
   );
 }

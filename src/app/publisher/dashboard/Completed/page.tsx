@@ -1,25 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
-import { Task } from '../../../types/task/getTasksListTypes';
+import { Task,
+  SingleTaskItem,
+  ComboTaskItem,
+  BaseTaskItem,
+  ComboInfo,
+  GetTasksListResponse } from '../../../types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
+// 导入优化工具
+import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
-// 组件Props接口
-interface CompletedTabPageProps {
-  tasks: Task[];
-}
-
-export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
+// 独立页面组件，不接收外部传入的数据
+export default function CompletedTabPage() {
   const router = useRouter();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
+  // 数据缓存和轮询相关
+  const [lastFetchedData, setLastFetchedData] = useState<Task[]>([]);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 使用优化工具
+  const { globalFetch } = useOptimization();
 
   // 处理搜索
   const handleSearch = () => {
@@ -29,6 +39,62 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
   // 处理任务操作
   const handleTaskAction = (taskId: string, action: string) => {
     // 这里可以添加具体的操作逻辑
+  };
+
+  // API调用 - 获取已完成任务列表
+  const fetchCompletedTasks = async () => {
+    try {
+      // 使用全局fetch包装器，获得缓存和重试等优化功能
+      const result: GetTasksListResponse = await globalFetch('/api/task/getTasksList?status=2', {
+        method: 'GET'
+      }, {
+        // 启用缓存，缓存时间5分钟
+        enableCache: true,
+        expiry: 5 * 60 * 1000,
+        // 启用自动重试
+        enableRetry: true,
+        retryCount: 3,
+        retryDelay: 1000
+      });
+      
+      if (result.code === 0) {
+        return result.data.tasks || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('获取已完成任务列表失败:', error);
+      return [];
+    }
+  };
+
+  // 检查数据是否有变化
+  const hasDataChanged = (newData: Task[], oldData: Task[]): boolean => {
+    if (newData.length !== oldData.length) return true;
+    
+    // 比较任务ID，检查是否有新增或删除的任务
+    const newTaskIds = new Set(newData.map(task => task.task_id));
+    const oldTaskIds = new Set(oldData.map(task => task.task_id));
+    
+    if (newTaskIds.size !== oldTaskIds.size) return true;
+    
+    // 检查是否有不同的任务ID
+    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
+  };
+
+  // 刷新任务列表数据
+  const refreshTasks = async () => {
+    try {
+      const newTasks = await fetchCompletedTasks();
+      
+      // 与缓存数据对比
+      if (hasDataChanged(newTasks, lastFetchedData)) {
+        setTasks(newTasks);
+        setLastFetchedData(newTasks);
+        showCopySuccess('数据已更新');
+      }
+    } catch (error) {
+      console.error('刷新任务列表失败:', error);
+    }
   };
 
   // 过滤最近订单
@@ -78,6 +144,47 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
       // 静默处理复制失败
     });
   };
+
+  // 初始化数据和设置轮询
+  useEffect(() => {
+    const initData = async () => {
+      setLoading(true);
+      try {
+        const initialTasks = await fetchCompletedTasks();
+        setTasks(initialTasks);
+        setLastFetchedData(initialTasks);
+      } catch (error) {
+        console.error('初始化任务列表失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initData();
+
+    // 设置被动轮询，每10分钟刷新一次
+    const pollingInterval = 10 * 60 * 1000; // 10分钟
+    pollingIntervalRef.current = setInterval(() => {
+      refreshTasks();
+    }, pollingInterval);
+
+    // 监听页面可见性变化，当页面重新可见时刷新数据
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 清理函数
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // MainOrderCard组件定义，直接使用Task类型
   const MainOrderCard = ({ task, onCopyOrderNumber, onCopyComment, onViewDetails, onReorder }: {
@@ -132,12 +239,20 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
             </button>
           </div>
         </div>
-        <div className="flex items-center space-x-3 mb-1 pb-1">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-sm  bg-blue-100 text-blue-700`}>
-            任务状态：{task.status_text}
+        <div className="flex flex-wrap gap-2 mb-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+            {task.status_text}
           </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm  bg-blue-100 text-blue-700">
-            任务类型：{task.template_title || '评论任务'}
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+            {task.template_type_text}
+          </span>
+          {task.is_combo && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+               {task.stage_text}
+            </span>
+          )}
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+            {task.stage_status_text}
           </span>
         </div>
         <div className="mb-1 text-sm text-black text-sm">
@@ -174,6 +289,15 @@ export default function CompletedTabPage({ tasks }: CompletedTabPageProps) {
       </div>
     );
   };
+
+  // 显示加载状态
+  if (loading) {
+    return (
+      <div className="pb-20 flex items-center justify-center h-64">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    );
+  }
 
   // 获取过滤和搜索后的订单 - 默认按时间排序，不再过滤最近7天的订单
   const filteredTasks = searchOrders(tasks).sort((a, b) => {

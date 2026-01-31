@@ -329,7 +329,7 @@ export default function PublishTaskPage() {
           '确定',
           () => {
             // 在用户点击确认按钮后跳转
-            router.push('/publisher/dashboard');
+            router.push('/publisher/create/douyin');
           }
         );
       } else {

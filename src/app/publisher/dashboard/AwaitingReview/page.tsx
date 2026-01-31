@@ -6,8 +6,15 @@ import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
 import { PendingTask, PendingTasksListResponse } from '../../../types/task/pendingTasksListTypes';
+import { Task,
+  SingleTaskItem,
+  ComboTaskItem,
+  BaseTaskItem,
+  ComboInfo } from '../../../types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
+// 导入优化工具
+import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
@@ -32,19 +39,25 @@ export default function AwaitingReviewTabPage() {
   const [currentOrderId, setCurrentOrderId] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [currentOrder, setCurrentOrder] = useState<PendingTask | null>(null);
+  // 使用优化工具
+  const { globalFetch } = useOptimization();
 
-  // API调用 - 获取待审核任务列表
-  const fetchPendingTasks = async () => {
+// API调用 - 获取待审核任务列表
+  const fetchPendingTasks = async (disableCache = false) => {
     try {
-      const response = await fetch('/api/task/pendingTasksList', {
+      // 使用全局fetch包装器，获得缓存和重试等优化功能
+      const data: PendingTasksListResponse = await globalFetch('/api/task/pendingTasksList', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include'
+      }, {
+        // 启用缓存，缓存时间5分钟，但在审核操作后禁用缓存
+        enableCache: !disableCache,
+        expiry: 5 * 60 * 1000,
+        // 启用自动重试
+        enableRetry: true,
+        retryCount: 3,
+        retryDelay: 1000
       });
-
-      const data: PendingTasksListResponse = await response.json();
       
       if (data.success && data.data) {
         return data.data.list || [];
@@ -71,9 +84,9 @@ export default function AwaitingReviewTabPage() {
   };
 
   // 刷新任务列表数据
-  const refreshTasks = async () => {
+  const refreshTasks = async (disableCache = false) => {
     try {
-      const newTasks = await fetchPendingTasks();
+      const newTasks = await fetchPendingTasks(disableCache);
       
       // 与缓存数据对比
       if (hasDataChanged(newTasks, lastFetchedData)) {
@@ -112,6 +125,8 @@ export default function AwaitingReviewTabPage() {
     // 监听页面可见性变化，当页面重新可见时刷新数据
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        // 当页面重新可见时，主动刷新数据
+        // 这将在切换到这个页面时触发
         refreshTasks();
       }
     };
@@ -172,8 +187,8 @@ export default function AwaitingReviewTabPage() {
       if (data.success) {
         showCopySuccess(data.message || '订单已审核通过');
         setShowApproveModal(false);
-        // 重新获取订单列表
-        await refreshTasks();
+        // 重新获取订单列表，禁用缓存以确保获取最新数据
+        await refreshTasks(true);
       } else {
         throw new Error(data.message || '审核失败');
       }
@@ -215,8 +230,8 @@ export default function AwaitingReviewTabPage() {
       if (data.success) {
         showCopySuccess(data.message || '订单已驳回');
         setShowRejectModal(false);
-        // 重新获取订单列表
-        await refreshTasks();
+        // 重新获取订单列表，禁用缓存以确保获取最新数据
+        await refreshTasks(true);
       } else {
         throw new Error(data.message || '驳回失败');
       }
@@ -367,6 +382,17 @@ export default function AwaitingReviewTabPage() {
                 </button>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                任务类型：{order.template_title}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                任务阶段：待审核
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                任务状态：待审核
+              </span>
+            </div>
             {/* 价格和状态信息 */}
           <div className="text-sm text-black font-medium mb-1">单价：{order.reward_amount}</div>
           <div className="text-sm text-black mb-1">提交时间：{order.submitted_at}</div>           
@@ -453,7 +479,7 @@ export default function AwaitingReviewTabPage() {
     {/* 审核通过确认模态框 */}
     {showApproveModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-5 w-full max-w-md">
+        <div className="bg-white rounded-lg p-5 w-[90%] max-w-md">
           <h3 className="text-lg font-medium mb-3">确认审核通过</h3>
           <p className="text-gray-600 mb-4">您确定要审核通过这个订单吗？</p>
           <div className="flex justify-end gap-3">

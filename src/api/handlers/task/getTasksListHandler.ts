@@ -15,10 +15,20 @@ import type { ApiResponse } from '../../types/common';
  */
 export async function handleGetTasksList(request: Request): Promise<NextResponse> {
   try {
+    // 解析请求URL，获取查询参数
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    
+    // 构建API请求URL，包含status参数
+    let apiUrl = GET_PUBLISHED_TASKS_LIST_ENDPOINT;
+    if (status) {
+      apiUrl += `?status=${status}`;
+    }
+    
     // 使用apiClient发送GET请求，不手动处理Token，依赖API客户端内置的Token处理
     // 这里使用ApiResponse类型，包含完整的响应结构
     const response = await apiClient.get<ApiResponse<GetTasksListResponse>>(
-      GET_PUBLISHED_TASKS_LIST_ENDPOINT
+      apiUrl
     );
     
     // 直接返回标准化的API响应

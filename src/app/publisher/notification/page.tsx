@@ -132,7 +132,7 @@ export default function NotificationPage() {
       markAsRead(notification.id);
     }
     // 跳转到通知详情页
-    router.push(`/commenter/notification/detail/${notification.id}`);
+    router.push(`/publisher/notification/detail/${notification.id}`);
   };
 
   return (

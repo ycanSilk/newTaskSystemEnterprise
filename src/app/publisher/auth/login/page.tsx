@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 // 导入登录页面类型定义
 import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
 // 导入useUser钩子，用于检查登录状态
-import { useUser, saveUserOnLoginSuccess } from '@/hooks/useUser';
+import { useUser } from '@/hooks/useUser';
+// 导入登录成功后保存用户信息的函数
+import { saveUserOnLoginSuccess } from '@/store/userStore';
 // 导入优化工具
 import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
@@ -133,8 +135,8 @@ export default function PublisherLoginPage() {
 
       if (result.code===0) {
         console.log('登录成功，跳转到目标页面/publisher/dashboard');
-        // 登录成功后保存用户信息到内存
-        saveUserOnLoginSuccess(result.data);
+        // 登录成功后保存用户信息到内存和cookie
+        saveUserOnLoginSuccess(result.data, result.data.token);
         // 使用replace代替push，避免浏览器历史记录中留下登录页
         // 确保只执行一次重定向
         router.replace('/publisher/dashboard');

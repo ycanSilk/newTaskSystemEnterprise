@@ -265,7 +265,7 @@ export default function PublishTaskPage() {
       if (result.code === 0) {
         // 成功处理
         showAlert('发布成功', result.message, 'success', '确定', () => {
-          router.push('/publisher/dashboard');
+          router.push('/publisher/create/douyin');
         });
       } else {
         // 失败处理

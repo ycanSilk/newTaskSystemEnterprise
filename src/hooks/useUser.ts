@@ -4,8 +4,8 @@
 import { useState, useEffect } from 'react';
 // 导入User类型定义
 import { User } from '@/types';
-// 导入userStore和登录成功后保存用户信息的辅助函数
-import { useUserStore, saveUserOnLoginSuccess } from '@/store/userStore';
+// 导入userStore
+import { useUserStore } from '@/store/userStore';
 
 // 定义useUser钩子返回值的类型
 interface UseUserReturn {
@@ -34,7 +34,7 @@ export function useUser(): UseUserReturn {
   // 登录成功后保存用户信息
   const saveUserOnLogin = (userData: any) => {
     console.log('登录成功后保存用户信息:', userData);
-    saveUserOnLoginSuccess(userData);
+    setUser(userData);
     setIsLoggedIn(true);
   };
 
@@ -49,5 +49,4 @@ export function useUser(): UseUserReturn {
   };
 }
 
-// 导出登录成功后保存用户信息的函数，方便在登录页面直接使用
-export { saveUserOnLoginSuccess };
+

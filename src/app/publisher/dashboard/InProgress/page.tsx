@@ -4,9 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
-import { Task } from '../../../types/task/getTasksListTypes';
+import { Task,
+  SingleTaskItem,
+  ComboTaskItem,
+  BaseTaskItem,
+  ComboInfo,
+  Pagination,
+  GetTasksListResponse } from '@/app/types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
+// 导入优化工具
+import { useOptimization } from '@/components/optimization/OptimizationProvider';
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
@@ -38,6 +46,8 @@ export default function ActiveTabPage() {
   const [tooltipMessage, setTooltipMessage] = useState('');
   const [lastFetchedData, setLastFetchedData] = useState<Task[]>([]);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 使用优化工具
+  const { globalFetch } = useOptimization();
 
   // 处理搜索
   const handleSearch = () => {
@@ -47,7 +57,7 @@ export default function ActiveTabPage() {
   // 获取任务列表数据
   const fetchTasks = async () => {
     try {
-      const response = await fetch('/api/task/getTasksList', {
+      const response = await fetch('/api/task/getTasksList?status=1', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +68,7 @@ export default function ActiveTabPage() {
       const data = await response.json();
       
       if (data.success && data.data) {
-        return data.data.list || [];
+        return data.data.tasks || [];
       }
       return [];
     } catch (error) {
@@ -243,10 +253,6 @@ export default function ActiveTabPage() {
   }
 
 
-
-  // 移除数据格式转换逻辑，直接使用API返回的原始数据
-
-  // MainOrderCard组件定义，直接使用Task类型
   const MainOrderCard: React.FC<{
     task: Task;
     onCopyOrderNumber?: (orderNumber: string) => void;
@@ -298,7 +304,22 @@ export default function ActiveTabPage() {
             </button>
           </div>
         </div>
-
+        <div className="flex flex-wrap gap-2 mb-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+            {task.status_text}
+          </span>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+            {task.template_type_text}
+          </span>
+          {task.is_combo && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+               {task.stage_text}
+            </span>
+          )}
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+            {task.stage_status_text}
+          </span>
+        </div>
         <div className="">
           发布时间：{task.created_at}
         </div>
