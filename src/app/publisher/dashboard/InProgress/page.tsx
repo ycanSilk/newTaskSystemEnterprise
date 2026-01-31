@@ -1,12 +1,14 @@
 'use client';
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
 import { Task } from '../../../types/task/getTasksListTypes';
+// 导入打开视频按钮组件
+import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
 
-const dyurl = "https://www.douyin.com/root/search/%E5%8E%86%E5%8F%B2?aid=f899c1f2-9412-482f-899a-707dc155272c&modal_id=7401070415860239656&type=general"
+const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
 // 获取平台中文名称
 const getPlatformName = (platform: string): string => {
@@ -16,16 +18,7 @@ const getPlatformName = (platform: string): string => {
   return platformMap[platform] || platform;
 };
 
-// 获取任务状态中文名称
-const getStatusName = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    'IN_PROGRESS': '进行中',
-    'IN_PENDING': '待审核',
-    'COMPLETED': '已完成',
-    'CANCELLED': '已取消'
-  };
-  return statusMap[status] || status;
-};
+
 
 // 获取任务类型中文名称
 const getTaskTypeName = (taskType: string): string => {
@@ -35,23 +28,116 @@ const getTaskTypeName = (taskType: string): string => {
   return taskTypeMap[taskType] || taskType;
 };
 
-// 组件Props接口
-interface ActiveTabPageProps {
-  tasks: Task[];
-}
-
-export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
+// 独立页面组件，不接收外部传入的数据
+export default function ActiveTabPage() {
   const router = useRouter();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const [lastFetchedData, setLastFetchedData] = useState<Task[]>([]);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 处理搜索
   const handleSearch = () => {
     // 搜索逻辑将在UI中处理
   };
+
+  // 获取任务列表数据
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch('/api/task/getTasksList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data.list || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('获取任务列表失败:', error);
+      return [];
+    }
+  };
+
+  // 检查数据是否有变化
+  const hasDataChanged = (newData: Task[], oldData: Task[]): boolean => {
+    if (newData.length !== oldData.length) return true;
+    
+    // 比较任务ID，检查是否有新增或删除的任务
+    const newTaskIds = new Set(newData.map(task => task.task_id));
+    const oldTaskIds = new Set(oldData.map(task => task.task_id));
+    
+    if (newTaskIds.size !== oldTaskIds.size) return true;
+    
+    // 检查是否有不同的任务ID
+    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
+  };
+
+  // 刷新任务列表数据
+  const refreshTasks = async () => {
+    try {
+      const newTasks = await fetchTasks();
+      
+      // 与缓存数据对比
+      if (hasDataChanged(newTasks, lastFetchedData)) {
+        setTasks(newTasks);
+        setLastFetchedData(newTasks);
+        showCopySuccess('数据已更新');
+      }
+    } catch (error) {
+      console.error('刷新任务列表失败:', error);
+    }
+  };
+
+  // 初始化数据和设置轮询
+  useEffect(() => {
+    // 首次获取数据
+    const initData = async () => {
+      setLoading(true);
+      try {
+        const initialTasks = await fetchTasks();
+        setTasks(initialTasks);
+        setLastFetchedData(initialTasks);
+      } catch (error) {
+        console.error('初始化任务列表失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initData();
+
+    // 设置被动轮询，每10分钟刷新一次
+    const pollingInterval = 10 * 60 * 1000; // 10分钟
+    pollingIntervalRef.current = setInterval(() => {
+      refreshTasks();
+    }, pollingInterval);
+
+    // 监听页面可见性变化，当页面重新可见时刷新数据
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 清理函数
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // 处理任务操作
   const handleTaskAction = (taskId: string, action: string) => {
@@ -147,6 +233,15 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
     }
   };
 
+  // 显示加载状态
+  if (loading) {
+    return (
+      <div className="pb-20 flex items-center justify-center h-64">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    );
+  }
+
 
 
   // 移除数据格式转换逻辑，直接使用API返回的原始数据
@@ -189,7 +284,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
     };
 
     return (
-      <div className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-5 bg-white space-y-2">
+      <div className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-5 bg-white">
         <div className="flex items-center  overflow-hidden">
           <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate ">
             任务ID：{task.task_id}
@@ -203,14 +298,7 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
             </button>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <span className={`inline-flex items-center p-1 text-sm  bg-blue-100 text-blue-700`}>
-            任务状态：{task.status_text}
-          </span>
-          <span className="inline-flex items-center p-1 text-sm  bg-blue-100 text-blue-700">
-            任务类型：评论任务
-          </span>
-        </div>
+
         <div className="">
           发布时间：{task.created_at}
         </div>
@@ -218,30 +306,18 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
           截止时间：{task.deadline_text}
         </div>
         <div className="  w-full rounded-lg">
-           任务要求：{task.template_title}
+          任务要求：{task.template_title}
         </div>
         <div className="">
           任务描速：{task.template_title}
         </div>
         <div className=" bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
           <p className='  text-sm text-blue-600'>任务视频点击进入：</p>
-          <a 
-            href={task.video_url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm  inline-flex items-center"
-            onClick={(e) => {
-              e.preventDefault();
-              // 复制评论（不使用await，避免返回Promise）
-              handleCopyComment(task.video_url).then(() => {
-                // 设置当前视频URL并打开模态框
-                setCurrentVideoUrl(task.video_url);
-                setIsModalOpen(true);
-              });
-            }}
-          >
-             打开视频
-          </a>
+          <OpenVideoButton 
+            videoUrl={task.video_url}
+            defaultUrl={dyurl}
+            buttonText="打开抖音"
+          />
         </div>
         
         {/* 子任务状态统计 */}
@@ -300,46 +376,6 @@ export default function ActiveTabPage({ tasks }: ActiveTabPageProps) {
       {showCopyTooltip && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50">
           {tooltipMessage}
-        </div>
-      )}
-      {/* 打开视频确认模态框 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-medium mb-4">提示</h3>
-            <p className="text-gray-700 mb-6">是否需要打开抖音APP？</p>
-            <div className="flex justify-end space-x-3">
-              <button 
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
-                onClick={() => setIsModalOpen(false)}
-              >
-                取消
-              </button>
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-                onClick={() => {
-                  console.log("传递的url",currentVideoUrl)
-                  // 打开视频链接，确保使用完整的URL格式
-                  let videoUrl = dyurl;
-                  // 清理URL，移除可能的localhost前缀
-                  if (videoUrl.includes('localhost:3000')) {
-                    videoUrl = videoUrl.replace(/http:\/\/localhost:3000/, '');
-                  }
-                  // 确保URL以http://或https://开头
-                  if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
-                    videoUrl = 'http://' + videoUrl;
-                  }
-                  // 打开视频链接
-                  window.open(videoUrl);
-                  // 关闭模态框
-                  setIsModalOpen(false);
-                  
-                }}
-              >
-                确定
-              </button>
-            </div>
-          </div>
         </div>
       )}
       

@@ -34,7 +34,7 @@ import { CheckWalletPwdApiResponse } from '../../types/paymentWallet/checkWallet
 // 导入加载组件，用于状态加载中显示
 import { Loading } from '@/components/ui';
 // 导入任务列表API响应类型
-import { GetTasksListResponse, Task, TaskStats, OrderStats } from '../../types/task/getTasksListTypes';
+import { GetTasksListResponse, Task, OrderStats } from '../../types/task/getTasksListTypes';
 
 export default function PublisherDashboardPage() {
   // 获取搜索参数，用于从URL中读取tab值
@@ -282,7 +282,7 @@ export default function PublisherDashboardPage() {
   }, []);
 
   // 计算统计数据
-  const calculateTaskStats = (): TaskStats => {
+  const calculateTaskStats = () => {
     // 使用当前任务或缓存任务
     const currentTasks = tasks.length > 0 ? tasks : cachedTasks;
     
@@ -383,7 +383,7 @@ export default function PublisherDashboardPage() {
             />
           )}
           {activeTab === 'InProgress' && (
-            <ActiveTabPage tasks={inProgressTasks} />
+            <ActiveTabPage />
           )}
           {activeTab === 'AwaitingReview' && (
             <AwaitingReviewTabPage />

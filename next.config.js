@@ -66,7 +66,7 @@ const nextConfig = {
           // 开启严格的传输安全策略
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           // 禁用浏览器默认的内容安全策略
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://134.122.136.221:4667; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
         ],
       },
     ];

@@ -51,25 +51,7 @@ export interface GetTasksListResponse {
   timestamp: number;
 }
 
-// 统计数据类型
-export interface TaskStats {
-  publishedCount: number;
-  acceptedCount: number;
-  submittedCount: number;
-  completedCount: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  todayEarnings: number;
-  monthEarnings: number;
-  passedCount: number;
-  rejectedCount: number;
-  passRate: number;
-  avgCompletionTime: number;
-  ranking: number;
-  agentTasksCount: number;
-  agentEarnings: number;
-  invitedUsersCount: number;
-}
+
 
 // 订单统计数据类型
 export interface OrderStats {

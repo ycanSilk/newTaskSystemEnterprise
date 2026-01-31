@@ -2,7 +2,27 @@
 
 import * as React from 'react';
 // 导入类型定义
-import { TaskStats, OrderStats } from '../../../types/task/getTasksListTypes';
+import { OrderStats } from '../../../types/task/getTasksListTypes';
+
+// 任务统计数据类型
+interface TaskStats {
+  publishedCount: number;
+  acceptedCount: number;
+  submittedCount: number;
+  completedCount: number;
+  totalEarnings: number;
+  pendingEarnings: number;
+  todayEarnings: number;
+  monthEarnings: number;
+  passedCount: number;
+  rejectedCount: number;
+  passRate: number;
+  avgCompletionTime: number;
+  ranking: number;
+  agentTasksCount: number;
+  agentEarnings: number;
+  invitedUsersCount: number;
+}
 
 // 组件Props接口
 interface OverviewTabPageProps {
@@ -67,16 +87,16 @@ export default function OverviewTabPage({
               
               <div className="bg-blue-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-blue-300">
                 <div className="text-sm text-blue-600 mb-1">进行中</div>
-                <div className="text-xl text-blue-600">{taskStats.acceptedCount}</div>
+                <div className="text-xl text-blue-600">0</div>
               </div>
               
               <div className="bg-orange-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-orange-300">
                 <div className="text-sm text-orange-600 mb-1">总投入</div>
-                <div className="text-xl text-orange-600">{formatCurrency(taskStats.totalEarnings)}</div>
+                <div className="text-xl text-orange-600">0</div>
               </div>
               <div className="bg-purple-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-purple-300">
                 <div className="text-sm text-purple-600 mb-1">平均客单价</div>
-                <div className="text-xl text-purple-600">{taskStats.publishedCount > 0 ? formatCurrency(taskStats.totalEarnings / taskStats.publishedCount) : '¥0.00'}</div>
+                <div className="text-xl text-purple-600">0</div>
               </div>
             </div>
           </div>
@@ -100,7 +120,7 @@ export default function OverviewTabPage({
                 <div className="text-xs text-orange-600">待审核</div>
               </div>
               <div className="bg-yellow-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-yellow-300">
-                <div className="text-xl text-yellow-600 mb-1">{taskStats.publishedCount - taskStats.acceptedCount}</div>
+                <div className="text-xl text-yellow-600 mb-1">0</div>
                 <div className="text-xs text-yellow-600">已发布</div>
               </div>
             </div>
@@ -112,15 +132,15 @@ export default function OverviewTabPage({
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-indigo-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-indigo-300">
                 <div className="text-sm text-indigo-600 mb-1">通过率</div>
-                <div className="text-xl text-indigo-600">{taskStats.passRate}%</div>
+                <div className="text-xl text-indigo-600">0%</div>
               </div>
               <div className="bg-pink-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-pink-300">
                 <div className="text-sm text-pink-600 mb-1">平均完成时间(分钟)</div>
-                <div className="text-xl text-pink-600">{taskStats.avgCompletionTime}</div>
+                <div className="text-xl text-pink-600">0</div>
               </div>
               <div className="bg-teal-50 p-2 rounded-md flex flex-col items-center justify-center text-center border border-teal-300">
                 <div className="text-sm text-teal-600 mb-1">排行榜排名</div>
-                <div className="text-xl text-teal-600">#{taskStats.ranking}</div>
+                <div className="text-xl text-teal-600">#0</div>
               </div>
             </div>
           </div>

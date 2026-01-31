@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
 // 导入任务类型定义
 import { PendingTask, PendingTasksListResponse } from '../../../types/task/pendingTasksListTypes';
+// 导入打开视频按钮组件
+import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
+
+const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
 // 独立页面组件，不接收外部传入的数据
 export default function AwaitingReviewTabPage() {
@@ -18,9 +22,9 @@ export default function AwaitingReviewTabPage() {
   // 显示复制成功提示
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
-  // 视频模态框状态
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  // 数据缓存和轮询相关
+  const [lastFetchedData, setLastFetchedData] = useState<PendingTask[]>([]);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // 模态框状态
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -30,32 +34,97 @@ export default function AwaitingReviewTabPage() {
   const [currentOrder, setCurrentOrder] = useState<PendingTask | null>(null);
 
   // API调用 - 获取待审核任务列表
+  const fetchPendingTasks = async () => {
+    try {
+      const response = await fetch('/api/task/pendingTasksList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      const data: PendingTasksListResponse = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data.list || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('获取待审核任务列表失败:', error);
+      return [];
+    }
+  };
+
+  // 检查数据是否有变化
+  const hasDataChanged = (newData: PendingTask[], oldData: PendingTask[]): boolean => {
+    if (newData.length !== oldData.length) return true;
+    
+    // 比较任务ID，检查是否有新增或删除的任务
+    const newTaskIds = new Set(newData.map(order => order.b_task_id));
+    const oldTaskIds = new Set(oldData.map(order => order.b_task_id));
+    
+    if (newTaskIds.size !== oldTaskIds.size) return true;
+    
+    // 检查是否有不同的任务ID
+    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
+  };
+
+  // 刷新任务列表数据
+  const refreshTasks = async () => {
+    try {
+      const newTasks = await fetchPendingTasks();
+      
+      // 与缓存数据对比
+      if (hasDataChanged(newTasks, lastFetchedData)) {
+        setAwaitingReviewOrders(newTasks);
+        setLastFetchedData(newTasks);
+        showCopySuccess('数据已更新');
+      }
+    } catch (error) {
+      console.error('刷新任务列表失败:', error);
+    }
+  };
+
+  // 初始化数据和设置轮询
   useEffect(() => {
-    const fetchPendingTasks = async () => {
+    const initData = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/task/pendingTasksList', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-
-        const data: PendingTasksListResponse = await response.json();
-        
-        if (data.success && data.data) {
-          // 直接使用API返回的数据，不需要额外转换
-          setAwaitingReviewOrders(data.data.list);
-        }
+        const initialTasks = await fetchPendingTasks();
+        setAwaitingReviewOrders(initialTasks);
+        setLastFetchedData(initialTasks);
       } catch (error) {
-        console.error('获取待审核任务列表失败:', error);
+        console.error('初始化任务列表失败:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPendingTasks();
+    initData();
+
+    // 设置被动轮询，每10分钟刷新一次
+    const pollingInterval = 10 * 60 * 1000; // 10分钟
+    pollingIntervalRef.current = setInterval(() => {
+      refreshTasks();
+    }, pollingInterval);
+
+    // 监听页面可见性变化，当页面重新可见时刷新数据
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 清理函数
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
   // 图片查看器状态
   const [showImageViewer, setShowImageViewer] = useState(false);
@@ -104,17 +173,7 @@ export default function AwaitingReviewTabPage() {
         showCopySuccess(data.message || '订单已审核通过');
         setShowApproveModal(false);
         // 重新获取订单列表
-        const updatedResponse = await fetch('/api/task/pendingTasksList', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-        const updatedData: PendingTasksListResponse = await updatedResponse.json();
-        if (updatedData.success && updatedData.data) {
-          setAwaitingReviewOrders(updatedData.data.list);
-        }
+        await refreshTasks();
       } else {
         throw new Error(data.message || '审核失败');
       }
@@ -157,17 +216,7 @@ export default function AwaitingReviewTabPage() {
         showCopySuccess(data.message || '订单已驳回');
         setShowRejectModal(false);
         // 重新获取订单列表
-        const updatedResponse = await fetch('/api/task/pendingTasksList', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-        const updatedData: PendingTasksListResponse = await updatedResponse.json();
-        if (updatedData.success && updatedData.data) {
-          setAwaitingReviewOrders(updatedData.data.list);
-        }
+        await refreshTasks();
       } else {
         throw new Error(data.message || '驳回失败');
       }
@@ -299,34 +348,7 @@ export default function AwaitingReviewTabPage() {
         onViewAllClick={() => router.push('/publisher/orders')}
       />
       
-      {/* 打开视频确认模态框 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-medium mb-4">提示</h3>
-            <p className="text-gray-700 mb-6">是否需要打开抖音APP？</p>
-            <div className="flex justify-end space-x-3">
-              <button 
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
-                onClick={() => setIsModalOpen(false)}
-              >
-                取消
-              </button>
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-                onClick={() => {
-                  // 打开视频链接
-                  window.open(currentVideoUrl, '_blank');
-                  // 关闭模态框
-                  setIsModalOpen(false);
-                }}
-              >
-                确定
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 视频模态框已移除，使用OpenVideoButton组件 */}
 
       {/* 子订单列表 - 内联实现AuditOrderCard功能 */}
       {filteredOrders.map((order, index) => (
@@ -345,71 +367,22 @@ export default function AwaitingReviewTabPage() {
                 </button>
               </div>
             </div>
-            
-            {/* 订单状态和任务类型 - 同一行且独立占一行 */}
-            <div className="flex items-center mb-1 space-x-4">
-              <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                任务状态：待审核
-              </div>
-              <div className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                抖音
-              </div>
-            </div>
-            
             {/* 价格和状态信息 */}
-            <div className="mb-1">
-              <div className="flex items-center mb-1">
-                <span className="text-sm text-black font-medium">单价：</span>
-                <span className="text-sm text-black">¥{order.reward_amount}</span>
-              </div>
-            </div>
-            
-            {/* 时间信息 - 各自独占一行 */}
-            <div className="text-sm text-black mb-1">
-              发布时间：{order.submitted_at}
-            </div>
-            <div className="text-sm text-black mb-1">
-              截止时间：
-            </div>
-          
+          <div className="text-sm text-black font-medium mb-1">单价：{order.reward_amount}</div>
+          <div className="text-sm text-black mb-1">提交时间：{order.submitted_at}</div>           
           {/* 领取用户信息展示 */}
-          <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论员：{order.c_username || '未知'}
-          </div>
-          <div className="text-black text-sm mb-1 w-full rounded-lg">
-              评论类型：{order.template_title}
-          </div>
-
-          <div className="flex items-start justify-between mb-1 text-blue-600">
-              <p>任务的要求评论：{order.recommend_mark?.comment || ''}</p>
-            </div>
-          <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频丢失，将以接单员完成任务截图为准给予审核结算</div>
-          
-        
-
+          <div className="text-black text-sm mb-1 w-full rounded-lg">评论员：{order.c_username || '未知'}</div>
+          <div className="text-black text-sm mb-1 w-full rounded-lg">评论类型：{order.template_title}</div>
+          <div className="flex items-start justify-between mb-1 text-blue-600">任务的要求评论：{order.recommend_mark?.comment || ''}</div>
+          <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频或评论丢失，将以接单员完成任务截图为准给予审核结算</div>
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
             <p className='mb-1  text-sm text-blue-600'>已完成评论点击进入：</p>
             <div className="flex gap-2 flex-wrap">
-              <a 
-                href={order.video_url} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // 复制视频链接
-                  navigator.clipboard.writeText(order.video_url).then(() => {
-                    showCopySuccess('视频链接已复制');
-                  }).catch(() => {
-                    // 静默处理复制失败
-                  });
-                  // 设置当前视频URL并打开模态框
-                  setCurrentVideoUrl(order.video_url);
-                  setIsModalOpen(true);
-                }}
-              >
-               打开视频
-              </a>
+              <OpenVideoButton 
+                videoUrl={order.comment_url}
+                defaultUrl={dyurl}
+                buttonText="打开抖音"
+              />
               
               {/* 查看提交的图片组件 */}
               {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
@@ -417,7 +390,7 @@ export default function AwaitingReviewTabPage() {
                   className="bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
                   onClick={() => {
                     // 打开图片查看器
-                    setCurrentImageUrl(order.screenshots![0]);
+                    setCurrentImageUrl(order.screenshots[0]);
                     setShowImageViewer(true);
                   }}
                 >
@@ -533,18 +506,25 @@ export default function AwaitingReviewTabPage() {
     
     {/* 图片查看器 */}
     {showImageViewer && (
-      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 ">
         <button 
-          className="absolute top-4 right-4 text-white text-2xl"
+          className="absolute top-4 right-4 text-white text-2xl bg-blue-500 p-2 rounded-full"
           onClick={closeImageViewer}
         >
-          ×
+         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
         </button>
-        <img 
-          src={currentImageUrl} 
-          alt="大图查看" 
-          className="max-w-[90%] max-h-[90%] object-contain"
-        />
+        <div 
+            className="relative max-w-[300px] max-h-[600px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={currentImageUrl} 
+              alt="预览图片" 
+              className="max-w-[300px] max-h-[600px] object-contain"
+            />
+          </div>
       </div>
     )}
     
