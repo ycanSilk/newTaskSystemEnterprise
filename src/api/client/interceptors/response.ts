@@ -6,6 +6,8 @@
 import { AxiosResponse } from 'axios';
 // 导入错误处理相关的工具函数和类型
 import { ApiError, handleApiError, createErrorResponse } from '../errorHandler';
+// 导入缓存策略相关函数和类型
+import { getCacheStrategy, generateInvalidationPatterns } from '../cacheStrategy';
 
 /**
  * 响应拦截器函数（处理成功响应）
@@ -13,6 +15,42 @@ import { ApiError, handleApiError, createErrorResponse } from '../errorHandler';
  * @returns 处理后的响应对象，标准化了响应格式
  */
 export const responseInterceptor = (response: AxiosResponse): AxiosResponse => {
+  // 处理缓存
+  if (response.config?.url) {
+    const method = (response.config.method || 'GET').toUpperCase();
+    
+    if (method === 'GET') {
+      // 处理GET请求的缓存
+      // 注意：实际的缓存存储逻辑在EnhancedAxiosInstance中实现
+      // 这里主要是记录缓存相关的信息
+      const cacheStrategy = getCacheStrategy(response.config.url, method);
+      if (cacheStrategy.enabled) {
+        // 可以在这里添加缓存相关的日志
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Cache Strategy Applied:', {
+            url: response.config.url,
+            method,
+            level: cacheStrategy.level
+          });
+        }
+      }
+    } else {
+      // 处理写操作的缓存失效
+      // 注意：实际的缓存失效逻辑在EnhancedAxiosInstance中实现
+      // 这里主要是记录缓存失效相关的信息
+      if (response.config.headers?.['X-Cache-Invalidate'] === 'true') {
+        const url = response.config.url;
+        const patterns = generateInvalidationPatterns(url);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Cache Invalidation Patterns:', {
+            url,
+            patterns
+          });
+        }
+      }
+    }
+  }
+  
   // 记录响应日志（仅开发环境）
   // 在开发环境下，打印响应的详细信息，方便调试
   if (process.env.NODE_ENV === 'development') {

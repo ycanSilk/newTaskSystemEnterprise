@@ -10,6 +10,172 @@ import { apiConfig } from './config';
 import { requestInterceptor } from './interceptors/request';
 // 导入响应拦截器，处理响应后的统一处理
 import { responseInterceptor, responseErrorInterceptor } from './interceptors/response';
+// 导入缓存策略相关类型和函数
+import { CacheControlConfig, getCacheExpiryTime, generateCacheKey, getCacheStrategy, generateInvalidationPatterns } from './cacheStrategy';
+
+// 缓存存储接口
+interface CacheStorage {
+  [key: string]: {
+    data: any;
+    expiry: number;
+  };
+}
+
+// 全局缓存存储
+const cacheStorage: CacheStorage = {};
+
+// 扩展AxiosRequestConfig类型，添加缓存控制配置
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    cacheControl?: CacheControlConfig;
+  }
+}
+
+/**
+ * 增强的Axios实例类
+ * 支持缓存功能和智能轮询
+ */
+export class EnhancedAxiosInstance {
+  private instance: AxiosInstance;
+  
+  constructor(instance: AxiosInstance) {
+    this.instance = instance;
+  }
+  
+  /**
+   * GET请求（支持缓存）
+   */
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    const cacheConfig = config?.cacheControl;
+    const enabled = cacheConfig?.enabled !== false;
+    
+    // 如果启用缓存且不强制刷新，尝试从缓存获取数据
+    if (enabled && !cacheConfig?.forceRefresh) {
+      const cacheKey = generateCacheKey(url, config?.params);
+      const cachedData = this.getCachedData(cacheKey);
+      
+      if (cachedData) {
+        return Promise.resolve({ data: cachedData.data, status: 200, statusText: 'OK', headers: {}, config: config || {} });
+      }
+    }
+    
+    // 发送实际请求
+    const response = await this.instance.get<T>(url, config);
+    
+    // 缓存响应数据
+    if (enabled) {
+      const cacheKey = generateCacheKey(url, config?.params);
+      const strategy = getCacheStrategy(url, 'GET');
+      this.cacheData(cacheKey, response.data, strategy.level);
+    }
+    
+    return response;
+  }
+  
+  /**
+   * POST请求（处理缓存更新）
+   */
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    const response = await this.instance.post<T>(url, data, config);
+    // 处理缓存更新
+    this.handleCacheUpdate(url, 'POST');
+    return response;
+  }
+  
+  /**
+   * PUT请求（处理缓存更新）
+   */
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    const response = await this.instance.put<T>(url, data, config);
+    // 处理缓存更新
+    this.handleCacheUpdate(url, 'PUT');
+    return response;
+  }
+  
+  /**
+   * DELETE请求（处理缓存更新）
+   */
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    const response = await this.instance.delete<T>(url, config);
+    // 处理缓存更新
+    this.handleCacheUpdate(url, 'DELETE');
+    return response;
+  }
+  
+  /**
+   * PATCH请求（处理缓存更新）
+   */
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    const response = await this.instance.patch<T>(url, data, config);
+    // 处理缓存更新
+    this.handleCacheUpdate(url, 'PATCH');
+    return response;
+  }
+  
+  /**
+   * 从缓存获取数据
+   */
+  private getCachedData(key: string): { data: any; expiry: number } | null {
+    const cachedItem = cacheStorage[key];
+    if (!cachedItem) return null;
+    
+    // 检查缓存是否过期
+    if (Date.now() > cachedItem.expiry) {
+      delete cacheStorage[key];
+      return null;
+    }
+    
+    return cachedItem;
+  }
+  
+  /**
+   * 缓存数据
+   */
+  private cacheData(key: string, data: any, level: any): void {
+    const expiryTime = getCacheExpiryTime(level);
+    if (expiryTime > 0) {
+      cacheStorage[key] = {
+        data,
+        expiry: Date.now() + expiryTime
+      };
+    }
+  }
+  
+  /**
+   * 处理缓存更新
+   */
+  private handleCacheUpdate(url: string, method: string): void {
+    // 生成缓存失效模式
+    const patterns = generateInvalidationPatterns(url);
+    
+    // 遍历所有缓存键，删除匹配的缓存
+    Object.keys(cacheStorage).forEach(key => {
+      if (patterns.some(pattern => {
+        const regexPattern = pattern.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${regexPattern}$`);
+        return regex.test(key);
+      })) {
+        delete cacheStorage[key];
+      }
+    });
+  }
+  
+  /**
+   * 清除所有缓存
+   */
+  clearCache(): void {
+    Object.keys(cacheStorage).forEach(key => {
+      delete cacheStorage[key];
+    });
+  }
+  
+  /**
+   * 获取原始Axios实例
+   */
+  getOriginalInstance(): AxiosInstance {
+    return this.instance;
+  }
+}
 
 /**
  * 创建axios实例
@@ -67,7 +233,13 @@ export const createAxiosInstance = (): AxiosInstance => {
 
 // 创建并导出axios实例
 // 这是一个已经配置好的axios实例，可以直接用于发送API请求
-export const axiosInstance = createAxiosInstance();
+const baseAxiosInstance = createAxiosInstance();
 
-// 默认导出axios实例
-export default axiosInstance;
+// 创建并导出增强的axios实例
+export const enhancedAxiosInstance = new EnhancedAxiosInstance(baseAxiosInstance);
+
+// 创建并导出axios实例（向后兼容）
+export const axiosInstance = baseAxiosInstance;
+
+// 默认导出增强的axios实例
+export default enhancedAxiosInstance;
