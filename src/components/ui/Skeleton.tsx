@@ -25,6 +25,10 @@ interface SkeletonProps {
    * 是否显示为矩形
    */
   rect?: boolean;
+  /**
+   * 自定义样式
+   */
+  style?: React.CSSProperties;
 }
 
 /**
@@ -37,12 +41,14 @@ const Skeleton: React.FC<SkeletonProps> = ({
   height,
   className = '',
   circle = false,
-  rect = false
+  rect = false,
+  style: customStyle
 }) => {
   // 计算样式
   const style: React.CSSProperties = {
     width,
-    height
+    height,
+    ...customStyle
   };
 
   // 计算CSS类名

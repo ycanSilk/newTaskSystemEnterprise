@@ -69,6 +69,10 @@ export default function PublisherDashboardPage() {
   const [cachedTasks, setCachedTasks] = useState<Task[]>([]);
   const [isUsingCache, setIsUsingCache] = useState(false);
   
+  // 冷却机制
+  const [lastInitializeTime, setLastInitializeTime] = useState(0);
+  const initializeCooldown = 2000; // 2秒冷却时间
+  
   // 滚动位置缓存
   const scrollPositionRef = useRef<number>(0);
   
@@ -123,9 +127,12 @@ export default function PublisherDashboardPage() {
       console.log('获取任务列表数据成功:', result);
       
       if (result.code === 0) {
+        const newTasks = result.data.tasks;
         // 保存页面状态
-        savePageState({ tasks: result.data.tasks, activeTab });
-        return result.data.tasks;
+        savePageState({ tasks: newTasks, activeTab });
+        // 直接更新任务状态，实现无感刷新
+        setTasks(newTasks);
+        return newTasks;
       } else {
         throw new Error(result.message || '获取任务列表失败');
       }
@@ -171,7 +178,6 @@ export default function PublisherDashboardPage() {
         
         // 获取最新数据
         const tasksData = await fetchTasks();
-        setTasks(tasksData);
         
         // 缓存数据
         const cacheKey = `dashboard_cache_${activeTab}`;
@@ -193,8 +199,13 @@ export default function PublisherDashboardPage() {
       }
     };
 
-    initialize();
-  }, [activeTab]); // 移除isBackNavigation依赖，避免重复执行
+    // 只在activeTab变化且不在冷却时间内时执行初始化，避免重复执行
+    const currentTime = Date.now();
+    if (activeTab && currentTime - lastInitializeTime > initializeCooldown) {
+      setLastInitializeTime(currentTime);
+      initialize();
+    }
+  }, [activeTab]); // 只依赖activeTab，避免重复执行
 
   // 监听路由变化，检测回退导航
   useEffect(() => {
@@ -210,23 +221,13 @@ export default function PublisherDashboardPage() {
 
   // 组件挂载时添加刷新任务
   useEffect(() => {
-    // 添加页面可见性刷新任务
-    addRefreshTask('dashboard_visibility_refresh', async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('dashboard: 页面重新可见，刷新任务列表');
-        const tasksData = await fetchTasks();
-        setTasks(tasksData);
-      }
-    }, {
-      interval: 3600000, // 1小时轮询
-      debounceTime: 300, // 300ms防抖
-      enabled: true
-    });
+  
 
     // 添加定时轮询任务
     addRefreshTask('dashboard_polling_refresh', async () => {
-      console.log('dashboard: 定时刷新任务列表');
+      console.log('dashboard: 定时轮询刷新任务列表');
       const tasksData = await fetchTasks();
+      // 直接更新任务，因为fetchTasks内部已经处理了缓存和错误
       setTasks(tasksData);
     }, {
       interval: 3600000, // 1小时轮询
@@ -235,7 +236,6 @@ export default function PublisherDashboardPage() {
 
     // 清理函数
     return () => {
-      removeRefreshTask('dashboard_visibility_refresh');
       removeRefreshTask('dashboard_polling_refresh');
     };
   }, []);

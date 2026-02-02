@@ -55,7 +55,16 @@ export class EnhancedAxiosInstance {
       const cachedData = this.getCachedData(cacheKey);
       
       if (cachedData) {
-        return Promise.resolve({ data: cachedData.data, status: 200, statusText: 'OK', headers: {}, config: config || {} });
+        return Promise.resolve({
+          data: cachedData.data,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {
+            ...(config || {}),
+            headers: config?.headers || {}
+          }
+        } as AxiosResponse<T>);
       }
     }
     

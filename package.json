@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "cross-env NODE_ENV=production next build",
     "build:clean": "rimraf .next && cross-env NODE_ENV=production next build",
-    "start": "cross-env NODE_ENV=production PORT=8890 npx next start",
+    "start": "rimraf .next && cross-env NODE_ENV=production next build && cross-env NODE_ENV=production PORT=8890 npx next start",
     "start:clean": "rimraf .next && cross-env NODE_ENV=production next build && cross-env NODE_ENV=production PORT=8890 npx next start",
     "deploy:prod": "cross-env NODE_ENV=production PORT=8890 npm run build:clean && cross-env NODE_ENV=production PORT=8890 npx next start",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",

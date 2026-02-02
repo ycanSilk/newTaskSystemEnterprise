@@ -27,6 +27,8 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
+  const fetchCooldown = 5000; // 5秒冷却时间
   
   // 使用useUserStore获取用户信息和方法
   const { currentUser, clearUser } = useUserStore();
@@ -155,7 +157,15 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
 
   // 获取未读消息数量
   const fetchUnreadCount = async () => {
+    // 检查是否在冷却时间内
+    const currentTime = Date.now();
+    if (currentTime - lastFetchTimeRef.current < fetchCooldown) {
+      console.log('获取通知消息冷却中，跳过本次请求');
+      return;
+    }
+    
     try {
+      lastFetchTimeRef.current = currentTime;
       const response = await fetch('/api/notifications/getNotificationsList', {
         method: 'GET',
         headers: {

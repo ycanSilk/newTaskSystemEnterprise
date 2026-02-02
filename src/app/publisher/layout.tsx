@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { PublisherBottomNavigation } from './components/PublisherBottomNavigation';
 import { PublisherHeader } from '@/app/publisher/components/PublisherHeader';
+import { useTokenChecker } from '@/hooks/useTokenChecker';
 
 export default function PublisherLayout({
   children,
@@ -12,12 +13,15 @@ export default function PublisherLayout({
 }) {
   const pathname = usePathname();
   
+  // 总是在顶层调用useTokenChecker钩子，确保Hooks调用顺序一致
+  useTokenChecker();
+  
   // 判断是否为登录页面或认证相关页面
-  // 需要考虑加密后的路径，例如 /CRoXHkQADQYAShVYHw0/login
-  const isAuthPage = pathname?.includes('/auth/') || 
-                   pathname?.includes('/login') || 
-                   pathname?.includes('/register') || 
-                   pathname?.includes('/resetpwd');
+  const isAuthPage = !pathname || 
+                   pathname === '/publisher/auth/login' || 
+                   pathname === '/publisher/auth/register' || 
+                   pathname === '/publisher/auth/resetpwd';
+  
   // 对于认证页面，直接渲染内容，不包含导航栏和头部
   if (isAuthPage) {
     return (

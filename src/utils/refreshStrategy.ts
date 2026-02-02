@@ -26,7 +26,7 @@ export interface RefreshStrategyConfig {
 const DEFAULT_CONFIG: Required<RefreshStrategyConfig> = {
   defaultInterval: 60000, // 默认60秒
   defaultDebounceTime: 300, // 默认300ms
-  enablePageVisibilityRefresh: true,
+  enablePageVisibilityRefresh: false,
   enableGlobalPolling: true,
   maxConcurrentTasks: 10, // 默认最多10个并发任务
 };

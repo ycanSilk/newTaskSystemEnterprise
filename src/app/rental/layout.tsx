@@ -2,6 +2,7 @@
 import React, { memo, lazy, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { User } from '@/types';
+import { useTokenChecker } from '@/hooks/useTokenChecker';
 
 // 动态导入客户端Header组件 - 仅使用ClientHeader
 const ClientHeader = lazy(() => import('./components/ClientHeader'));
@@ -15,7 +16,25 @@ interface AccountRentalLayoutProps {
 const AccountRentalLayout = memo(({ children }: AccountRentalLayoutProps) => {
   const pathname = usePathname();
 
+  // 总是在顶层调用useTokenChecker钩子，确保Hooks调用顺序一致
+  useTokenChecker();
 
+  // 判断是否为登录页面或认证相关页面
+  const isAuthPage = !pathname || 
+                   pathname === '/publisher/auth/login' || 
+                   pathname === '/publisher/auth/register' || 
+                   pathname === '/publisher/auth/resetpwd';
+
+  // 对于认证页面，直接渲染内容，不包含导航栏和头部
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {children}
+      </div>
+    );
+  }
+
+  // 对于非认证页面，继续执行后续逻辑
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">

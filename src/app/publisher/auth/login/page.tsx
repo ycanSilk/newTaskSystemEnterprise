@@ -37,9 +37,12 @@ export default function PublisherLoginPage() {
     if (!isAuthLoading && isAuthenticated) {
       console.log('isAuthenticated:', isAuthenticated);
       console.log('用户已登录，重定向到目标页面');
-      // 使用replace代替push，避免浏览器历史记录中留下登录页
-      // 确保只执行一次重定向
-      router.replace('/publisher/dashboard');
+      // 检查当前路径是否已经是dashboard或其他非登录页面
+      const currentPath = window.location.pathname;
+      if (currentPath === '/publisher/auth/login' || currentPath === '/publisher/auth/register') {
+        // 使用replace代替push，避免浏览器历史记录中留下登录页
+        router.replace('/publisher/dashboard');
+      }
     }
   }, [isAuthLoading, isAuthenticated, router]);
   
