@@ -79,7 +79,7 @@ const RentalRequestDetailPage: React.FC = () => {
   const handleRentNow = (): void => {
     if (!request) return;
     // 跳转到申请租赁页面，并传递订单ID
-    router.push(`/rental/rental_requests/applicationRent?demand_id=${request.id}`);
+    router.push(`/rental/requests_market/applicationRent?demand_id=${request.id}`);
   };
 
   // 处理联系对方
