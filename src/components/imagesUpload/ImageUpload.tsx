@@ -118,10 +118,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         className={`image-upload-grid grid grid-cols-${columns} gap-4 justify-center items-center mb-4`}
         style={{ width: gridWidth }}
       >
-        {Array.from({ length: maxCount }).map((_, index) => (
+        {/* 只渲染当前已上传图片数量 + 1个上传区域，最多不超过maxCount */}
+        {Array.from({ length: Math.min(images.length + 1, maxCount) }).map((_, index) => (
           <div 
             key={index} 
-            className={`image-upload-item relative border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-300 ${images[index] ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}
+            className={`image-upload-item relative border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-300 ${images[index] ? 'border-blue-500 bg-blue-50' : 'border-gray-500 hover:border-blue-500 hover:bg-blue-50'}`}
             style={{ width: itemWidth, height: itemHeight }}
           >
             {/* 已上传图片显示 */}
@@ -147,8 +148,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             ) : (
               /* 空槽位上传按钮 */
               <label className="upload-label w-full h-full flex flex-col items-center justify-center cursor-pointer">
-                <span className="upload-icon text-4xl font-light text-gray-400 mb-2">+</span>
-                <span className="upload-text text-sm text-gray-500">点击上传图片</span>
+                <span className="upload-icon text-4xl font-light text-gray-500 hover:text-blue-500 mb-2">+</span>
+                <span className="upload-text text-sm text-gray-500 hover:text-blue-500">点击上传图片</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png"
@@ -180,7 +181,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           <div className="relative max-w-4xl max-h-[90vh]">
             {/* 关闭按钮 */}
             <button
-              className="absolute top-[-40px] right-0 text-white text-2xl cursor-pointer hover:opacity-80 transition-opacity"
+              className="absolute top-4 right-4 bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors z-50"
               onClick={handleClosePreview}
               aria-label="关闭预览"
             >
