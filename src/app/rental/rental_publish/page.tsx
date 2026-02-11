@@ -1,11 +1,11 @@
-import { EncryptedLink } from '@/components/layout/EncryptedLink';
+import Link from 'next/link';
 
 const AccountRentalPublishPage = () => {
   return (
     <div className="min-h-screen  space-y-3">
       <div className="max-w-4xl mx-auto pt-8">
         {/* 发布账号租赁卡片 */}
-        <EncryptedLink href="/rental/rental_publish/rental" className="block mb-6">
+        <Link href="/rental/rental_publish/rental" className="block mb-6">
           <div className="mb-4 bg-white rounded-lg border border-blue-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">发布出租信息</h3>
@@ -15,10 +15,10 @@ const AccountRentalPublishPage = () => {
               发布 &gt;
             </div>
           </div>
-        </EncryptedLink>
+        </Link>
 
         {/* 发布求租信息卡片 */}
-        <EncryptedLink href="/rental/rental_publish/requests" className="block">
+        <Link href="/rental/rental_publish/requests" className="block">
           <div className="mb-4 bg-white rounded-lg border border-blue-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">发布求租信息</h3>
@@ -28,7 +28,7 @@ const AccountRentalPublishPage = () => {
                 发布 &gt;
             </div>
           </div>
-        </EncryptedLink>
+        </Link>
       </div>
     </div>
   );

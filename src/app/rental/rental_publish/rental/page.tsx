@@ -15,15 +15,18 @@ interface DouyinAccountRentalForm {
   price: number;
   minLeaseDays: number;
   maxLeaseDays: number;
-  allowRenew: 0 | 1; // 新增：是否允许续租
+  allow_renew: number; // 新增：是否允许续租
   accountRequirements: {
-    canChangeName: boolean;
-    canIntroduction: boolean;
-    canPostComments: boolean;
-    canPostVideos: boolean;
-    canUnbanAccount: boolean;
+    basic_information: boolean;
+    post_douyin: boolean;
+    deblocking: boolean;
+    identity_verification: boolean;
   };
-  loginMethods: string[]; // ['scan', 'phone_sms', 'no_login'] 支持多选
+  loginMethods: {
+    scan_code: boolean;
+    phone_message: boolean;
+    other_require: boolean;
+  };
   phone: string;
   qq?: string;
   email?: string;
@@ -39,15 +42,18 @@ export default function DouyinAccountRentalPage() {
     price: 50,
     minLeaseDays: 1, 
     maxLeaseDays: 30,
-    allowRenew: 1, // 新增：是否允许续租，默认1=是
+    allow_renew: 1, // 新增：是否允许续租，默认true=是
     accountRequirements: {
-      canChangeName: false,
-      canIntroduction: false,
-      canPostComments: false,
-      canPostVideos: false,
-      canUnbanAccount: false,
+      basic_information: false,
+      post_douyin: false,
+      deblocking: false,
+      identity_verification: false,
     },
-    loginMethods: ['scan'], // 默认选择扫码登录
+    loginMethods: {
+      scan_code: true,
+      phone_message: false,
+      other_require: false,
+    },
     phone: '',
     qq: '',
     email: ''
@@ -126,7 +132,8 @@ export default function DouyinAccountRentalPage() {
     }
     
     // 登录方式验证
-    if (formData.loginMethods.length === 0) {
+    const hasLoginMethod = formData.loginMethods.scan_code || formData.loginMethods.phone_message || formData.loginMethods.other_require;
+    if (!hasLoginMethod) {
       newErrors.loginMethods = '请至少选择一种登录方式';
     }
     
@@ -171,36 +178,27 @@ export default function DouyinAccountRentalPage() {
   };
   
   // 处理登录方式多选框变化
-  const handleLoginMethodChange = (value: string) => {
+  // 处理标签点击变更
+  const handleTagClick = (group: 'accountRequirements' | 'loginMethods', field: string) => {
     setFormData(prev => {
-      const currentMethods = [...prev.loginMethods];
-      const index = currentMethods.indexOf(value);
-      
-      if (index === -1) {
-        // 添加选中的值
+      if (group === 'accountRequirements') {
         return {
           ...prev,
-          loginMethods: [...currentMethods, value]
+          accountRequirements: {
+            ...prev.accountRequirements,
+            [field]: !prev.accountRequirements[field as keyof typeof prev.accountRequirements]
+          }
         };
       } else {
-        // 移除未选中的值
         return {
           ...prev,
-          loginMethods: currentMethods.filter(item => item !== value)
+          loginMethods: {
+            ...prev.loginMethods,
+            [field]: !prev.loginMethods[field as keyof typeof prev.loginMethods]
+          }
         };
       }
     });
-  };
-  
-  // 处理复选框变化
-  const handleCheckboxChange = (group: string, field: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [group]: {
-        ...prev[group as keyof DouyinAccountRentalForm] as Record<string, boolean>,
-        [field]: !(prev[group as keyof DouyinAccountRentalForm] as Record<string, boolean>)[field]
-      }
-    }));
   };
 
   // 处理输入框失焦事件 - 当用户离开输入框后，自动填充默认值
@@ -231,19 +229,19 @@ export default function DouyinAccountRentalPage() {
       // 构建后端API所需的请求参数
       const requestData: CreateOffersRentalInfoRequest = {
         title: formData.title,
-        price_per_day: formData.price || 50,
+        price_per_day: (formData.price || 50) * 100,
         min_days: formData.minLeaseDays || 1,
         max_days: formData.maxLeaseDays || 30,
-        allow_renew: formData.allowRenew,
+        allow_renew: formData.allow_renew ? 1 : 0,
         content_json: {
           account_info: formData.description,
-          name_and_photo: formData.accountRequirements.canChangeName ? '1' : '0',
-          publish_comment: formData.accountRequirements.canPostComments ? '1' : '0',
-          publish_video: formData.accountRequirements.canPostVideos ? '1' : '0',
-          deblocking: formData.accountRequirements.canUnbanAccount ? '1' : '0',
-          scan_code_login: formData.loginMethods.includes('scan') ? '1' : '0',
-          phone_message: formData.loginMethods.includes('phone_sms') ? '1' : '0',
-          requested_all: formData.loginMethods.includes('no_login') ? '1' : '0',
+          basic_information: formData.accountRequirements.basic_information ? 'true' : 'false',
+          post_douyin: formData.accountRequirements.post_douyin ? 'true' : 'false',
+          deblocking: formData.accountRequirements.deblocking ? 'true' : 'false',
+          identity_verification: formData.accountRequirements.identity_verification ? 'true' : 'false',
+          scan_code: formData.loginMethods.scan_code ? 'true' : 'false',
+          phone_message: formData.loginMethods.phone_message ? 'true' : 'false',
+          other_require: formData.loginMethods.other_require ? 'true' : 'false',
           images: formData.accountImages, // 直接使用上传后的图片URL列表
           phone_number: formData.phone,
           qq_number: formData.qq || '',
@@ -252,7 +250,6 @@ export default function DouyinAccountRentalPage() {
       };
       
       console.log('提交的API请求数据:', requestData);
-      
       // 调用后端API提交数据
       const response = await fetch('/api/rental/rentOut/createOffersRentalnfo', {
         method: 'POST',
@@ -417,7 +414,7 @@ export default function DouyinAccountRentalPage() {
                       type="radio"
                       name="allowRenew"
                       value={1}
-                      checked={formData.allowRenew === 1}
+                      checked={formData.allow_renew === 1}
                       onChange={() => handleInputChange('allowRenew', 1)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
@@ -428,7 +425,7 @@ export default function DouyinAccountRentalPage() {
                       type="radio"
                       name="allowRenew"
                       value={0}
-                      checked={formData.allowRenew === 0}
+                      checked={formData.allow_renew === 0}
                       onChange={() => handleInputChange('allowRenew', 0)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
@@ -441,92 +438,66 @@ export default function DouyinAccountRentalPage() {
             </div>
             
             {/* 账号要求 */}
-            <div className="space-y-1">
+            <div className="space-y-3">
               <label className="block text-sm font-medium  mb-2">账号支持</label>
-              <div className="space-y-1">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.accountRequirements.canChangeName}
-                    onChange={() => handleCheckboxChange('accountRequirements', 'canChangeName')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm ">修改抖音账号名称和头像</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.accountRequirements.canIntroduction}
-                    onChange={() => handleCheckboxChange('accountRequirements', 'canIntroduction')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm ">修改账号简介</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.accountRequirements.canPostComments}
-                    onChange={() => handleCheckboxChange('accountRequirements', 'canPostComments')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm ">支持发布评论</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.accountRequirements.canPostVideos}
-                    onChange={() => handleCheckboxChange('accountRequirements', 'canPostVideos')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm ">支持发布视频</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.accountRequirements.canUnbanAccount}
-                    onChange={() => handleCheckboxChange('accountRequirements', 'canUnbanAccount')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm ">支持账号解封</span>
-                </label>
-                <div className='text-sm text-gray-600'>支持勾选选项越多，出租概率越大。</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.basic_information ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('accountRequirements', 'basic_information')}
+                >
+                  修改基本信息
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_douyin ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('accountRequirements', 'post_douyin')}
+                >
+                  发布视频和评论
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.deblocking ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('accountRequirements', 'deblocking')}
+                >
+                  账号解禁
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.identity_verification ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('accountRequirements', 'identity_verification')}
+                >
+                  实名认证
+                </button>
               </div>
+              <div className='text-sm text-gray-600'>支持勾选选项越多，出租概率越大。</div>
             </div>
             
             {/* 登录方式 */}
-            <div className="space-y-1 mt-3">
+            <div className="space-y-3 mt-3">
               <label className="block text-sm font-medium mb-2">登录方式（可多选）</label>
-              <div className="space-y-1">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="scan"
-                    checked={formData.loginMethods.includes('scan')}
-                    onChange={() => handleLoginMethodChange('scan')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm">扫码登录</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="phone_sms"
-                    checked={formData.loginMethods.includes('phone_sms')}
-                    onChange={() => handleLoginMethodChange('phone_sms')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm">手机号+短信验证登录</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="no_login"
-                    checked={formData.loginMethods.includes('no_login')}
-                    onChange={() => handleLoginMethodChange('no_login')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm">不登录账号，按照承租方要求完成租赁</span>
-                </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.scan_code ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('loginMethods', 'scan_code')}
+                >
+                  扫码登录
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.phone_message ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('loginMethods', 'phone_message')}
+                >
+                  短信验证
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.other_require ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('loginMethods', 'other_require')}
+                >
+                  按租赁方要求
+                </button>
               </div>
               <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高账号出租概率。</div>
             </div>

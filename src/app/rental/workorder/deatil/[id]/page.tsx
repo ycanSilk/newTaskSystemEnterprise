@@ -11,6 +11,8 @@ import { WorkOrderDetail, WorkOrderDetailResponse } from '@/app/rental/types/wor
 import { SendMessageRequest, SendMessageResponse, SendMessageResponseData } from '@/app/rental/types/workorder/sendMessageTypes';
 // 引入用户状态管理
 import { useUserStore } from '@/store/userStore';
+// 引入压缩图片函数
+import { compressImage } from '@/components/imagesUpload/compressImage';
 
 const WorkOrderDetailPage = () => {
   const params = useParams();
@@ -40,7 +42,7 @@ const WorkOrderDetailPage = () => {
   // 图片上传状态
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   // 表单实例
-  const closeWorkOrderForm = Form.useFormInstance();
+  const [closeWorkOrderForm] = Form.useForm();
   
   // 获取URL查询参数
   useEffect(() => {
@@ -68,12 +70,7 @@ const WorkOrderDetailPage = () => {
     }
   };
   
-  // 获取用户信息
-  useEffect(() => {
-    console.log('=== 获取用户信息 ===');
-    console.log('当前用户信息:', currentUser);
-    // 用户信息由登录时直接保存到内存，无需额外获取
-  }, [currentUser]);
+  // 用户信息已从localStorage获取，无需额外调用
   
   // 页面加载时获取工单详情
   useEffect(() => {
@@ -206,24 +203,16 @@ const WorkOrderDetailPage = () => {
         console.log('新消息数量:', newMessages.length);
         console.log('新消息列表:', newMessages);
         
-        // 如果有新消息，或者当前没有消息列表，就更新
-        const hasNewMessages = newMessages.length > 0 || !workOrder?.recent_messages?.length;
+        // 每次都更新工单详情，确保显示所有消息
+        console.log('=== 更新工单详情，显示所有消息 ===');
+        setWorkOrder(data.data);
+        // 记录最后更新时间
+        setLastUpdateTime(Date.now());
         
-        if (hasNewMessages) {
-          // 有新消息，更新工单详情
-          console.log('=== 检测到新消息，更新工单详情 ===');
-          setWorkOrder(data.data);
-          // 记录最后更新时间
-          setLastUpdateTime(Date.now());
-          
-          // 立即滚动消息列表到底部
-          setTimeout(() => {
-            scrollMessagesToBottom();
-          }, 100);
-        } else {
-          // 没有新消息，不更新
-          console.log('=== 没有检测到新消息，不更新工单详情 ===');
-        }
+        // 立即滚动消息列表到底部
+        setTimeout(() => {
+          scrollMessagesToBottom();
+        }, 100);
       } else {
         // API调用失败，显示错误信息
         setError(data.message || '获取工单详情失败');
@@ -327,8 +316,14 @@ const WorkOrderDetailPage = () => {
   // 关闭工单对话框 - 确认按钮
   const handleCloseModalConfirm = async () => {
     try {
+      console.log('开始关闭工单流程');
+      console.log('closeWorkOrderForm:', closeWorkOrderForm);
+      console.log('closeReason:', closeReason);
+      console.log('ticketId:', ticketId);
+      
       // 表单验证
       await closeWorkOrderForm.validateFields();
+      console.log('表单验证通过');
       
       setClosingWorkOrder(true);
       
@@ -337,6 +332,7 @@ const WorkOrderDetailPage = () => {
         ticket_id: parseInt(ticketId),
         close_reason: closeReason
       };
+      console.log('请求体:', requestBody);
       
       // 调用API关闭工单
       const response = await fetch('/api/workOrder/closeWorkOrder', {
@@ -348,7 +344,9 @@ const WorkOrderDetailPage = () => {
         body: JSON.stringify(requestBody)
       });
       
+      console.log('API响应状态:', response.status);
       const data = await response.json();
+      console.log('API响应数据:', data);
       
       if (data.success || data.code === 0) {
         // 关闭成功
@@ -382,9 +380,12 @@ const WorkOrderDetailPage = () => {
         return false;
       }
       
+      // 压缩图片到80KB以内
+      const compressedFile = await compressImage(file, 80 * 1024);
+      
       // 创建FormData对象，用于上传图片
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', compressedFile);
       
       // 调用真实的图片上传API
       const response = await fetch('/api/imagesUpload', {
@@ -518,12 +519,15 @@ const WorkOrderDetailPage = () => {
     });
     console.log('当前用户信息:', currentUser);
     
+    // 检查工单是否已关闭（状态为3）
+    const isWorkOrderClosed = workOrder.status === 3;
+    
     return (
       <Card className="border-0 rounded-lg shadow-sm mb-4">
         <h3 className="text-sm font-semibold mb-3">消息记录</h3>
         
         {/* 消息列表 */}
-        <div ref={messagesContainerRef} className="bg-gray-50 rounded-lg py-4 px-2 mb-4" style={{ height: '400px', overflowY: 'auto' }}>
+        <div ref={messagesContainerRef} className="bg-gray-50 rounded-lg py-4 px-2 mb-4" style={{ minHeight: '400px', maxHeight: '600px', overflowY: 'auto' }}>
           {workOrder.recent_messages.map((message) => {
             // 添加每条消息渲染日志
             console.log(`=== 渲染消息 ${message.id} ===`);
@@ -588,79 +592,89 @@ const WorkOrderDetailPage = () => {
           })}
         </div>
         
-        {/* 发送消息区域 */}
-        <div>
-          {/* 已上传图片预览 */}
-          {uploadedImages.length > 0 && (
-            <div className="flex gap-2 mb-2">
-              {uploadedImages.map((image, index) => (
-                <div key={index} className="relative w-16 h-16">
-                  <Image src={image} alt={`已上传图片 ${index + 1}`} width={64} height={64} className="rounded" />
-                  <button
-                    type="button"
-                    className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                    onClick={() => handleRemoveImage(index)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* 上传图片按钮 */}
-          <div className="mb-2">
-            <Upload
-              beforeUpload={handleImageUpload}
-              fileList={[]}
-              accept="image/*"
-              maxCount={3 - uploadedImages.length}
-            >
-              <Button icon={<PaperClipOutlined />} size="small" className='py-4 bg-blue-600 text-white'>
-                上传图片
-              </Button>
-            </Upload>
+        {/* 工单已关闭提示 */}
+        {isWorkOrderClosed && (
+          <div className="bg-gray-100 border border-gray-300 p-4 rounded-md text-center mb-4">
+            <p className="text-red-500 font-blod">工单已关闭</p>
+            <p className="text-red-500 text-sm mt-1">该工单已结束，无法再发送消息或上传图片</p>
           </div>
-          
-          {/* 输入框 */}
-          <Input.TextArea
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            placeholder="输入消息内容..."
-            style={{ height: 80 }}
-            className="mb-2"
-          />
-          
-          {/* 发送按钮 */}
-          <div className="flex justify-end">
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSendMessage}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              发送
-            </Button>
-          </div>
-          
-          {/* 底部按钮 */}
-          <div className="flex justify-center mt-3">
-            {workOrder.can_close && (
-              <Button
-                type="default"
-                onClick={handleCloseWorkOrder}
-                className="text-red-600 border-red-600 hover:bg-red-50"
-              >
-                关闭工单
-              </Button>
+        )}
+        
+        {/* 发送消息区域 - 仅当工单未关闭时显示 */}
+        {!isWorkOrderClosed && (
+          <div>
+            {/* 已上传图片预览 */}
+            {uploadedImages.length > 0 && (
+              <div className="flex gap-2 mb-2">
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative w-16 h-16">
+                    <Image src={image} alt={`已上传图片 ${index + 1}`} width={64} height={64} className="rounded" />
+                    <button
+                      type="button"
+                      className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                      onClick={() => handleRemoveImage(index)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
+            
+            {/* 上传图片按钮 */}
+            <div className="mb-2">
+              <Upload
+                beforeUpload={handleImageUpload}
+                fileList={[]}
+                accept="image/*"
+                maxCount={3 - uploadedImages.length}
+              >
+                <Button icon={<PaperClipOutlined />} size="small" className='py-4 bg-blue-600 text-white'>
+                  上传图片
+                </Button>
+              </Upload>
+            </div>
+            
+            {/* 输入框 */}
+            <Input.TextArea
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              placeholder="输入消息内容..."
+              style={{ height: 80 }}
+              className="mb-2"
+            />
+            
+            {/* 发送按钮 */}
+            <div className="flex justify-end">
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSendMessage}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                发送
+              </Button>
+            </div>
+            
+            {/* 底部按钮 */}
+            <div className="flex justify-center mt-3">
+              {workOrder.can_close && (
+                <Button
+                  type="default"
+                  onClick={handleCloseWorkOrder}
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                >
+                  关闭工单
+                </Button>
+              )}
+            </div>
+            
+            {/* 轮询状态显示 */}
+            <div className="text-xs text-gray-500 text-center mt-2">
+              最后更新: {new Date(lastUpdateTime).toLocaleTimeString()}
+            </div>
           </div>
-          
-          {/* 轮询状态显示 */}
-          <div className="text-xs text-gray-500 text-center mt-2">
-            最后更新: {new Date(lastUpdateTime).toLocaleTimeString()}
-          </div>
-        </div>
+        )}
       </Card>
     );
   };

@@ -17,13 +17,16 @@ const MyApplicationsPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
   const [total, setTotal] = useState<number>(0);
+  // 筛选状态
+  const [filterStatus, setFilterStatus] = useState<number | 'all'>('all');
 
   // 获取申请列表数据函数
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      // 调用API获取数据，传入当前页码和每页条数
-      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1`);
+      // 调用API获取数据，传入当前页码、每页条数、my=1参数和筛选状态
+      const statusParam = filterStatus !== 'all' ? `&status=${filterStatus}` : '';
+      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
       const data = await response.json();
       console.log('获取申请列表响应:', data);
       
@@ -45,7 +48,7 @@ const MyApplicationsPage = () => {
   // 页面加载时获取申请列表数据
   useEffect(() => {
     fetchApplications();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, filterStatus]);
 
   // 根据订单状态返回对应的样式类名
   const getOrderStatusClass = (statusText: string): string => {
@@ -64,6 +67,10 @@ const MyApplicationsPage = () => {
   // 处理通过审核按钮点击
   const handleApprove = async (applicationId: number) => {
     try {
+      // 获取当前申请的天数
+      const application = applications.find(app => app.id === applicationId);
+      const days = application?.application_json?.days || 0;
+      
       // 调用审核通过API
       const response = await fetch('/api/rental/requestRental/reviewAppliedRequestRentalInfo', {
         method: 'POST',
@@ -72,8 +79,8 @@ const MyApplicationsPage = () => {
         },
         body: JSON.stringify({
           application_id: applicationId,
-          action: 'approve',
-          days: 0,
+          status: "1", // 1=通过
+          days: days,
           reject_reason: ''
         } as ReviewApplicationRequest)
       });
@@ -104,6 +111,10 @@ const MyApplicationsPage = () => {
     }
     
     try {
+      // 获取当前申请的天数
+      const application = applications.find(app => app.id === applicationId);
+      const days = application?.application_json?.days || 0;
+      
       // 调用拒绝API
       const response = await fetch('/api/rental/requestRental/reviewAppliedRequestRentalInfo', {
         method: 'POST',
@@ -112,8 +123,8 @@ const MyApplicationsPage = () => {
         },
         body: JSON.stringify({
           application_id: applicationId,
-          action: 'reject',
-          days: 0,
+          status: "2", // 2=拒绝
+          days: days,
           reject_reason: rejectReason
         } as ReviewApplicationRequest)
       });
@@ -139,6 +150,50 @@ const MyApplicationsPage = () => {
       <div className="max-w-4xl mx-auto py-6 px-4">
         {/* 页面标题 */}
         <h1 className="text-2xl font-bold text-gray-800 mb-6">求租信息应征申请审核列表</h1>
+        
+        {/* 状态筛选按钮 */}
+        <div className="flex space-x-2 mb-6">
+          <Button
+            variant={filterStatus === 'all' ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到全部');
+              setFilterStatus('all');
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            全部
+          </Button>
+          <Button
+            variant={filterStatus === 0 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到待审核');
+              setFilterStatus(0);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            待审核
+          </Button>
+          <Button
+            variant={filterStatus === 1 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到已通过');
+              setFilterStatus(1);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            已通过
+          </Button>
+          <Button
+            variant={filterStatus === 2 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到已取消');
+              setFilterStatus(2);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            已取消
+          </Button>
+        </div>
         
         {/* 申请列表 */}
         <div className="space-y-4">
@@ -174,7 +229,12 @@ const MyApplicationsPage = () => {
                   {/* 账号信息描述 */}
                   <div className="mb-3">
                     <h3 className="text-sm font-medium  mb-1">账号信息描述:</h3>
-                    <p className="text-sm ">{application.application_json.description}</p>
+                    <p className="text-sm ">{application.application_json?.description || ''}</p>
+                    {/* 应征人用户名 */}
+                    <p className="text-sm">
+                      出租申请人: {application.applicant_username || '无'}
+                    </p>
+                    <p>出租天数：{application.application_json?.days || ''}</p>
                   </div>
                   
                   {/* 是否允许续租 */}

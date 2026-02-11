@@ -199,7 +199,7 @@ const RentalOfferPage = () => {
     }
 
     return filteredOffers.map((offer) => (
-      <Link href={`/accountrental/my-account-rental/rentaloffer/rentaloffer-detail/${offer.id}`} key={offer.id}>
+      <Link href={`/rental/my/myrelearentalinfo/detail/${offer.id}?edit=0`} key={offer.id}>
         <Card className="border-0 rounded-none mb-3 cursor-pointer hover:shadow-md transition-shadow">
           {/* 出租头部信息 */}
           <div className="flex items-center justify-between mb-2">
@@ -252,7 +252,7 @@ const RentalOfferPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      alert(`出租 ${offer.id} 执行 编辑出租 操作`);
+                      router.push(`/rental/my/myrelearentalinfo/detail/${offer.id}?edit=1`);
                     }} 
                     size="small"
                     className="text-xs border border-gray-400 text-black p-3"
@@ -334,11 +334,11 @@ const RentalOfferPage = () => {
           </div>
         </div>
         
-        {/* 右侧筛选按钮区域 - 10%宽度，垂直居中 */}
-        <div className="w-[15%] flex">
+        {/* 右侧筛选按钮区域 - 宽度加三分之一，垂直居中 */}
+        <div className="w-[20%] flex">
           <button 
             onClick={handleFilterClick} 
-            className="text-sm text-blue-500 border border-blue-500 text-center px-3 py-1"
+            className="text-sm text-white border border-blue-500 bg-blue-500 text-center px-3 py-1"
             style={{
               fontSize: '14px',
               outline: 'none'

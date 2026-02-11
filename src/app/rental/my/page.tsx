@@ -47,13 +47,13 @@ const MyAccountRentalPage = () => {
     },
     {
       id: 'help-center',
-      title: '我应征的求租信息',
+      title: '我出租的账号列表',
       color: 'bg-yellow-100',
       path: '/rental/my/myapplication'
     },
     {
       id: 'applied-lease-info',
-      title: '待审核的应征信息',
+      title: '求租匹配申请列表',
       color: 'bg-yellow-100',
       path: '/rental/my/reviewapplication'
     },

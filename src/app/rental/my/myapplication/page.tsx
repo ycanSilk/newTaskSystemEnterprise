@@ -17,12 +17,43 @@ const MyApplicationsPage = () => {
   const [pageSize, setPageSize] = useState<number>(20);
   const [total, setTotal] = useState<number>(0);
 
+  // 筛选状态
+  const [filterStatus, setFilterStatus] = useState<number | 'all'>('all');
+
+  // 定期轮询刷新数据（每30秒）
+  useEffect(() => {
+    const pollingInterval = setInterval(() => {
+      fetchApplications();
+    }, 60000);
+
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [currentPage, pageSize, filterStatus]);
+
+  // 页面获得焦点时刷新数据
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchApplications();
+    };
+
+    // 监听页面获得焦点
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [currentPage, pageSize, filterStatus]);
+
   // 获取申请列表数据函数
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      // 调用API获取数据，传入当前页码和每页条数
-      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&`);
+      // 调用API获取数据，传入当前页码、每页条数、my=1参数和筛选状态
+      const statusParam = filterStatus !== 'all' ? `&status=${filterStatus}` : '';
+      console.log('API请求:', `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
+      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
       const data = await response.json();
       console.log('获取申请列表响应:', data);
       
@@ -44,7 +75,7 @@ const MyApplicationsPage = () => {
   // 页面加载时获取申请列表数据
   useEffect(() => {
     fetchApplications();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, filterStatus]);
 
   // 根据订单状态返回对应的样式类名
   const getOrderStatusClass = (statusText: string): string => {
@@ -67,6 +98,50 @@ const MyApplicationsPage = () => {
         {/* 页面标题 */}
         <h1 className="text-2xl font-bold text-gray-800 mb-6">我应征申请的租赁信息</h1>
         
+        {/* 状态筛选按钮 */}
+        <div className="flex space-x-2 mb-6">
+          <Button
+            variant={filterStatus === 'all' ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到全部');
+              setFilterStatus('all');
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            全部
+          </Button>
+          <Button
+            variant={filterStatus === 0 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到待审核');
+              setFilterStatus(0);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            待审核
+          </Button>
+          <Button
+            variant={filterStatus === 1 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到已通过');
+              setFilterStatus(1);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            已通过
+          </Button>
+          <Button
+            variant={filterStatus === 2 ? 'primary' : 'ghost'}
+            onClick={() => {
+              console.log('切换到已取消');
+              setFilterStatus(2);
+            }}
+            className="px-3 py-1 text-sm"
+          >
+            已取消
+          </Button>
+        </div>
+        
         {/* 申请列表 */}
         <div className="space-y-4">
           {loading ? (
@@ -86,32 +161,36 @@ const MyApplicationsPage = () => {
                 {/* 申请卡片内容 */}
                 <div className="p-4">
                   {/* 申请基本信息 */}
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start ">
                     <div>
                       <h2 className="text-lg font-semibold text-gray-800">{application.demand_title}</h2>
                       <p className="text-sm mt-1">
                         申请时间: {application.created_at}
                       </p>
-                      <div className={`w-[60px] text-center px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusClass(application.status_text)}`}>
+                      <div className={`w-[60px] text-center px-3 py-1 rounded text-xs font-medium ${getOrderStatusClass(application.status_text)}`}>
                         {application.status_text}
                       </div>
                     </div>
                   </div>
                   
                   {/* 账号信息描述 */}
-                  <div className="mb-3">
+                  <div className="">
                     <h3 className="text-sm font-medium  mb-1">账号信息描述:</h3>
                     <p className="text-sm ">{application.application_json.description}</p>
+                    {/* 应征人用户名 */}
+                    <p className="text-sm">
+                      出租申请人: {application.applicant_username || '无'}
+                    </p>
                   </div>
                   
                   {/* 是否允许续租 */}
-                  <div className="mb-3">
+                  <div className="">
                     <h3 className="text-sm font-medium  mb-1">是否允许续租: {application.allow_renew === 1 ? '是' : '否'}</h3>
                   </div>
                   
                   {/* 审核信息 */}
                   {(application.status !== 0) && (
-                    <div className="mb-3">
+                    <div className="">
                       {application.reviewed_at && (
                         <p className="text-sm text-gray-500 mt-1">
                           审核时间: {application.reviewed_at}

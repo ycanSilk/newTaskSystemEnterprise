@@ -13,8 +13,11 @@ export const GET_OFFERS_RENTAL_INFO_DETAIL_ENDPOINT = `/rental/offers/detail.php
 //上下架出租信息
 export const TOGGLE_OFFERS_RENTAL_INFO_STATUS_ENDPOINT = `/rental/offers/toggle-status.php`;
 
+//出租信息下单接口（创建租赁订单）
+export const CREATE_RENTAL_ORDER_ENDPOINT = `/rental/orders/create-from-offer.php`;
 
-
+//更新出租信息接口
+export const UPDATE_OFFERS_RENTAL_INFO_ENDPOINT = `/rental/offers/update.php`;
 
 
 
@@ -44,7 +47,8 @@ export const GET_APPLIED_REQUEST_RENTAL_INFO_LIST_ENDPOINT = `/rental/applicatio
 //审核通过或拒绝求租信息应征申请
 export const REVIEW_APPLIED_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/applications/review.php`;
 
-
+//更新求租信息接口
+export const UPDATE_REQUEST_RENTAL_INFO_ENDPOINT = `/rental/demands/update.php`;
 
 
 //同样租赁订单接口

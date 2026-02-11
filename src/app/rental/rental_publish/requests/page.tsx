@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreateRequestRentalInfoParams } from '@/app/types/rental/requestRental/createRequestRentalInfoTypes';
+import { CreateRequestRentalInfoParams } from '@/app/types/rental/requestRental/updateRequestRentalInfoTypes';
 
 const PublishForm = () => {
   const router = useRouter();
@@ -14,16 +14,19 @@ const PublishForm = () => {
     days_needed: 1,
     deadline: 0,
     requirements_json: {
-      account_requirements: '',   // 账号要求
-    basic_information:0,          //支持修改账号基本信息
-    other_requirements:0,          //需要实名认证
-    deblocking:0,                 //需要人脸验证解封
-    requested_all:0,           //按承租方要求登录
-    phone_message:0,           //手机号+短信验证登录
-    scan_code_login: 0,        // 扫码登录
+    account_requirements: '',   // 账号要求
+    basic_information: 'false',          //支持修改账号基本信息
+    other_requirements: 'false',          //需要实名认证
+    deblocking: 'false',                 //需要人脸验证解封
+    post_douyin: 'false',                 //发布抖音
+    additional_requirements_tag: 'false', //其他要求标签
+    requested_all: 'false',           //按承租方要求登录
+    phone_message: 'false',           //手机号+短信验证登录
+    scan_code: 'false',        // 扫码登录
     qq_number:'',               //联系方式：手机号
     phone_number:'',            //qq号
     email:'',                   //邮箱
+    additional_requirements: '' // 其他要求
     }
   });
 
@@ -47,6 +50,7 @@ const PublishForm = () => {
   
   // QQ验证函数
   const validateQQ = (qq: string): boolean => {
+    // QQ号格式：1-9开头，5-11位数字
     const qqRegex = /^[1-9]\d{4,10}$/;
     return qqRegex.test(qq);
   };
@@ -65,18 +69,11 @@ const PublishForm = () => {
       newErrors.email = '请输入有效的邮箱地址';
     }
     
-    // QQ验证（选填）
-    if (formData.requirements_json.qq_number.trim() && !validateQQ(formData.requirements_json.qq_number)) {
+    // QQ验证（必填）
+    if (!formData.requirements_json.qq_number.trim()) {
+      newErrors.qq = '请输入QQ号码';
+    } else if (!validateQQ(formData.requirements_json.qq_number)) {
       newErrors.qq = '请输入有效的QQ号码';
-    }
-    
-    // 至少填写一种联系方式
-    const hasPhone = formData.requirements_json.phone_number.trim() !== '';
-    const hasEmail = formData.requirements_json.email.trim() !== '';
-    const hasQQ = formData.requirements_json.qq_number.trim() !== '';
-    
-    if (!hasPhone && !hasEmail && !hasQQ) {
-      newErrors.contact = '请至少填写一种联系方式';
     }
     
     setErrors(newErrors);
@@ -136,6 +133,17 @@ const PublishForm = () => {
       }));
     }
   };
+  
+  // 处理标签点击变更
+  const handleTagClick = (field: keyof CreateRequestRentalInfoParams['requirements_json']) => {
+    setFormData(prev => ({
+      ...prev,
+      requirements_json: {
+        ...prev.requirements_json,
+        [field]: prev.requirements_json[field] === 'false' ? 'true' : 'false'
+      }
+    }));
+  };
 
   // 复选框变化处理函数（0/1切换）
   const handleCheckboxChange = (field: keyof CreateRequestRentalInfoParams['requirements_json']) => {
@@ -143,7 +151,7 @@ const PublishForm = () => {
       ...prev,
       requirements_json: {
         ...prev.requirements_json,
-        [field]: prev.requirements_json[field] === 0 ? 1 : 0
+        [field]: prev.requirements_json[field] === 'false' ? 'true' : 'false'
       }
     }));
   };
@@ -151,7 +159,7 @@ const PublishForm = () => {
   // 成功确认处理函数
   const handleSuccessConfirm = () => {
     setShowSuccessModal(false);
-    router.push('/rental/rental_requests');
+    router.push('/rental/requests_market');
   };
   
   // 取消处理函数
@@ -169,11 +177,22 @@ const PublishForm = () => {
     }
     
     try {
-      // 准备请求体，确保预算金额和天数转换为数字类型
-      const requestBody: CreateRequestRentalInfoParams = {
+      // 准备请求体，确保预算金额和天数转换为数字类型，并将boolean值转换为0/1
+      const requestBody = {
         ...formData,
         days_needed: formData.days_needed === 0 ? 1 : formData.days_needed, // 确保最小天数为1
-        budget_amount: formData.budget_amount * 100 // 转换为分
+        budget_amount: formData.budget_amount * 100, // 转换为分
+        requirements_json: {
+          ...formData.requirements_json,
+          basic_information: formData.requirements_json.basic_information === 'true' ? 1 : 0,
+          other_requirements: formData.requirements_json.other_requirements === 'true' ? 1 : 0,
+          deblocking: formData.requirements_json.deblocking === 'true' ? 1 : 0,
+          post_douyin: formData.requirements_json.post_douyin === 'true' ? 1 : 0,
+          additional_requirements_tag: formData.requirements_json.additional_requirements_tag === 'true' ? 1 : 0,
+          requested_all: formData.requirements_json.requested_all === 'true' ? 1 : 0,
+          phone_message: formData.requirements_json.phone_message === 'true' ? 1 : 0,
+          scan_code: formData.requirements_json.scan_code === 'true' ? 1 : 0
+        }
       };
       
       // 调用API
@@ -213,8 +232,8 @@ const PublishForm = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
           {/* 标题输入 */}
           <div className="mb-1">
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              求租标题 <span className="text-red-500">*</span>
+            <label htmlFor="title" className="block text-sm font-medium  mb-1">
+              求租信息标题 <span className="text-red-500">*</span>
             </label>
             <input
               id="title"
@@ -232,7 +251,7 @@ const PublishForm = () => {
 
           {/* 描述输入 */}
           <div className="mb-1">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium  mb-1">
               求租信息描述 <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -251,7 +270,7 @@ const PublishForm = () => {
 
           {/* 预算金额 */}
           <div className="mb-1">
-            <label htmlFor="budget_amount" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="budget_amount" className="block text-sm font-medium  mb-1">
               预算金额 (元)/天 <span className="text-red-500">*</span>
             </label>
             <input
@@ -270,7 +289,7 @@ const PublishForm = () => {
 
           {/* 需要天数 */}
           <div className="mb-1">
-            <label htmlFor="days_needed" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="days_needed" className="block text-sm font-medium  mb-1">
               需要租赁天数 <span className="text-red-500">*</span>
             </label>
             <input
@@ -288,7 +307,7 @@ const PublishForm = () => {
 
           {/* 截止时间 */}
           <div className="mb-1">
-            <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="deadline" className="block text-sm font-medium  mb-1">
               截止时间 <span className="text-red-500">*</span>
             </label>
             <input
@@ -310,7 +329,7 @@ const PublishForm = () => {
 
           {/* 手机号 */}
           <div className="mb-1">
-            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="phone_number" className="block text-sm font-medium  mb-1">
               联系电话（选填）
             </label>
             <input
@@ -329,7 +348,7 @@ const PublishForm = () => {
           
           {/* 邮箱 */}
           <div className="mb-1">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium  mb-1">
               邮箱（选填）
             </label>
             <input
@@ -348,8 +367,8 @@ const PublishForm = () => {
           
           {/* QQ */}
           <div className="mb-1">
-            <label htmlFor="qq" className="block text-sm font-medium text-gray-700 mb-1">
-              QQ号码（选填）
+            <label htmlFor="qq" className="block text-sm font-medium  mb-1">
+              QQ号码 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -359,93 +378,109 @@ const PublishForm = () => {
               onChange={handleInputChange}
               className={`w-full px-4 py-2 border ${errors.qq ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
               placeholder="请输入QQ号码"
+              required
             />
             {errors.qq && (
               <p className="text-red-500 text-xs mt-1">{errors.qq}</p>
             )}
-            {errors.contact && (
-              <p className="text-red-500 text-xs mt-1">{errors.contact}</p>
-            )}
-            <p className="text-red-600 text-xs mt-2">*请留下最少一种联系方式，以便我们与您联系</p>
           </div>
           
           {/* 账号要求 */}
-          <div className="mb-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              账号要求
-            </label>
-            <div className="space-y-1">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.basic_information === 1}
-                  onChange={() => handleCheckboxChange('basic_information')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">支持修改账号基本信息</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.deblocking === 1}
-                  onChange={() => handleCheckboxChange('deblocking')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">需要人脸验证解封</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.other_requirements === 1}
-                  onChange={() => handleCheckboxChange('other_requirements')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">需要实名认证</span>
-              </label>
+          <div className="space-y-3">
+            <label className="block text-sm font-medium mb-2">账号要求</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.basic_information === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('basic_information')}
+              >
+                修改基本信息
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.deblocking === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('deblocking')}
+              >
+                账号解禁
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.other_requirements === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('other_requirements')}
+              >
+                实名认证
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_douyin === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('post_douyin')}
+              >
+                发布抖音
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.additional_requirements_tag === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('additional_requirements_tag')}
+              >
+                其他
+              </button>
             </div>
+            <div className='text-sm text-gray-600'>选择的要求越多，匹配到合适账号的概率越大。</div>
           </div>
           
-          {/* 登录方式 */}
-          <div className="mb-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              登录方式
-            </label>
-            <div className="space-y-1">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.scan_code_login === 1}
-                  onChange={() => handleCheckboxChange('scan_code_login')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">扫码登录</span>
+          {/* 其他要求 */}
+          {formData.requirements_json.additional_requirements_tag === 'true' && (
+            <div className="mb-1">
+              <label htmlFor="additional_requirements" className="block text-sm font-medium  mb-1">
+                其他要求（选填）
               </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.phone_message === 1}
-                  onChange={() => handleCheckboxChange('phone_message')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">手机号+短信验证登录</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.requirements_json.requested_all === 1}
-                  onChange={() => handleCheckboxChange('requested_all')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">按承租方要求登录</span>
-              </label>
+              <textarea
+                id="additional_requirements"
+                name="additional_requirements"
+                value={formData.requirements_json.additional_requirements}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                placeholder="请输入其他特殊要求"
+                rows={3}
+                maxLength={100}
+              />
             </div>
+          )}
+          
+          {/* 登录方式 */}
+          <div className="space-y-3 mt-3">
+            <label className="block text-sm font-medium mb-2">登录方式（可多选）</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.scan_code === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('scan_code')}
+              >
+                扫码登录
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.phone_message === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('phone_message')}
+              >
+                短信验证
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                onClick={() => handleTagClick('requested_all')}
+              >
+                按租赁方要求
+              </button>
+            </div>
+            <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高匹配概率。</div>
           </div>
 
           {/* 表单操作按钮 */}
           <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 mb-1">
             <button
               type="button"
-              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+              className="px-6 py-2.5 border border-gray-300 rounded-lg  hover:bg-gray-50 transition-colors duration-200"
               onClick={handleCancel}
             >
               取消

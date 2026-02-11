@@ -181,7 +181,7 @@ const RentalOrderPage = () => {
             <p className="text-sm text-gray-500">加载中...</p>
           </div>
         ) : orders.map((order) => (
-            <Link href={`/accountrental/my-account-rental/myrentalorder/myrentalorder-detail/${order.id}`} key={order.id}>
+            <Link href={`/rental/my/mysellerrentalorder/detail/${order.id}`} key={order.id}>
               <Card className="rounded-md mb-3 hover:shadow-md">
                 {/* 订单头部信息 */}
                 <div className="">

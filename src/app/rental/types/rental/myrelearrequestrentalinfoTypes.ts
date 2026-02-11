@@ -1,18 +1,20 @@
 // 求租信息状态类型
-export type RentalRequestStatus = 0 | 1 | 2;
+export type RentalRequestStatus = 0 | 1 | 2 | 3;
 
 // 求租信息状态文本映射
 export const statusTextMap: Record<RentalRequestStatus, string> = {
-  0: '已下架',
-  1: '发布中',
-  2: '已封禁'
+ 0: '已下架',
+  1: '上架中',
+  2: '已封禁',
+  3: '已过期'
 };
 
 // 求租信息状态到选项卡键值的映射
 export const statusToTabKeyMap: Record<RentalRequestStatus, string> = {
-  0: 'INACTIVE',
+0: 'INACTIVE',
   1: 'ACTIVE',
-  2: 'INACTIVE'
+  2: 'INACTIVE', // 封禁状态显示在已下架选项卡
+  3: 'EXPIRED' // 过期状态显示在已过期选项卡
 };
 
 // 分页信息类型

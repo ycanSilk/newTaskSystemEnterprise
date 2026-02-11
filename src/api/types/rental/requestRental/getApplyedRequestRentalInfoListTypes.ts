@@ -10,6 +10,7 @@ interface ApplicationItem {
   application_json: {
     description: string;
     screenshots: string[];
+    username: string | null;
   };
   status: number;
   status_text: string;

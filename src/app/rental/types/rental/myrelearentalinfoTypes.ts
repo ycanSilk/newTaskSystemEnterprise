@@ -1,18 +1,20 @@
 // 出租信息状态类型 - 数字类型
-export type RentalOfferStatus = 0 | 1 | 2;
+export type RentalOfferStatus = 0 | 1 | 2 | 3;
 
 // 状态文本映射 - 数字状态码到文本的映射
 export const statusTextMap: Record<RentalOfferStatus, string> = {
   0: '已下架',
   1: '上架中',
-  2: '已封禁'
+  2: '已封禁',
+  3: '已过期'
 };
 
 // 状态值到选项卡key的映射
 export const statusToTabKeyMap: Record<RentalOfferStatus, string> = {
   0: 'INACTIVE',
   1: 'ACTIVE',
-  2: 'INACTIVE' // 封禁状态显示在已下架选项卡
+  2: 'INACTIVE', // 封禁状态显示在已下架选项卡
+  3: 'EXPIRED' // 过期状态显示在已过期选项卡
 };
 
 // 分页信息接口

@@ -180,7 +180,7 @@ const RentalOrderPage = () => {
             <p className="text-sm text-gray-500">加载中...</p>
           </div>
         ) : orders.map((order) => (
-            <Link href={`/accountrental/my-account-rental/myrentalorder/myrentalorder-detail/${order.id}`} key={order.id}>
+            <Link href={`/rental/my/mybuysrentedorder/detail/${order.id}`} key={order.id}>
               <Card className="rounded-md mb-3 hover:shadow-md">
                 {/* 订单头部信息 */}
                 <div className="">
@@ -219,10 +219,10 @@ const RentalOrderPage = () => {
                         </span>
                       </div>
                       <div>
-                        <ul className='flex'>
+                        <ul className=''>
                           <li className=''>
                             联系方式：
-                            <p>邮箱：{order.buyer_info_json.email}</p>
+                           
                           </li>
 
                           <li className=''>账号要求：
@@ -235,7 +235,7 @@ const RentalOrderPage = () => {
                   </div>
                 </div>
                 {/* 按钮区域 */}
-                <div className="flex justify-end items-center py-3 px-2">
+                <div className="flex justify-end items-center">
                   {/* 客服按钮移至右侧 */}
                     <Button
                       type="primary"

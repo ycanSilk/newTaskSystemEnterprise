@@ -17,10 +17,10 @@ export const statusTextMap: Record<number, string> = {
 
 // 工单状态标签颜色映射
 export const statusColorMap: Record<number, string> = {
-  0: 'warning',
-  1: 'processing',
-  2: 'success',
-  3: 'default'
+  0: 'default',  // 待处理：灰色
+  1: 'success',  // 处理中：绿色
+  2: 'blue',     // 已解决：蓝色
+  3: 'error'     // 已关闭：红色
 };
 
 // 工单类型
@@ -72,15 +72,20 @@ const WorkOrderListPage = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<number>(0); // 默认选中待处理状态
 
   // 获取工单列表
   const fetchWorkOrders = async () => {
+    console.log('=== 开始获取工单列表 ===');
+    console.log('调用时间:', new Date().toLocaleTimeString());
+    console.log('选中的状态:', selectedStatus);
     setLoading(true);
     setError(null);
     try {
       // 调用实际的API请求，获取工单列表
-  
-      const response = await fetch('/api/workOrder/getWorkOrderList?page=1&page_size=10&role=all&status=all', {
+      console.log('状态参数:', selectedStatus);
+      
+      const response = await fetch(`/api/workOrder/getWorkOrderList?page=1&page_size=10&role=all&status=${selectedStatus}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -90,8 +95,7 @@ const WorkOrderListPage = () => {
       const data = await response.json();
       
       if (data.success && data.code === 0) {
-        console.log("获取工单列表成功", data);
-        // API调用成功，更新工单列表
+       
         setWorkOrders(data.data.list || []);
         message.success(data.message || '获取工单列表成功');
       } else {
@@ -108,8 +112,17 @@ const WorkOrderListPage = () => {
     }
   };
 
+  // 追踪组件挂载和卸载
+  useEffect(() => {
+    console.log('=== 组件挂载 ===');
+    return () => {
+      console.log('=== 组件卸载 ===');
+    };
+  }, []);
+
   // 页面加载时获取工单列表
   useEffect(() => {
+    console.log('=== 执行useEffect获取工单列表 ===');
     fetchWorkOrders();
   }, []);
 
@@ -225,7 +238,7 @@ const WorkOrderListPage = () => {
           <p>创建时间: {workOrder.created_at}</p>
           <p>更新时间: {workOrder.updated_at}</p>
           {workOrder.closed_at && (
-            <p className="text-gray-500">关闭时间: {workOrder.closed_at}</p>
+            <p className="">关闭时间: {workOrder.closed_at}</p>
           )}
         </div>
 
@@ -265,6 +278,50 @@ const WorkOrderListPage = () => {
           className="bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 text-sm py-2 px-4"
         >
           创建工单
+        </Button>
+      </div>
+
+      {/* 状态筛选按钮组 */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          type={selectedStatus === 0 ? "primary" : "default"}
+          onClick={() => {
+            setSelectedStatus(0);
+            fetchWorkOrders();
+          }}
+          className={selectedStatus === 0 ? "bg-blue-600 border-blue-600" : ""}
+        >
+          待处理
+        </Button>
+        <Button
+          type={selectedStatus === 1 ? "primary" : "default"}
+          onClick={() => {
+            setSelectedStatus(1);
+            fetchWorkOrders();
+          }}
+          className={selectedStatus === 1 ? "bg-blue-600 border-blue-600" : ""}
+        >
+          处理中
+        </Button>
+        <Button
+          type={selectedStatus === 2 ? "primary" : "default"}
+          onClick={() => {
+            setSelectedStatus(2);
+            fetchWorkOrders();
+          }}
+          className={selectedStatus === 2 ? "bg-blue-600 border-blue-600" : ""}
+        >
+          已解决
+        </Button>
+        <Button
+          type={selectedStatus === 3 ? "primary" : "default"}
+          onClick={() => {
+            setSelectedStatus(3);
+            fetchWorkOrders();
+          }}
+          className={selectedStatus === 3 ? "bg-blue-600 border-blue-600" : ""}
+        >
+          已关闭
         </Button>
       </div>
 

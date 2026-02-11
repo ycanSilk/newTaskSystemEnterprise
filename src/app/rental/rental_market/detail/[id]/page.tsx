@@ -21,9 +21,7 @@ const AccountDetailPage = ({
   const [rentalInfo, setRentalInfo] = useState<RentalInfoDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentPassword, setPaymentPassword] = useState('');
-  const [orderId, setOrderId] = useState('');
+  
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [leaseDays, setLeaseDays] = useState<number>(0);
@@ -82,8 +80,8 @@ const AccountDetailPage = ({
 
   // 统一的页面布局组件 - 使用更简单的结构避免Hydration mismatch
   const PageContainer = ({ children }: { children: React.ReactNode }) => (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">租赁信息详情</h1>
+    <div className="container mx-auto py-1 px-4">
+      <h1 className="text-2xl font-bold ">租赁信息详情</h1>
       {children}
     </div>
   );
@@ -115,7 +113,7 @@ const AccountDetailPage = ({
 
     return (
       <PageContainer>
-        <div className="bg-white shadow-sm overflow-hidden ">
+        <div className=" overflow-hidden ">
           <div className="bg-red-50 p-6 border-l-4 border-red-400 ">
             <div className="flex items-start ">
               <div className="flex-shrink-0 pt-0.5">
@@ -147,7 +145,7 @@ const AccountDetailPage = ({
   // 无效ID状态组件
   const InvalidIdState = () => (
     <PageContainer>
-      <div className="bg-white shadow-sm overflow-hidden">
+      <div className=" overflow-hidden">
         <div className="p-6">
           <div className="flex items-center justify-center py-10">
             <div className="text-center">
@@ -196,371 +194,187 @@ const AccountDetailPage = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="mb-5 bg-gray-50">
       {/* 主内容区域 */}
-      <div className="max-w-full mx-auto">
-        <div className="">
-          {/* 左侧主要信息 */}
-          <div className="">
-            <div className="bg-white shadow-sm overflow-hidden">
-              <div className="p-3">
-                {/* 订单基本信息 */}
-                <div className="mb-1">
-                  <h1 className="text-xl font-bold text-gray-800">出租账号详情</h1>
-                </div>
-
-                {/* 租赁描述 */}
-                <div className="mb-1">
-                  <h2 className="text-lg font-medium text-gray-800">标题：{rentalInfo.title || "未设置标题"}</h2>
-                  <h2 className="text-lg font-medium text-gray-800">账号描述:</h2>
-                  <p className="text-gray-600 leading-relaxed p-3 border border-blue-200 rounded-md">{rentalInfo.content_json?.account_info || ""}</p>
-                </div>
-
-                {/* 租赁信息详情 */}
-                <div className="grid grid-cols-3 gap-4 mb-1 border-y border-gray-100 py-2">
-                  <div>
-                    <div className="text-sm ">发布者：</div>
-                    <div>{rentalInfo.publisher_username}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm">是否允许续租：</div>
-                    <div>{rentalInfo.allow_renew_text}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm">当前状态：</div>
-                    <div className={`inline-block px-2 py-1 rounded-full text-sm font-medium ${getOrderStatusClass(rentalInfo.status_text)}`}>
-                      {rentalInfo.status_text}
-                    </div>
-                  </div>
-                </div>
+      <div className="max-w-[1200px] mx-auto px-4">
+        <div className="py-3 space-y-3">
+          {/* 主要信息 */}
+          <div className=" overflow-hidden">
+            <div className="py-1 px-4">
+              {/* 租赁描述 */}
+              <div className="mb-2">
+                <h2 className="text-lg font-medium text-gray-800 mb-2">{rentalInfo.title || "未设置标题"}</h2>
+                <h2 className="text-base font-medium text-gray-800 mb-2">账号描述:</h2>
+                <p className="text-gray-600 leading-relaxed py-3 px-4 border border-blue-200 rounded-md">{rentalInfo.content_json?.account_info || ""}</p>
               </div>
-              {/* 账号图片展示区域 */}
-              {rentalInfo && rentalInfo.content_json && (
-                <div className="bg-white px-3">
-                  <h2 className="text-lg font-medium text-gray-800 mb-1">账号图片：</h2>
-                  <div className="grid grid-cols-3 gap-4">
-                    {/* 判断是否有图片，没有则显示默认图片 */}
-                    {(!rentalInfo.content_json.images || rentalInfo.content_json.images.length === 0) ? (
+              <p className="text-sm text-gray-600 mb-2">发布时间：{rentalInfo.created_at || "未设置发布时间"}</p>
+
+              {/* 租赁信息详情 */}
+              <div className="mb-2">
+                {/* 续租状态标签 */}
+                <span className={`px-3 py-1 rounded-full text-sm mr-3 ${rentalInfo.allow_renew ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-600'}`}>
+                  {rentalInfo.allow_renew ? '续租' : '不续租'}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-sm ${getOrderStatusClass(rentalInfo.status_text)}`}>
+                  {rentalInfo.status_text}
+                </span>
+              </div>
+            </div>
+            
+            {/* 账号图片展示区域 */}
+            {rentalInfo && (
+              <div className="bg-white px-4 py-1 ">
+                <h2 className="text-base font-medium text-gray-800 mb-1">账号图片：</h2>
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3 px-1">
+                  {/* 判断是否有图片，没有则显示默认图片 */}
+                  {(!rentalInfo.content_json?.images || rentalInfo.content_json.images.length === 0) ? (
+                    <div
+                      className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-full aspect-square"
+                      onClick={() => setSelectedImage('')}
+                    >
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                        <span className="text-gray-400">暂无图片</span>
+                      </div>
+                    </div>
+                  ) : (
+                    // 多张图片展示
+                    rentalInfo.content_json.images.map((img, index) => (
                       <div
-                        className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-[100px] h-[100px]"
-                        onClick={() => setSelectedImage('')}
+                        key={index}
+                        className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-full aspect-square"
+                        onClick={() => setSelectedImage(img.trim())}
                       >
                         <img
-                          src=""
-                          alt="账号默认图片"
+                          src={img.trim()}
+                          alt={`账号图片 ${index + 1}`}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            // 图片加载失败时显示默认图片
+                            const target = e.target as HTMLImageElement;
+                            target.src = '';
+                            target.alt = '账号默认图片';
+                          }}
                         />
                       </div>
-                    ) : (
-                      // 多张图片展示
-                      rentalInfo.content_json.images.map((img, index) => (
-                        <div
-                          key={index}
-                          className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-[100px] h-[100px]"
-                          onClick={() => setSelectedImage(img.trim())}
-                        >
-                          <img
-                            src={img.trim()}
-                            alt={`账号图片 ${index + 1}`}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              // 图片加载失败时显示默认图片
-                              const target = e.target as HTMLImageElement;
-                              target.src = '';
-                              target.alt = '账号默认图片';
-                            }}
-                          />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* 图片预览模态框 */}
-              {selectedImage && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
-                  onClick={() => setSelectedImage(null)}
-                >
-                  <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full  z-10 w-8 h-8 hover:bg-opacity-70 transition-colors"
-                      onClick={() => setSelectedImage(null)}
-                    >
-                      ✕
-                    </button>
-                    <img
-                      src={selectedImage}
-                      alt="预览图片"
-                      className="max-w-full max-h-[85vh] object-contain"
-                      onError={(e) => {
-                        // 预览图片加载失败时显示默认图片
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/public';
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* 支付密码模态框 */}
-              {showPaymentModal && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    setPaymentPassword('');
-                    setOrderId('');
-                    // 取消后跳转到租赁订单页面
-                    window.location.href = '/accountrental/my-account-rental/myrentedorder';
-                  }}
-                >
-                  <div
-                    className="bg-white shadow-lg p-6 max-w-md w-full"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h2 className="text-xl font-bold mb-4 text-center">支付确认</h2>
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">支付密码</label>
-                      <input
-                        type="password"
-                        placeholder="请输入支付密码"
-                        value={paymentPassword}
-                        onChange={(e) => setPaymentPassword(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        maxLength={6}
-                      />
-                      {paymentPassword.length > 0 && paymentPassword.length !== 6 && (
-                        <p className="text-red-500 text-xs mt-1">支付密码为6位</p>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between gap-3">
-                      <Button
-                        variant="ghost"
-                        className="flex-1"
-                        onClick={() => {
-                          setShowPaymentModal(false);
-                          setPaymentPassword('');
-                          setOrderId('');
-                          // 取消后跳转到租赁订单页面
-                          window.location.href = '/accountrental/my-account-rental/myrentedorder';
-                        }}
-                        disabled={apiLoading}
-                      >
-                        取消
-                      </Button>
-                      <Button
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
-                        onClick={() => {
-                          // 这里可以添加实际的支付逻辑
-                          setShowPaymentModal(false);
-                          alert('支付功能待实现');
-                        }}
-                        disabled={apiLoading || paymentPassword.length !== 6}
-                      >
-                        {apiLoading ? '支付中...' : '确认支付'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 账号支持 */}
-              <div className="bg-white shadow-sm py-2 px-4">
-                <h2 className="text-lg font-medium text-gray-800 mb-1">账号支持</h2>
-                <div className="grid grid-cols-2 gap-1">
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.name_and_photo ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.name_and_photo && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">修改抖音账号名称和头像</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.account_info ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.account_info && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">修改账号简介</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.publish_comment ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.publish_comment && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">支持发布评论</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.publish_video ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.publish_video && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">支持发布视频</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.deblocking ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.deblocking && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">支持账号解封</span>
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
+            )}
 
-              {/* 登录方式 */}
-              <div className="bg-white shadow-sm py-2 px-4">
-                <h2 className="text-lg font-medium text-gray-800 mb-1">登录方式</h2>
-                <div className="space-y-1">
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.scan_code_login ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.scan_code_login && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">扫码登录</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.phone_message ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.phone_message && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">手机号+短信验证登录</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className={`h-4 w-4 rounded border ${rentalInfo.content_json.requested_all ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'} flex items-center justify-center mr-2`}>
-                      {rentalInfo.content_json.requested_all && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 5 3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">不登录账号，按照承租方要求完成租赁</span>
-                  </div>
-                </div>
+            {/* 账号支持 */}
+            <div className="bg-white px-4 py-1 ">
+              <h2 className="text-base font-medium text-gray-800 mb-1">账号支持</h2>
+              <div className="flex flex-wrap gap-2">
+                {rentalInfo.content_json?.basic_information && (
+                  <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm">修改基本信息</span>
+                )}
+                {rentalInfo.content_json?.post_douyin && (
+                  <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm">发布抖音</span>
+                )}
+                {rentalInfo.content_json?.deblocking && (
+                  <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm">账号解禁</span>
+                )}
+                {rentalInfo.content_json?.identity_verification && (
+                  <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm">实名认证</span>
+                )}
               </div>
-              
-              {/* 联系方式 */}
-              <div className="bg-white shadow-sm py-2 px-4">
-                <h2 className="text-lg font-medium text-gray-800 mb-1">联系方式</h2>
-                <div className="space-y-1">
-                  {/* 手机号 */}
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm">手机号</div>
-                    <div className="text-gray-700 font-medium">{rentalInfo.content_json.phone_number || '未设置'}</div>
-                  </div>
-                  
-                  {/* QQ号 */}
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm">QQ号</div>
-                    <div className="text-gray-700 font-medium">{rentalInfo.content_json.qq_number || '未设置'}</div>
-                  </div>
-                  
-                  {/* 邮箱 */}
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm">邮箱</div>
-                    <div className="text-gray-700 font-medium">{rentalInfo.content_json.email || '未设置'}</div>
-                  </div>
-                </div>
+            </div>
+
+            {/* 登录方式 */}
+            <div className="bg-white px-4 py-1 ">
+              <h2 className="text-base font-medium text-gray-800 mb-1">登录方式</h2>
+              <div className="flex flex-wrap gap-2">
+                {rentalInfo.content_json?.scan_code && (
+                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">扫码登录</span>
+                )}
+                {rentalInfo.content_json?.phone_message && (
+                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">短信验证</span>
+                )}
+                {rentalInfo.content_json?.requested_all && (
+                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">按租赁方要求</span>
+                )}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 右侧价格和操作信息 */}
-        <div className="">
-          <div className="bg-white shadow-sm p-3 sticky top-6">
-            {/* 价格信息 */}
-            <div className="mb-2">
-              <div className="flex items-end">
-                <span className="text-2xl">出租单价：</span>
-                <span className="text-2xl font-bold text-red-600">¥{rentalInfo.price_per_day_yuan}/天</span>
+          {/* 价格和操作信息 */}
+          <div className=" py-1 px-4 mb-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
+              {/* 价格信息 */}
+              <div className="mb-2 md:mb-0">
+                <div className="flex items-baseline">
+                  <span className="text-base font-bold text-gray-700">出租单价：</span>
+                  <span className="text-2xl font-bold text-red-600 ml-2">¥{rentalInfo.price_per_day_yuan}/天</span>
+                </div>
+              </div>
+              
+              {/* 租赁信息 */}
+              <div className="flex space-x-6">
+                <div>
+                  租期：{rentalInfo.min_days}-{rentalInfo.max_days}天                  
+                </div>
               </div>
             </div>
-            {/* 租赁信息 */}
-            <div className="">
-              <div className="flex justify-between text-sm mb-2">
-                <span>最低租期</span>
-                <span>{rentalInfo.min_days}天</span>
-              </div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>最高租期</span>
-                <span>{rentalInfo.max_days}天</span>
-              </div>
-              <div className="">
-                <label className="block text-sm font-medium mb-2">租赁天数</label>
-                <input
-                  type="number"
-                  value={leaseDays === 0 ? '' : leaseDays}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // 当输入框为空时，设置默认值为0
-                    if (value === '') {
-                      setLeaseDays(0);
-                    } else {
-                      const numValue = parseInt(value);
-                      // 允许输入0和正整数，只要它在有效范围内
-                      if (!isNaN(numValue)) {
-                        setLeaseDays(Math.max(0, Math.min(rentalInfo.max_days, numValue)));
-                      }
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
-                  min="0"
-                />
-                <p className="text-xs text-gray-500 mb-2">请输入0-{rentalInfo.max_days}天</p>
-              </div>
-            </div>
+            
             {/* 操作按钮 */}
-            <div className="space-y-1">
+            <div className="flex justify-end space-x-3 mt-10">
               <Button
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                variant="ghost"
+                className="py-1 px-4 "
+              >
+                联系客服
+              </Button>
+              <Button
+                className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-6"
                 onClick={() => {
-                  // 这里可以添加实际的立即租赁逻辑
-                  alert('立即租赁功能待实现');
+                  // 跳转到订单页面并传递offer_id
+                  window.location.href = `/rental/rental_market/ordering?offer_id=${offerId}`;
                 }}
                 disabled={apiLoading}
               >
-                {apiLoading ? '处理中...' : '立即租赁'}
-              </Button>
-
-              <Button variant="ghost" className="w-full">
-                联系发布者
+                {apiLoading ? '处理中...' : '立即租用'}
               </Button>
             </div>
+            
             {/* API错误提示 */}
             {apiError && (
-              <div className="mt-3 bg-red-50 text-red-600 p-2 rounded text-sm">
+              <div className="mt-4 bg-red-50 text-red-600 p-3 rounded text-sm">
                 {apiError}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* 图片预览模态框 */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] py-1 px-4" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="absolute topy-1 px-4 right-4 text-white bg-black bg-opacity-50 rounded-full z-10 w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-colors"
+              onClick={() => setSelectedImage(null)}
+            >
+              ✕
+            </button>
+            <img
+              src={selectedImage}
+              alt="预览图片"
+              className="max-w-full max-h-[85vh] object-contain"
+              onError={(e) => {
+                // 预览图片加载失败时显示默认图片
+                const target = e.target as HTMLImageElement;
+                target.src = '';
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
-    );
+    )
   }
 
 export default AccountDetailPage;

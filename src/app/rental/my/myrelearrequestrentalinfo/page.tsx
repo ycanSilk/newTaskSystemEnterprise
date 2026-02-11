@@ -69,7 +69,8 @@ const RentalOfferPage = () => {
   const tabItems: TabsProps['items'] = [
     { key: 'ALL', label: '全部', children: null },
     { key: 'ACTIVE', label: '发布中', children: null },
-    { key: 'INACTIVE', label: '已下架', children: null }
+    { key: 'INACTIVE', label: '已下架', children: null },
+    { key: 'EXPIRED', label: '已过期', children: null }
   ];
 
   // 复制出租编号功能
@@ -83,6 +84,7 @@ const RentalOfferPage = () => {
 
   // 处理选项卡切换
   const handleTabChange = (key: string) => {
+    console.log('当前点击的选项卡的状态:', key);
     setActiveTab(key);
     setError(null);
   };
@@ -157,7 +159,9 @@ const RentalOfferPage = () => {
     } else if (activeTab === 'ACTIVE') {
       return offer.status === 1; // 1表示发布中
     } else if (activeTab === 'INACTIVE') {
-      return offer.status === 0 || offer.status === 2; // 0表示已下架，2表示已封禁
+      return offer.status === 2; // 2表示已下架，3表示已过期
+    }else if(activeTab === 'EXPIRED'){
+      return offer.status === 3 // 3表示已过期
     }
     return true;
   });
@@ -199,7 +203,7 @@ const RentalOfferPage = () => {
     }
 
     return filteredOffers.map((offer) => (
-      <Link href={`/accountrental/my-account-rental/rentaloffer/rentaloffer-detail/${offer.id}`} key={offer.id}>
+      <Link href={`/rental/my/myrelearrequestrentalinfo/detail/${offer.id}?edit=0`} key={offer.id}>
         <Card className="border-0 rounded-none mb-3 cursor-pointer hover:shadow-md transition-shadow">
           {/* 求租头部信息 */}
           <div className="flex items-center justify-between mb-2">
@@ -253,7 +257,7 @@ const RentalOfferPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      alert(`求租 ${offer.id} 执行 编辑求租 操作`);
+                      router.push(`/rental/my/myrelearrequestrentalinfo/detail/${offer.id}?edit=1`);
                     }} 
                     size="small"
                     className="text-xs border border-gray-400 text-black p-3"
