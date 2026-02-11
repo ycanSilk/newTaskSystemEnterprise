@@ -7,13 +7,13 @@ export interface CreateOffersRentalInfoRequest {
   allow_renew: 0 | 1;
   content_json: {
     account_info: string;
-    name_and_photo: '0' | '1';
-    publish_comment: '0' | '1';
-    publish_video: '0' | '1';
-    deblocking: '0' | '1';
-    scan_code_login: '0' | '1';
-    phone_message: '0' | '1';
-    requested_all: '0' | '1';
+    basic_information: string;
+    post_douyin: string;
+    deblocking: string
+    identity_verification: string
+    scan_code: string
+    phone_message: string
+    other_require: string
     images: string[];
     phone_number: string;
     qq_number: string;

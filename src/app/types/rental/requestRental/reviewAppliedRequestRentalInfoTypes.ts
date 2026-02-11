@@ -3,7 +3,7 @@
 // 审核请求参数类型
 export interface ReviewApplicationRequest {
   application_id: number;
-  action: 'approve' | 'reject';
+  status: '1' | '2';
   days: number;
   reject_reason: string;
 }

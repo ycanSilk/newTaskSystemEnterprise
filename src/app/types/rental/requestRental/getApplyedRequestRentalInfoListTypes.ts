@@ -4,6 +4,7 @@
 export interface ApplicationJson {
   description: string;
   screenshots: string[];
+  days: number;
 }
 
 // 单个申请信息接口

@@ -11,6 +11,8 @@ export interface CreateRequestRentalInfoParams {
     basic_information: string;       //支持修改账号基本信息
     other_requirements: string;      //需要实名认证
     deblocking: string;              //需要人脸验证解封
+    post_douyin: string;              //发布抖音
+    additional_requirements_tag: string; //其他要求标签
     requested_all: string;           //按承租方要求登录
     phone_message: string;           //手机号+短信验证登录
     scan_code: string;        // 扫码登录
