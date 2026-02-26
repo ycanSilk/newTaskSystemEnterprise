@@ -402,12 +402,12 @@ export default function AwaitingReviewTabPage() {
           <div className="flex items-start justify-between mb-1 text-blue-600">任务的要求评论：{order.recommend_mark?.comment || ''}</div>
           <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频或评论丢失，将以接单员完成任务截图为准给予审核结算</div>
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
-            <p className='mb-1  text-sm text-blue-600'>已完成评论点击进入：</p>
+            <p className='mb-1  text-sm text-blue-600'>已完成评论链接：</p>
             <div className="flex gap-2 flex-wrap">
               <OpenVideoButton 
                 videoUrl={order.comment_url}
                 defaultUrl={dyurl}
-                buttonText="打开抖音"
+                buttonText="复制链接"
               />
               
               {/* 查看提交的图片组件 */}

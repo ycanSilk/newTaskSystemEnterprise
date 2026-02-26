@@ -11,9 +11,13 @@ export async function GET(request: Request): Promise<NextResponse> {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('page_size') || '20');
+    const statusParam = url.searchParams.get('status');
+    const status = statusParam ? parseInt(statusParam) : undefined;
+    const myParam = url.searchParams.get('my');
+    const my = myParam ? parseInt(myParam) : undefined;
     
     // 调用处理函数
-    return handleGetApplyedRequestRentalInfoList(page, pageSize);
+    return handleGetApplyedRequestRentalInfoList(page, pageSize, status,my);
   } catch (error) {
     // 处理请求解析错误
     return NextResponse.json(

@@ -10,8 +10,7 @@ export interface RechargeWalletRequest {
   payment_method: string;
   /** 支付凭证URL */
   payment_voucher: string;
-  /** 支付密码 */
-  pswd: string;
+
 }
 
 /**

@@ -110,24 +110,7 @@ const TransactionDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center">
-            <button 
-              onClick={handleBack}
-              className="mr-4"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h1 className="text-lg font-medium text-gray-900">交易详情</h1>
-          </div>
-        </div>
-      </div>
-
-      {/* 主要内容 */}
+        {/* 主要内容 */}
       <div className="px-4 py-4">
         <Card className="shadow-sm border-0 rounded-xl">
           <div className="py-6 px-2">
@@ -160,12 +143,6 @@ const TransactionDetailPage = () => {
               <div className="flex justify-between py-2 border-b border-gray-100">
                 <span className="">交易类型</span>
                 <span className="">{transaction.type_text || '-'}</span>
-              </div>
-
-              {/* 交易号 */}
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="">交易号</span>
-                <span className="">{transaction.id || transaction.order_no || '-'}</span>
               </div>
 
               {/* 交易状态 */}

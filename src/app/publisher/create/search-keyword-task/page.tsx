@@ -253,7 +253,7 @@ export default function PublishSearchKeywordTaskPage() {
           disabled={!formData.videoUrl || !formData.searchKeywords.trim() || isLoading}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
-          {isLoading ? '发布中...' : `立即发布任务 - ¥${totalCost}`}
+          {isLoading ? '发布中...' : `发布任务 - ¥${totalCost}`}
         </Button>
         <Button 
           onClick={() => router.back()}

@@ -580,8 +580,19 @@ export default function AccountRentalMarketPage() {
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         platformType: {
-                          ...prev.platformType,
-                          douyin: !prev.platformType.douyin
+                          douyin: true,
+                          qq: false
+                        },
+                        // 重置其他筛选选项
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_douyin: false,
+                          post_ad: false
+                        },
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          phone_message: false,
+                          account_password: false
                         }
                       }))}
                     >
@@ -592,8 +603,19 @@ export default function AccountRentalMarketPage() {
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         platformType: {
-                          ...prev.platformType,
-                          qq: !prev.platformType.qq
+                          douyin: false,
+                          qq: true
+                        },
+                        // 重置其他筛选选项
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_douyin: false,
+                          post_ad: false
+                        },
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          phone_message: false,
+                          account_password: false
                         }
                       }))}
                     >
@@ -606,30 +628,39 @@ export default function AccountRentalMarketPage() {
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">账号支持:</h4>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        accountSupport: {
-                          ...prev.accountSupport,
-                          post_douyin: !prev.accountSupport.post_douyin
-                        }
-                      }))}
-                    >
-                      发布抖音
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        accountSupport: {
-                          ...prev.accountSupport,
-                          post_ad: !prev.accountSupport.post_ad
-                        }
-                      }))}
-                    >
-                      发布广告
-                    </button>
+                    {/* 抖音平台特有标签 */}
+                    {filterOptions.platformType.douyin && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          accountSupport: {
+                            ...prev.accountSupport,
+                            post_douyin: !prev.accountSupport.post_douyin
+                          }
+                        }))}
+                      >
+                        发布抖音
+                      </button>
+                    )}
+                    
+                    {/* QQ平台特有标签 */}
+                    {filterOptions.platformType.qq && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          accountSupport: {
+                            ...prev.accountSupport,
+                            post_ad: !prev.accountSupport.post_ad
+                          }
+                        }))}
+                      >
+                        发布广告
+                      </button>
+                    )}
+                    
+                    {/* 通用标签 */}
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.identity_verification ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -674,6 +705,7 @@ export default function AccountRentalMarketPage() {
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">登录方式:</h4>
                   <div className="flex flex-wrap gap-2">
+                    {/* 通用标签 */}
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.scan_code ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -686,30 +718,39 @@ export default function AccountRentalMarketPage() {
                     >
                       扫码登录
                     </button>
-                    <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        loginMethods: {
-                          ...prev.loginMethods,
-                          phone_message: !prev.loginMethods.phone_message
-                        }
-                      }))}
-                    >
-                      短信验证
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        loginMethods: {
-                          ...prev.loginMethods,
-                          account_password: !prev.loginMethods.account_password
-                        }
-                      }))}
-                    >
-                      账号密码
-                    </button>
+                    
+                    {/* 抖音平台特有标签 */}
+                    {filterOptions.platformType.douyin && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          loginMethods: {
+                            ...prev.loginMethods,
+                            phone_message: !prev.loginMethods.phone_message
+                          }
+                        }))}
+                      >
+                        短信验证
+                      </button>
+                    )}
+                    
+                    {/* QQ平台特有标签 */}
+                    {filterOptions.platformType.qq && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          loginMethods: {
+                            ...prev.loginMethods,
+                            account_password: !prev.loginMethods.account_password
+                          }
+                        }))}
+                      >
+                        账号密码
+                      </button>
+                    )}
+                    
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.other_require ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({

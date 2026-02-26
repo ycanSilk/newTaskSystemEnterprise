@@ -268,11 +268,11 @@ export default function CompletedTabPage() {
           任务描述：{task.template_title}
         </div>
         <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
-          <p className='mb-1  text-sm text-blue-600'>任务视频点击进入：</p>
+          <p className='mb-1  text-sm text-blue-600'>任务视频链接：</p>
           <OpenVideoButton 
             videoUrl={task.video_url}
             defaultUrl={dyurl}
-            buttonText="打开抖音"
+            buttonText="复制链接"
           />
         </div>
         

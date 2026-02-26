@@ -22,6 +22,9 @@ export default function PublishTaskPage() {
   // 从URL参数获取模板ID和价格
   const templateId = parseInt(getSearchParam('template_id') || '0');
   const taskPrice = parseFloat(getSearchParam('price').trim() || '4');
+    // 生成相关
+  const [maxLength, setMaxLength] = useState(10);
+  const [generated, setGenerated] = useState('');
 
   // 表单状态
   const [formData, setFormData] = useState<PublishTaskFormData>({
@@ -144,17 +147,90 @@ export default function PublishTaskPage() {
     });
   };
   
-  // AI优化评论功能
-  const handleAIOptimizeComments = () => {
-    // 模拟AI优化评论的逻辑
-    setFormData(prevData => ({
-      ...prevData,
-      comments: prevData.comments.map(comment => ({
-        ...comment,
-        content: comment.content + ' '
-      }))
-    }));
-    showAlert('优化成功', '评论内容已通过AI优化！', '✨');
+  // AI生成评论功能
+  const handleAIGenerateComments = async () => {
+    try {
+      setIsPublishing(true);
+      
+      const response = await fetch('/api/deepseek/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxLength }), // 只发送 maxLength
+      });
+
+      
+      const result = await response.json();
+      console.log('DeepSeek API 响应:', result);
+      if (!response.ok) throw new Error(result.error || '生成失败');
+
+      setFormData(prevData => ({
+        ...prevData,
+        comments: prevData.comments.map(comment => ({
+          ...comment,
+          content: result.comment || ''
+        }))
+      }));
+      showAlert('生成成功', '评论内容已通过AI生成！', '✨');
+    } catch (error) {
+      console.error('AI生成评论失败:', error);
+      showAlert('生成失败', '网络错误，请稍后重试', 'error');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // AI生成评论评论功能
+  const handleAIPolishComments = async () => {
+    try {
+      // 获取第一个评论的内容作为提示词
+      let firstComment = formData.comments[0]?.content || '';
+      
+      // 如果评论为空，从comment.json文件中随机获取一个评论
+      if (!firstComment) {
+        try {
+          const response = await fetch('/file/comment.json');
+          const comments = await response.json();
+          if (Array.isArray(comments) && comments.length > 0) {
+            const randomIndex = Math.floor(Math.random() * comments.length);
+            firstComment = comments[randomIndex];
+          } else {
+            showAlert('提示', '评论库加载失败，请先输入评论内容', '⚠️');
+            return;
+          }
+        } catch (error) {
+          console.error('加载评论库失败:', error);
+          showAlert('提示', '评论库加载失败，请先输入评论内容', '⚠️');
+          return;
+        }
+      }
+      
+      setIsPublishing(true);
+      console.log('润色提示词:', firstComment);
+      const response = await fetch('/api/deepseek/polish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ draft: firstComment }),
+      });
+      
+      const result = await response.json();
+      console.log('DeepSeek API 响应:', result);
+      if (!response.ok) throw new Error(result.error || '润色失败');
+      setFormData(prevData => ({
+        ...prevData,
+        comments: prevData.comments.map(comment => ({
+          ...comment,
+          content: result.polished || ''
+        }))
+      }));
+      showAlert('润色成功', '评论内容已通过AI生成评论！', '✨');
+    } catch (error) {
+      console.error('AI生成评论评论失败:', error);
+      showAlert('润色失败', '网络错误，请稍后重试', 'error');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // 处理图片变化 - 使用useCallback避免无限循环
@@ -213,6 +289,22 @@ export default function PublishTaskPage() {
     }
     
     try {
+      // 加载屏蔽词列表
+      const shieldWords = await loadShieldWords();
+      
+      // 检查评论是否包含屏蔽词
+      let hasShieldWords = false;
+      formData.comments.forEach(comment => {
+        if (checkShieldWords(comment.content, shieldWords)) {
+          hasShieldWords = true;
+        }
+      });
+      
+      if (hasShieldWords) {
+        showAlert('验证失败', '评论中包含敏感词，请重新输入评论', 'error');
+        return;
+      }
+      
       // 设置加载状态
       setIsPublishing(true);
       
@@ -272,6 +364,35 @@ export default function PublishTaskPage() {
   
   // 计算总费用
   const totalCost = (taskPrice * formData.quantity).toFixed(2);
+
+  // 加载屏蔽词列表
+  const loadShieldWords = async () => {
+    try {
+      const response = await fetch('/file/shield.json');
+      const data = await response.json();
+      return data || [];
+    } catch (error) {
+      console.error('加载屏蔽词列表失败:', error);
+      return [];
+    }
+  };
+
+  // 过滤评论中的屏蔽词
+  const filterShieldWords = (content: string, shieldWords: string[]) => {
+    let filteredContent = content;
+    shieldWords.forEach(word => {
+      if (filteredContent.includes(word)) {
+        const replacement = '**'.repeat(Math.ceil(word.length / 2));
+        filteredContent = filteredContent.replace(new RegExp(word, 'gi'), replacement);
+      }
+    });
+    return filteredContent;
+  };
+
+  // 检查评论是否包含屏蔽词
+  const checkShieldWords = (content: string, shieldWords: string[]) => {
+    return shieldWords.some(word => content.includes(word));
+  };
   
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -320,12 +441,20 @@ export default function PublishTaskPage() {
           </label>
           
           {/* AI优化评论功能按钮 */}
-          <div className="mb-4">
+          <div className="mb-4 flex justify-center space-x-4">
+          {/*
             <Button 
-              onClick={handleAIOptimizeComments}
-              className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              onClick={() => handleAIGenerateComments()}
+              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 max-w-xs"
             >
-              AI评论
+              AI生成评论
+            </Button>
+            */}
+            <Button 
+              onClick={() => handleAIPolishComments()}
+              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 max-w-xs"
+            >
+              AI生成评论
             </Button>
           </div>
           
@@ -345,6 +474,7 @@ export default function PublishTaskPage() {
                   newComments[index] = {...newComments[index], content: e.target.value};
                   setFormData({...formData, comments: newComments});
                 }}
+              
               />
                     
                   {/* 图片上传组件 */}
@@ -425,7 +555,7 @@ export default function PublishTaskPage() {
           disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
-          立即发布任务 - ¥{totalCost}
+          发布任务 - ¥{totalCost}
         </Button>
         <Button 
           onClick={() => router.back()}

@@ -218,16 +218,68 @@ export default function PublishTaskPage() {
   };
   
   // AI优化评论功能
-  const handleAIOptimizeComments = () => {
-    // 模拟AI优化评论的逻辑
-    setFormData(prevData => ({
-      ...prevData,
-      comments: prevData.comments.map(comment => ({
-        ...comment,
-        content: comment.content + ' [AI优化]'
-      }))
-    }));
-    showAlert('优化成功', '评论内容已通过AI优化！', '✨');
+  const handleAIOptimizeComments = async () => {
+    try {
+      // 从comment.json文件中随机获取对应数量的评论作为提示词
+      let prompts: string[] = [];
+      try {
+        const response = await fetch('/file/comment.json');
+        const comments = await response.json();
+        if (Array.isArray(comments) && comments.length > 0) {
+          // 随机获取对应数量的评论，确保不重复
+          const shuffled = [...comments].sort(() => 0.5 - Math.random());
+          prompts = shuffled.slice(0, formData.quantity);
+          // 如果评论库数量不足，重复使用
+          while (prompts.length < formData.quantity) {
+            const randomIndex = Math.floor(Math.random() * comments.length);
+            prompts.push(comments[randomIndex]);
+          }
+        } else {
+          showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
+          return;
+        }
+      } catch (error) {
+        console.error('加载评论库失败:', error);
+        showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
+        return;
+      }
+      
+      setIsPublishing(true);
+      
+      // 为每个提示词生成评论
+      const newComments: Array<{ content: string; image: null; imageUrl: string }> = [];
+      for (const prompt of prompts) {
+        const response = await fetch('/api/deepseek/polish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ draft: prompt }),
+        });
+        
+        const result = await response.json();
+        console.log('DeepSeek API 响应:', result);
+        if (!response.ok) throw new Error(result.error || '润色失败');
+        
+        newComments.push({
+          content: result.polished || '',
+          image: null,
+          imageUrl: ''
+        });
+      }
+      
+      setFormData(prevData => ({
+        ...prevData,
+        comments: newComments
+      }));
+      
+      showAlert('生成成功', `已生成 ${formData.quantity} 条评论内容！`, '✨');
+    } catch (error) {
+      console.error('AI生成评论评论失败:', error);
+      showAlert('润色失败', '网络错误，请稍后重试', 'error');
+    } finally {
+      setIsPublishing(false);
+    }
   };
   
   // 处理图片变化 - 使用useCallback避免无限循环
@@ -409,9 +461,10 @@ export default function PublishTaskPage() {
           <div className="mb-4">
             <Button 
               onClick={handleAIOptimizeComments}
-              className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              disabled={isPublishing}
+              className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              AI评论
+              {isPublishing ? '生成中...' : 'AI生成评论'}
             </Button>
           </div>
           
@@ -551,7 +604,7 @@ export default function PublishTaskPage() {
               disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing || formData.comments.some(comment => !comment.content || comment.content.trim() === '')}
               className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
             >
-              {isPublishing ? '发布中...' : `立即发布任务 - ¥${totalCost}`}
+              {isPublishing ? '发布中...' : `发布任务 - ¥${totalCost}`}
         </Button>
         <Button 
           onClick={() => router.back()}

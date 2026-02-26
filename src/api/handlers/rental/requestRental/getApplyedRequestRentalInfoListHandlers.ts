@@ -15,8 +15,8 @@ import { GetApplyedRequestRentalInfoListResponseData, GetApplyedRequestRentalInf
 export async function handleGetApplyedRequestRentalInfoList(
   page: number,
   pageSize: number,
-  status?: string,
-  my?: string
+  status?: number,
+  my?: number
 ): Promise<NextResponse> {
   try {
     // 构建查询参数
@@ -26,7 +26,7 @@ export async function handleGetApplyedRequestRentalInfoList(
     };
     
     // 添加可选参数
-    if (status) {
+    if (status !== undefined) {
       params.status = status;
     }
     if (my) {
@@ -38,7 +38,9 @@ export async function handleGetApplyedRequestRentalInfoList(
       GET_APPLIED_REQUEST_RENTAL_INFO_LIST_ENDPOINT,
       { params }
     );
-    
+    console.log('API请求参数:', params);
+    console.log('API请求URL:', GET_APPLIED_REQUEST_RENTAL_INFO_LIST_ENDPOINT);
+    console.log('API响应:', response.data);
     // 转换为标准化的响应格式
     const standardizedResponse: GetApplyedRequestRentalInfoListResponse = {
       success: response.data.code === 0,

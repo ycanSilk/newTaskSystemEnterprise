@@ -1,89 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AlertModal from '../../../components/ui/AlertModal';
 import { LoadingOutlined } from '@ant-design/icons';
 import ImageUpload from '../../../components/imagesUpload/ImageUpload';
 import { RechargeWalletRequest } from '../../types/paymentWallet/rechargeWalletTypes';
+import { GetWalletBalanceResponseData, GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
 
-// 支付密码模态框组件
-const PaymentPasswordModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (password: string) => void;
-  loading: boolean;
-}> = ({ isOpen, onClose, onSubmit, loading }) => {
-  const [password, setPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
 
-  const handleSubmit = () => {
-    if (!password) {
-      setPasswordError('请输入支付密码');
-      return;
-    }
-    if (password.length !== 6) {
-      setPasswordError('支付密码必须为6位数字');
-      return;
-    }
-    if (!/^\d+$/.test(password)) {
-      setPasswordError('支付密码必须为数字');
-      return;
-    }
-    setPasswordError('');
-    onSubmit(password);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md p-6 z-50">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">输入支付密码</h3>
-        <p className="text-sm text-gray-600 mb-4">请输入您的6位数字支付密码以确认充值</p>
-        
-        <div className="mb-4">
-          <input
-            type="password"
-            placeholder="请输入6位支付密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
-            maxLength={6}
-            autoFocus
-          />
-          {passwordError && (
-            <p className="text-red-500 text-xs mt-1">{passwordError}</p>
-          )}
-        </div>
-        
-        <div className="flex space-x-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-            disabled={loading}
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="flex-1 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <LoadingOutlined className="animate-spin mr-2" />
-                提交中...
-              </div>
-            ) : (
-              '确认'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function PublisherFinancePage() {
   const router = useRouter();
@@ -96,8 +21,7 @@ export default function PublisherFinancePage() {
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const [screenshotUrls, setScreenshotUrls] = useState<string[]>([]);
   
-  // 支付密码模态框状态
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
   
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -108,9 +32,128 @@ export default function PublisherFinancePage() {
   });
   // 提示框确认后的回调函数
   const [alertCallback, setAlertCallback] = useState<(() => void) | null>(null);
+  
+  // 充值记录相关状态
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordsError, setRecordsError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   // 充值档位
   const rechargeOptions = [100, 200, 300, 500, 1000, 2000];
+
+  // 从created_at中提取日期和时间
+  const extractDateTime = (createTime: string) => {
+    const date = new Date(createTime);
+    return {
+      date: date.toISOString().split('T')[0],
+      time: date.toTimeString().split(' ')[0].substring(0, 5)
+    };
+  };
+
+  // 格式化日期显示
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return '今天';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return '昨天';
+    } else {
+      return date.toLocaleDateString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+  };
+
+  // 获取交易图标
+  const getTransactionIcon = () => {
+    return {
+      icon: '￥',
+      color: 'text-white',
+      bgColor: 'bg-yellow-500'
+    };
+  };
+
+  // 处理查看交易详情
+  const handleViewTransaction = (transaction: Transaction) => {
+    // 将交易记录转换为URL编码的JSON字符串，作为查询参数传递
+    const transactionParams = encodeURIComponent(JSON.stringify(transaction));
+    router.push(`/publisher/balance/transactionDetails/${transaction.id}?data=${transactionParams}` as any);
+  };
+
+  // 获取充值记录数据
+  const fetchRechargeRecords = async () => {
+    try {
+      setRecordsLoading(true);
+      setRecordsError(null);
+      
+      // 调用后端API获取交易记录，只传递page参数
+      const response = await fetch(`/api/paymentWallet/getWalletBalance?page=${currentPage}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data: GetWalletBalanceResponse = await response.json();
+      if (!data.success || !data.data) {
+        throw new Error(data.message || '获取交易记录失败');
+      }
+      
+      // 计算7天前的日期
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      // 按创建时间倒序排序，只保留7天以内且related_type为recharge的记录
+      const sortedTransactions = data.data.transactions
+        // 只保留最近7天的记录
+        .filter(transaction => {
+          const transactionDate = new Date(transaction.created_at);
+          return transactionDate >= sevenDaysAgo && transaction.related_type === 'recharge';
+        })
+        // 按创建时间倒序排序
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      setTransactions(sortedTransactions);
+      
+      // 更新分页信息
+      if (data.data.pagination) {
+        setTotalRecords(data.data.pagination.total || 0);
+        setTotalPages(data.data.pagination.total_pages || 1);
+      }
+    } catch (err) {
+      setRecordsError(err instanceof Error ? err.message : '获取交易记录失败');
+      console.error('获取交易记录失败:', err);
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
+
+  // 当页码或标签页变化时，重新获取数据
+  useEffect(() => {
+    if (activeTab === 'records') {
+      fetchRechargeRecords();
+    }
+  }, [currentPage, activeTab]);
+
+  // 当activeTab变化时，重置当前页码到第一页
+  useEffect(() => {
+    if (activeTab === 'records') {
+      setCurrentPage(1);
+    }
+  }, [activeTab]);
 
   // 显示通用提示框
   const showAlert = (title: string, message: string, icon: string, onConfirmCallback?: () => void) => {
@@ -138,9 +181,9 @@ export default function PublisherFinancePage() {
     const amount = Number(value);
     if (isNaN(amount)) return { isValid: false, message: '请输入有效的数字' };
     if (amount <= 0) return { isValid: false, message: '充值金额必须大于0' };
-    if (amount < 100) return { isValid: false, message: '最低充值金额为100元' };
-    if (amount % 100 !== 0) return { isValid: false, message: '充值金额必须是100的倍数' };
-    if (amount > 100000) return { isValid: false, message: '单次充值金额不能超过100000元' };
+    if (amount < 10) return { isValid: false, message: '充值金额不能小于10元' };
+    if (amount % 1 !== 0) return { isValid: false, message: '充值金额必须是整数' };
+    if (amount > 2000) return { isValid: false, message: '单次充值金额不能超过2000元' };
     
     return { isValid: true, message: '' };
   };
@@ -152,7 +195,7 @@ export default function PublisherFinancePage() {
   };
 
   // 处理充值提交
-  const handleRechargeSubmit = async (password: string) => {
+  const handleRechargeSubmit = async () => {
     console.log('=== 开始处理充值提交 ===');
     try {
       console.log('1. 设置loading为true');
@@ -164,8 +207,6 @@ export default function PublisherFinancePage() {
       if (!amountValidation.isValid) {
         console.log('2.1 金额验证失败:', amountValidation.message);
         showAlert('提示', amountValidation.message, '⚠️');
-        console.log('2.2 关闭密码模态框');
-        setShowPasswordModal(false);
         return;
       }
 
@@ -173,8 +214,6 @@ export default function PublisherFinancePage() {
       if (!selectedPaymentMethod) {
         console.log('3.1 支付方式验证失败');
         showAlert('提示', '请选择支付方式', '⚠️');
-        console.log('3.2 关闭密码模态框');
-        setShowPasswordModal(false);
         return;
       }
 
@@ -182,8 +221,6 @@ export default function PublisherFinancePage() {
       if (screenshotFiles.length === 0) {
         console.log('4.1 截图验证失败');
         showAlert('提示', '请上传支付截图', '⚠️');
-        console.log('4.2 关闭密码模态框');
-        setShowPasswordModal(false);
         return;
       }
       
@@ -195,7 +232,6 @@ export default function PublisherFinancePage() {
         amount: amount,
         payment_method: selectedPaymentMethod,
         payment_voucher: screenshotUrls[0] || '',
-        pswd: password
       };
       
       console.log('6. 调用充值API');
@@ -213,13 +249,9 @@ export default function PublisherFinancePage() {
       const result = await response.json();
       
       console.log('8. 充值响应:', result);
-      // 无论成功还是失败，都先关闭密码模态框
-      console.log('9. 关闭密码模态框');
-      setShowPasswordModal(false);
-      console.log('9.1 模态框状态设置为false');
       
-      // 添加小延迟确保模态框完全关闭
-      console.log('9.2 设置100ms延迟，确保模态框关闭后再显示提示');
+      // 添加小延迟确保操作完成
+      console.log('9. 设置100ms延迟，确保操作完成后再显示提示');
       setTimeout(() => {
         if (result.code === 0) {
           console.log('10. 充值成功处理流程');
@@ -234,6 +266,8 @@ export default function PublisherFinancePage() {
             // 刷新页面 - 使用setTimeout确保在所有组件渲染完成后执行
             console.log('12. 刷新页面');
             setTimeout(() => {
+              // 切换到充值记录页面
+              setActiveTab('records');
               router.refresh();
             }, 100);
           });
@@ -251,8 +285,6 @@ export default function PublisherFinancePage() {
       const errorMessage = error instanceof Error ? error.message : '充值失败，请检查网络连接';
       console.log('16.1 显示异常提示');
       showAlert('错误', `${errorMessage}，请稍后重试`, '❌');
-      console.log('16.2 关闭密码模态框');
-      setShowPasswordModal(false);
     } finally {
       console.log('17. 最终设置loading为false');
       setLoading(false);
@@ -260,7 +292,7 @@ export default function PublisherFinancePage() {
     }
   };
 
-  // 点击提交充值按钮，显示密码模态框
+  // 点击提交充值按钮，直接提交充值
   const handleSubmitRecharge = () => {
     // 先验证基本信息
     const amountValidation = validateAmount(rechargeAmount);
@@ -279,8 +311,8 @@ export default function PublisherFinancePage() {
       return;
     }
     
-    // 显示支付密码模态框
-    setShowPasswordModal(true);
+    // 直接调用充值提交函数
+    handleRechargeSubmit();
   };
 
   return (
@@ -304,10 +336,10 @@ export default function PublisherFinancePage() {
       {activeTab === 'recharge' && (
         <>
           {/* 充值金额输入 */}
-          <div className="mx-4 mt-6">
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <h3 className="font-bold text-gray-800 mb-4">充值金额</h3>
-              <div className="mb-4">
+          <div className="mx-4 mt-2">
+            <div className="bg-white rounded-lg py-2 px-4 shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-2">充值金额</h3>
+              <div className="mb-2">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">¥</span>
                   <input
@@ -319,12 +351,12 @@ export default function PublisherFinancePage() {
                   />
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  最低充值：¥100 | 必须为100的倍数 | 单次最高：¥2000
+                  最低充值：¥10 | 必须为整数 | 单次最高：¥2000
                 </div>
               </div>
 
               {/* 快捷充值 */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">快捷选择</h4>
                 <div className="grid grid-cols-3 gap-2">
                   {rechargeOptions.map((amount) => (
@@ -340,7 +372,7 @@ export default function PublisherFinancePage() {
               </div>
 
               {/* 支付方式 */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">支付方式</h4>
                 <div className="space-y-2">
                   <label className="flex items-center">
@@ -353,7 +385,8 @@ export default function PublisherFinancePage() {
                     />
                     <span className="text-sm">💙 支付宝</span>
                   </label>
-                  <label className="flex items-center">
+                 {/**  
+                  * <label className="flex items-center">
                     <input 
                       type="radio" 
                       name="payMethod" 
@@ -363,11 +396,12 @@ export default function PublisherFinancePage() {
                     />
                     <span className="text-sm">🟢 USDT (TRC20)</span>
                   </label>
+                  */}
                 </div>
               </div>
 
               {/* 截图上传组件 */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <ImageUpload
                   title="上传支付截图"
                   maxCount={1}
@@ -379,11 +413,11 @@ export default function PublisherFinancePage() {
               
               
               {/* 支付信息展示 */}
-              <div className="mb-4 flex flex-col items-center">
+              <div className="mb-2 flex flex-col items-center">
                 {selectedPaymentMethod === 'alipay' ? (
                   <>
-                    <div className="bg-white p-2 border border-gray-200 rounded-lg mb-3">
-                      <div className="w-48 h-48 bg-gray-50 flex items-center justify-center">
+                    <div className="bg-white p-2 border border-gray-200 rounded-lg mb-2">
+                      <div className="w-40 h-40 bg-gray-50 flex items-center justify-center">
                         <img 
                           src="/images/Alipay.png" 
                           alt="支付宝二维码" 
@@ -391,12 +425,11 @@ export default function PublisherFinancePage() {
                         />
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500">请使用支付宝扫描二维码完成支付</p>
-                    <p className="text-sm text-gray-500">渊（备注）</p>
+                    <p className="text-sm text-gray-500">请使用支付宝扫描二维码完成支付;  渊（备注）</p>
                   </>
                 ) : (
                   <>
-                    <div className="bg-white p-4 border border-gray-200 rounded-lg mb-3">
+                    <div className="bg-white p-4 border border-gray-200 rounded-lg mb-2">
                       <div className="w-48 h-48 bg-gray-50 flex items-center justify-center">
                         {/* USDT二维码 */}
                         <img 
@@ -418,7 +451,7 @@ export default function PublisherFinancePage() {
                         <span className="text-sm text-gray-600">充值金额 (¥):</span>
                         <span className="text-sm font-medium">{rechargeAmount || '0.00'}</span>
                       </div>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-600">需支付 USDT:</span>
                         <span className="text-sm font-medium text-green-600">{(parseFloat(rechargeAmount || '0') / 7.2).toFixed(4)}</span>
                       </div>
@@ -439,7 +472,7 @@ export default function PublisherFinancePage() {
                     提交中...
                   </div>
                 ) : (
-                  '提交充值'
+                  '充值'
                 )}
               </button>
             </div>
@@ -457,10 +490,194 @@ export default function PublisherFinancePage() {
               </div>
               
               {/* 记录内容 */}
-              <div className="overflow-y-auto">
-                <div className="p-8 text-center text-gray-500">充值记录功能正在开发中...</div>
+              <div>
+                {recordsLoading ? (
+                  // 加载状态
+                  <div className="px-4 py-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-xs  animate-pulse">加载中...</div>
+                      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="space-y-4">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="flex items-center py-3 animate-pulse">
+                          <div className="h-8 w-8 rounded-full bg-yellow-100 mr-3" />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="h-4 bg-gray-200 rounded w-1/3" />
+                              <div className="h-4 bg-gray-200 rounded w-1/6" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <div className="h-3 bg-gray-200 rounded w-1/4" />
+                              <div className="h-3 bg-gray-200 rounded w-1/4" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : recordsError ? (
+                  // 错误状态
+                  <div className="py-12 px-4 text-center">
+                    <div className="text-5xl mb-2">⚠️</div>
+                    <h3 className="text-lg font-medium text-gray-800 mb-1">获取失败</h3>
+                    <p className=" text-sm mb-2">{recordsError}</p>
+                    <button
+                      onClick={fetchRechargeRecords}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  // 空状态
+                  <div className="py-12 px-4 text-center">
+                    <div className="text-5xl mb-2">📝</div>
+                    <h3 className="text-lg font-medium text-gray-800 mb-1">暂无充值记录</h3>
+                    <p className=" text-sm mb-2">您还没有任何充值记录</p>
+                  </div>
+                ) : (
+                  // 交易记录处理
+                  <div>
+                    {/* 显示交易记录总数信息 */}
+                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                      <div className="text-xs ">
+                        共显示 {transactions.length} 条记录
+                      </div>
+                    </div>
+
+                    {/* 交易记录列表 */}
+                    {transactions.map((transaction) => {
+                      const iconInfo = getTransactionIcon();
+                      // 根据type字段判断交易类型
+                      const isIncome = transaction.type === 1;
+                      const { date, time } = extractDateTime(transaction.created_at);
+
+                      return (
+                        <div
+                          key={transaction.id}
+                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 w-full cursor-pointer"
+                          onClick={() => handleViewTransaction(transaction)}
+                        >
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold flex-shrink-0`}>
+                            <span className={iconInfo.color}>{iconInfo.icon}</span>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start mb-1 w-full">
+                              <h3 className="font-medium text-gray-900 truncate flex-1 mr-3">
+                                {(transaction.remark || transaction.type_text).slice(0, 8)}{(transaction.remark || transaction.type_text).length > 8 ? '...' : ''}
+                              </h3>
+                              <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'} flex-shrink-0 whitespace-nowrap`}>
+                                {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center w-full">
+                              <div className="text-xs flex-shrink-0 whitespace-nowrap">
+                                {formatDate(date)} {time}
+                              </div>
+                              <div className="text-xs flex-shrink-0 whitespace-nowrap">
+                                余额: {parseFloat(transaction.after_balance).toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {/* 分页控件 - 始终显示 */}
+                <div className="px-4 py-3 border-t border-gray-100 flex flex-col items-center space-y-3">
+                  {/* 分页控制 */}
+                  <div className="flex items-center space-x-1">
+                    {/* 上一页按钮 */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      上一页
+                    </button>
+                    
+                    {/* 页码导航 */}
+                    <div className="flex items-center space-x-1">
+                      {/* 第一页 */}
+                      {currentPage > 3 && (
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          1
+                        </button>
+                      )}
+                      
+                      {/* 省略号 */}
+                      {currentPage > 4 && (
+                        <span className="px-3 py-1 text-gray-400">...</span>
+                      )}
+                      
+                      {/* 前一页 */}
+                      {currentPage > 1 && (
+                        <button
+                          onClick={() => setCurrentPage(prev => prev - 1)}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          {currentPage - 1}
+                        </button>
+                      )}
+                      
+                      {/* 当前页 */}
+                      <button
+                        className="px-3 py-1 bg-blue-100 border border-blue-300 rounded text-sm font-medium text-blue-600"
+                        disabled
+                      >
+                        {currentPage}
+                      </button>
+                      
+                      {/* 后一页 */}
+                      {currentPage < totalPages && (
+                        <button
+                          onClick={() => setCurrentPage(prev => prev + 1)}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          {currentPage + 1}
+                        </button>
+                      )}
+                      
+                      {/* 省略号 */}
+                      {currentPage < totalPages - 3 && (
+                        <span className="px-3 py-1 text-gray-400">...</span>
+                      )}
+                      
+                      {/* 最后一页 */}
+                      {currentPage < totalPages - 2 && (
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          {totalPages}
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* 下一页按钮 */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage >= totalPages}
+                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+          
+          {/* 底部提示 */}
+          <div className="px-4 py-4 text-center text-xs text-gray-500">
+            <p>只显示近7天的充值记录</p>
           </div>
         </>
       )}
@@ -475,13 +692,7 @@ export default function PublisherFinancePage() {
         onButtonClick={handleAlertButtonClick}
       />
       
-      {/* 支付密码模态框 */}
-      <PaymentPasswordModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        onSubmit={handleRechargeSubmit}
-        loading={loading}
-      />
+
     </div>
   );
 }

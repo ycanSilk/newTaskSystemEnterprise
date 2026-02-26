@@ -19,15 +19,17 @@ const MyApplicationsPage = () => {
   const [pageSize, setPageSize] = useState<number>(20);
   const [total, setTotal] = useState<number>(0);
   // 筛选状态
-  const [filterStatus, setFilterStatus] = useState<number | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<number | undefined>(undefined);
 
   // 获取申请列表数据函数
   const fetchApplications = async () => {
     setLoading(true);
     try {
       // 调用API获取数据，传入当前页码、每页条数、my=1参数和筛选状态
-      const statusParam = filterStatus !== 'all' ? `&status=${filterStatus}` : '';
-      const url = `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`;
+      let url = `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1`;
+      if (filterStatus !== undefined) {
+        url += `&status=${filterStatus}`;
+      }
       console.log('API调用URL:', url);
       const response = await fetch(url);
       const data = await response.json();
@@ -92,12 +94,12 @@ const MyApplicationsPage = () => {
             key="all"
             onClick={() => {
               console.log('切换到全部');
-              setFilterStatus('all');
+              setFilterStatus(undefined);
             }}
-            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 'all' ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === undefined ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             全部
-            {filterStatus === 'all' && (
+            {filterStatus === undefined && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
             )}
           </button>
@@ -177,6 +179,7 @@ const MyApplicationsPage = () => {
                     <p className="">
                       申请人: {application.applicant_username || '无'}
                     </p>
+                    <p>{application.relation_text}</p>
                     <p>出租天数：{application.application_json.days || '未填写'}</p>
                   </div>
                   

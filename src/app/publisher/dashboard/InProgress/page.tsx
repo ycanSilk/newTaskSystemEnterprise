@@ -333,11 +333,11 @@ export default function ActiveTabPage() {
           任务描速：{task.template_title}
         </div>
         <div className=" bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
-          <p className='  text-sm text-blue-600'>任务视频点击进入：</p>
+          <p className='  text-sm text-blue-600'>任务视频链接：</p>
           <OpenVideoButton 
             videoUrl={task.video_url}
             defaultUrl={dyurl}
-            buttonText="打开抖音"
+            buttonText="复制链接"
           />
         </div>
         

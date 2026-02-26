@@ -77,7 +77,7 @@ const OpenVideoButton: React.FC<OpenVideoButtonProps> = ({
   const handleOpenVideo = async () => {
     console.log('传入的url', videoUrl);
     
-    // 先复制视频URL到剪贴板（兼容PC和手机端，支持HTTP和HTTPS）
+    // 复制视频URL到剪贴板（兼容PC和手机端，支持HTTP和HTTPS）
     try {
       // 优先尝试现代剪贴板API（确保navigator.clipboard和writeText方法都存在）
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -98,10 +98,6 @@ const OpenVideoButton: React.FC<OpenVideoButtonProps> = ({
     } catch (error) {
       console.error('复制视频URL失败:', error);
     }
-    
-    // 然后打开新标签页跳转到指定URL
-    const newWindow = window.open(defaultUrl);
-    console.log('新标签页已打开，跳转地址:', defaultUrl);
   };
 
   return (

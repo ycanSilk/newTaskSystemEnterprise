@@ -24,32 +24,39 @@ const RentalRequestsPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [rentalRequests, setRentalRequests] = useState<RequestRentalItem[]>([]);
-  
+
   // 无限滚动相关状态
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
   const [displayedRequests, setDisplayedRequests] = useState<RequestRentalItem[]>([]);
-  
+
   // 排序状态管理
   const [sortBy, setSortBy] = useState<'time' | 'price'>('time');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
+
   // 筛选模态框状态
   const [showFilterModal, setShowFilterModal] = useState(false);
-  
+
   // 筛选选项状态
   const [filterOptions, setFilterOptions] = useState({
+    platformType: {
+      douyin: false,
+      qq: false
+    },
     accountSupport: {
+      post_douyin: false,
+      post_ad: false,
       basic_information: false,
-      other_requirements: false,
-      deblocking: false
+      deblocking: false,
+      identity_verification: false
     },
     loginMethods: {
       scan_code: false,
       phone_message: false,
-      requested_all: false
+      account_password: false,
+      other_require: false
     }
   });
 
@@ -57,11 +64,11 @@ const RentalRequestsPage = () => {
   useEffect(() => {
     const fetchRentalRequests = async () => {
       setLoading(true);
-      
+
       try {
         const response = await fetch('/api/rental/requestRental/getRequestRentalMarketList');
         const data: GetRequestRentalMarketListResponse = await response.json();
-        
+
         if (data.code === 0) {
           if (!data.data || !data.data.list) {
             console.error('API返回数据格式错误: 缺少data.list');
@@ -88,6 +95,73 @@ const RentalRequestsPage = () => {
   const filteredRequests = useMemo(() => {
     let result = [...rentalRequests];
 
+    // 应用筛选条件
+    result = result.filter(request => {
+      const requirementsJson = request.requirements_json || {};
+      
+      // 平台类型筛选
+      const platformFilters = Object.entries(filterOptions.platformType)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (platformFilters.length > 0) {
+        if (!requirementsJson.platform_type || !platformFilters.includes(requirementsJson.platform_type)) {
+          return false;
+        }
+      }
+      
+      // 账号支持筛选
+      const accountSupportFilters = Object.entries(filterOptions.accountSupport)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (accountSupportFilters.length > 0) {
+        const hasMatchingSupport = accountSupportFilters.some(filter => {
+          switch (filter) {
+            case 'post_douyin':
+              return requirementsJson.post_douyin === 'true';
+            case 'post_ad':
+              return requirementsJson.post_ad === 'true';
+            case 'basic_information':
+              return requirementsJson.basic_information === 'true';
+            case 'deblocking':
+              return requirementsJson.deblocking === 'true';
+            case 'identity_verification':
+              return requirementsJson.identity_verification === 'true';
+            default:
+              return false;
+          }
+        });
+        if (!hasMatchingSupport) {
+          return false;
+        }
+      }
+      
+      // 登录方式筛选
+      const loginMethodsFilters = Object.entries(filterOptions.loginMethods)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (loginMethodsFilters.length > 0) {
+        const hasMatchingLogin = loginMethodsFilters.some(filter => {
+          switch (filter) {
+            case 'scan_code':
+              return requirementsJson.scan_code === 'true';
+            case 'phone_message':
+              return requirementsJson.phone_message === 'true';
+            case 'account_password':
+              return requirementsJson.account_password === 'true';
+            case 'other_require':
+              return requirementsJson.requested_all === 'true';
+            default:
+              return false;
+          }
+        });
+        if (!hasMatchingLogin) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
     // 根据排序条件排序
     result.sort((a, b) => {
       if (sortBy === 'time') {
@@ -97,15 +171,15 @@ const RentalRequestsPage = () => {
         return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       } else if (sortBy === 'price') {
         // 按价格排序
-        const priceA = typeof a.budget_amount_yuan === 'number' ? a.budget_amount_yuan : 0;
-        const priceB = typeof b.budget_amount_yuan === 'number' ? b.budget_amount_yuan : 0;
+        const priceA = parseFloat(a.budget_amount_yuan) || 0;
+        const priceB = parseFloat(b.budget_amount_yuan) || 0;
         return sortOrder === 'desc' ? priceB - priceA : priceA - priceB;
       }
       return 0;
     });
 
     return result;
-  }, [rentalRequests, sortBy, sortOrder]);
+  }, [rentalRequests, sortBy, sortOrder, filterOptions]);
 
   // 当请求列表变化时，重新设置显示的请求
   useEffect(() => {
@@ -178,22 +252,22 @@ const RentalRequestsPage = () => {
   return (
     <div className="pb-28 min-h-screen bg-gray-50">
       {/* 发布求租信息按钮 */}
-      <div className="px-4 pt-4 mb-3 max-w-7xl mx-auto">
+      <div className="px-4 pt-4 mb-3 max-w-7xl mx-auto flex justify-end">
         <Button
           onClick={() => router.push('/rental/rental_publish/requests')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           发布求租信息
         </Button>
       </div>
-      
+
       {/* 筛选和排序按钮 */}
       <div className="px-4 mb-4 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-3">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between bg-white  shadow-sm p-2">
+          <div className="flex items-center space-x-1">
             <div className="relative">
               <button 
-                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'time' ? 'bg-orange-50 text-orange-600 border border-orange-300' : 'bg-gray-100 hover:bg-gray-200'}`}
+                className={`flex items-center space-x-1 px-2 py-1.5 rounded-lg transition-colors ${sortBy === 'time' ? 'bg-orange-50 text-orange-600 border border-orange-300' : 'bg-gray-100 hover:bg-gray-200'}`}
                 onClick={() => {
                   setSortBy('time');
                   setSortOrder('desc');
@@ -245,7 +319,7 @@ const RentalRequestsPage = () => {
           </button>
         </div>
       </div>
-      
+
       {/* 求租信息列表 - 添加滚动容器引用 */}
       <div
         className="max-w-[1200px] mx-auto px-4"
@@ -278,17 +352,17 @@ const RentalRequestsPage = () => {
                         {(() => {
                           const tags = [];
                           const requirementsJson = request.requirements_json || {};
-                          
+
                           // 账号要求标签
-                          if (requirementsJson.basic_information === 'true' ) tags.push('修改基本信息');
-                          if (requirementsJson.other_requirements === 'true' ) tags.push('实名认证');
-                          if (requirementsJson.deblocking === 'true' ) tags.push('账号解禁');
-                          
+                          if (requirementsJson.basic_information === 'true') tags.push('修改基本信息');
+                          if (requirementsJson.other_requirements === 'true') tags.push('实名认证');
+                          if (requirementsJson.deblocking === 'true') tags.push('账号解禁');
+
                           // 登录方式标签
-                          if (requirementsJson.scan_code === 'true' ) tags.push('扫码登录');
-                          if (requirementsJson.phone_message === 'true' ) tags.push('短信验证');
-                          if (requirementsJson.requested_all === 'true' ) tags.push('按租赁方要求');
-                          
+                          if (requirementsJson.scan_code === 'true') tags.push('扫码登录');
+                          if (requirementsJson.phone_message === 'true') tags.push('短信验证');
+                          if (requirementsJson.requested_all === 'true') tags.push('按租赁方要求');
+
                           // 最多显示5个标签
                           return tags.slice(0, 5).map((tag, tagIndex) => (
                             <span key={tagIndex} className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full text-xs">
@@ -297,19 +371,19 @@ const RentalRequestsPage = () => {
                           ));
                         })()}
                       </div>
-                      
+
                       <div className="flex justify-between items-center mb-1">
                         <div className="text-xs text-gray-500">租期: {request.days_needed}天</div>
                         <div className="text-xs text-gray-500">{formatTime(request.created_at)}</div>
                       </div>
-                      
+
                       <div className="text-lg text-red-600">¥<span className='text-2xl ml-1'>{request.budget_amount_yuan}</span>/天</div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            
+
             {/* PC端布局 - 一行4列 */}
             <div className="hidden md:block">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -321,23 +395,23 @@ const RentalRequestsPage = () => {
                   >
                     <h3 className="font-medium text-gray-800 mb-2 line-clamp-1 text-sm">{request.title}</h3>
                     <p className="text-gray-600 mb-1 line-clamp-2">{request.requirements_json?.account_requirements || ''}</p>
-                    
+
                     {/* 筛选项标签展示 */}
                     <div className="flex flex-wrap gap-1 mb-2">
                       {(() => {
                         const tags = [];
                         const requirementsJson = request.requirements_json || {};
-                        
+
                         // 账号要求标签
-                          if (requirementsJson.basic_information === 'true' ) tags.push('修改基本信息');
-                        if (requirementsJson.other_requirements === 'true' ) tags.push('实名认证');
-                        if (requirementsJson.deblocking === 'true' ) tags.push('账号解禁');
-                        
+                        if (requirementsJson.basic_information === 'true') tags.push('修改基本信息');
+                        if (requirementsJson.other_requirements === 'true') tags.push('实名认证');
+                        if (requirementsJson.deblocking === 'true') tags.push('账号解禁');
+
                         // 登录方式标签
-                        if (requirementsJson.scan_code === 'true' ) tags.push('扫码登录');
-                        if (requirementsJson.phone_message === 'true' ) tags.push('短信验证');
-                        if (requirementsJson.requested_all === 'true' ) tags.push('按租赁方要求');
-                        
+                        if (requirementsJson.scan_code === 'true') tags.push('扫码登录');
+                        if (requirementsJson.phone_message === 'true') tags.push('短信验证');
+                        if (requirementsJson.requested_all === 'true') tags.push('按租赁方要求');
+
                         // 最多显示5个标签
                         return tags.slice(0, 5).map((tag, tagIndex) => (
                           <span key={tagIndex} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
@@ -346,18 +420,18 @@ const RentalRequestsPage = () => {
                         ));
                       })()}
                     </div>
-                    
+
                     <div className="flex justify-between items-center mb-2">
                       <div className="text-xs text-gray-500">租期: {request.days_needed}天</div>
                       <div className="text-xs text-gray-500">{formatTime(request.created_at)}</div>
                     </div>
-                    
+
                     <div className="text-lg font-bold text-red-600">¥{request.budget_amount_yuan}/天</div>
                   </div>
                 ))}
               </div>
             </div>
-            
+
             {/* 加载更多指示器 */}
             {loadingMore && (
               <div className="py-6 flex justify-center items-center">
@@ -372,9 +446,9 @@ const RentalRequestsPage = () => {
                 没有更多求租信息了
               </div>
             )}
-          
+
           </div>
-          )}
+        )}
         {/* 提示信息 */}
         <div className="px-4">
           <div className="bg-blue-50 rounded-xl p-4">
@@ -392,8 +466,8 @@ const RentalRequestsPage = () => {
 
         {/* 筛选模态框 */}
         {showFilterModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
-            <div className="relative bg-white rounded-t-lg rounded-b-none w-full max-w-md max-h-[80vh] overflow-y-auto mb-10">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+            <div className="relative bg-white rounded-lg w-full max-w-[800px] min-h-[600px] max-h-[80vh] overflow-y-auto mx-4">
               <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-4 border-b">
                 <h3 className="text-lg font-medium">快速筛选</h3>
                 <button
@@ -404,10 +478,109 @@ const RentalRequestsPage = () => {
                 </button>
               </div>
               <div className="p-4">
+                {/* 平台类型选项 */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3 text-gray-700">平台类型:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.platformType.douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        platformType: {
+                          douyin: true,
+                          qq: false
+                        },
+                        // 重置其他筛选选项
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_douyin: false,
+                          post_ad: false
+                        },
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          phone_message: false,
+                          account_password: false
+                        }
+                      }))}
+                    >
+                      抖音
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.platformType.qq ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        platformType: {
+                          douyin: false,
+                          qq: true
+                        },
+                        // 重置其他筛选选项
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_douyin: false,
+                          post_ad: false
+                        },
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          phone_message: false,
+                          account_password: false
+                        }
+                      }))}
+                    >
+                      QQ
+                    </button>
+                  </div>
+                </div>
+
                 {/* 账号支持选项 */}
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">账号支持:</h4>
                   <div className="flex flex-wrap gap-2">
+                    {/* 抖音平台特有标签 */}
+                    {filterOptions.platformType.douyin && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          accountSupport: {
+                            ...prev.accountSupport,
+                            post_douyin: !prev.accountSupport.post_douyin
+                          }
+                        }))}
+                      >
+                        发布抖音
+                      </button>
+                    )}
+                    
+                    {/* QQ平台特有标签 */}
+                    {filterOptions.platformType.qq && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          accountSupport: {
+                            ...prev.accountSupport,
+                            post_ad: !prev.accountSupport.post_ad
+                          }
+                        }))}
+                      >
+                        发布广告
+                      </button>
+                    )}
+                    
+                    {/* 通用标签 */}
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.identity_verification ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          identity_verification: !prev.accountSupport.identity_verification
+                        }
+                      }))}
+                    >
+                      实名认证
+                    </button>
+
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.basic_information ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -421,18 +594,6 @@ const RentalRequestsPage = () => {
                       修改基本信息
                     </button>
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.other_requirements ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        accountSupport: {
-                          ...prev.accountSupport,
-                          other_requirements: !prev.accountSupport.other_requirements
-                        }
-                      }))}
-                    >
-                      实名认证
-                    </button>
-                    <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.deblocking ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
@@ -442,15 +603,16 @@ const RentalRequestsPage = () => {
                         }
                       }))}
                     >
-                      账号解禁
+                      账号解封
                     </button>
                   </div>
                 </div>
-                
+
                 {/* 登录方式选项 */}
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">登录方式:</h4>
                   <div className="flex flex-wrap gap-2">
+                    {/* 通用标签 */}
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.scan_code ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -463,25 +625,46 @@ const RentalRequestsPage = () => {
                     >
                       扫码登录
                     </button>
+                    
+                    {/* 抖音平台特有标签 */}
+                    {filterOptions.platformType.douyin && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          loginMethods: {
+                            ...prev.loginMethods,
+                            phone_message: !prev.loginMethods.phone_message
+                          }
+                        }))}
+                      >
+                        短信验证
+                      </button>
+                    )}
+                    
+                    {/* QQ平台特有标签 */}
+                    {filterOptions.platformType.qq && (
+                      <button
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                        onClick={() => setFilterOptions(prev => ({
+                          ...prev,
+                          loginMethods: {
+                            ...prev.loginMethods,
+                            account_password: !prev.loginMethods.account_password
+                          }
+                        }))}
+                      >
+                        账号密码
+                      </button>
+                    )}
+                    
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.other_require ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         loginMethods: {
                           ...prev.loginMethods,
-                          phone_message: !prev.loginMethods.phone_message
-                        }
-                      }))}
-                    >
-                      短信验证
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.requested_all ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                      onClick={() => setFilterOptions(prev => ({
-                        ...prev,
-                        loginMethods: {
-                          ...prev.loginMethods,
-                          requested_all: !prev.loginMethods.requested_all
+                          other_require: !prev.loginMethods.other_require
                         }
                       }))}
                     >
@@ -489,31 +672,37 @@ const RentalRequestsPage = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* 操作按钮 */}
-                <div className="flex space-x-3 pt-4 border-t mb-10">
-                  <button 
+                <div className="flex space-x-3 pt-4 border-t 0">
+                  <button
                     className="flex-1 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     onClick={() => setFilterOptions({
+                      platformType: {
+                        douyin: false,
+                        qq: false
+                      },
                       accountSupport: {
+                        post_douyin: false,
+                        post_ad: false,
                         basic_information: false,
-                        other_requirements: false,
-                        deblocking: false
+                        deblocking: false,
+                        identity_verification: false
                       },
                       loginMethods: {
                         scan_code: false,
                         phone_message: false,
-                        requested_all: false
+                        account_password: false,
+                        other_require: false
                       }
                     })}
                   >
                     重置
                   </button>
-                  <button 
+                  <button
                     className="flex-1 py-2 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                     onClick={() => {
-                      // 这里可以添加筛选逻辑
-                      console.log('筛选选项:', filterOptions);
+                      setPage(1); // 重置页码
                       setShowFilterModal(false);
                     }}
                   >

@@ -24,7 +24,7 @@ export async function handleGetWalletBalance(request: NextRequest): Promise<Next
     // 从请求URL中获取分页参数
     const url = new URL(request.url);
     const page = url.searchParams.get('page') || '1';
-    const page_size = url.searchParams.get('page_size') || '20';
+    const page_size = url.searchParams.get('page_size') || '100';
     
     // 构建带分页参数的请求URL
     const endpointWithParams = `${GET_WALLET_BALANCE_ENDPOINT}?page=${page}&page_size=${page_size}`;

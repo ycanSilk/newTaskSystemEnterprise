@@ -3,22 +3,8 @@ import { cn } from '@/lib/utils';
 import { OptimizationProvider } from '@/components/optimization/OptimizationProvider';
 import { ToastProvider, Toaster } from '@/components/ui/Toast';
 
-// 尝试使用next/font导入Inter字体，如果失败则使用系统字体
-let interFontConfig = {};
-let interVariable = '--font-inter';
-
-try {
-  const { Inter } = require('next/font/google');
-  const inter = Inter({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-inter',
-    fallback: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-  });
-  interFontConfig = { className: inter.variable };
-} catch (error) {
-  console.warn('Failed to load Inter font from Google Fonts, using system fonts as fallback');
-}
+// 直接使用系统字体，避免字体加载失败的问题
+const interFontConfig = {};
 
 export const metadata = {
   title: '抖音评论派单系统',
@@ -58,8 +44,7 @@ export default function RootLayout({
         <meta name="application-name" content="派单系统" />
       </head>
       <body className={cn(
-        'min-h-screen bg-gray-50 font-sans antialiased',
-        'font-[var(--font-inter),sans-serif]'
+        'min-h-screen bg-gray-50 font-sans antialiased'
       )}>
         <OptimizationProvider>
           <ToastProvider>

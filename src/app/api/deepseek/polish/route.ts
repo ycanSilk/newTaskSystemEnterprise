@@ -23,10 +23,12 @@ async function callDeepSeek(prompt: string): Promise<string> {
         },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.7,
-      max_tokens: 50,
+      temperature: 1,
+      max_tokens: 100,
     }),
   });
+  console.log('DeepSeek API 响应:', response);
+  console.log('提示词:', prompt);
 
   if (!response.ok) {
     const error = await response.text();
@@ -44,7 +46,7 @@ function containsSensitiveWords(text: string): boolean {
 export async function POST(request: Request) {
   try {
     const { draft } = await request.json();
-
+    console.log('前端页面传递收到的草稿:', draft);
     if (!draft) {
       return NextResponse.json({ error: '草稿不能为空' }, { status: 400 });
     }
