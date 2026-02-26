@@ -1,0 +1,72 @@
+import { NextResponse } from 'next/server';
+
+const SENSITIVE_WORDS = ['违规词1', '违规词2'];
+
+async function callDeepSeek(prompt: string): Promise<string> {
+   const apiKey = 'sk-0f35e0a14ee34eeda82422c7ffb1c02e';
+  const baseURL = 'https://api.deepseek.com';
+  const model = 'deepseek-chat';
+
+  const response = await fetch(`${baseURL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content:
+            '你是一个擅长润色抖音评论的助手。使评论更有趣、更吸引人，可以添加表情符号，但保持原意不变。直接返回润色后的评论，不要包含任何解释。',
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 50,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`DeepSeek API 调用失败: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+function containsSensitiveWords(text: string): boolean {
+  return SENSITIVE_WORDS.some((word) => text.includes(word));
+}
+
+export async function POST(request: Request) {
+  try {
+    const { draft } = await request.json();
+
+    if (!draft) {
+      return NextResponse.json({ error: '草稿不能为空' }, { status: 400 });
+    }
+
+    // 极简提示词
+    const prompt = `润色这条抖音评论：${draft}`;
+
+    let polished = await callDeepSeek(prompt);
+
+    if (containsSensitiveWords(polished)) {
+      return NextResponse.json(
+        { error: '润色后的内容包含违规词汇，请修改草稿后重试' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ polished });
+  } catch (error: any) {
+    console.error('润色评论失败:', error);
+    return NextResponse.json(
+      { error: error.message || '润色失败，请稍后重试' },
+      { status: 500 }
+    );
+  }
+}

@@ -16,24 +16,28 @@ import { GetWalletBalanceResponse } from '../../types/paymentWallet/getWalletBal
 
 /**
  * 处理获取钱包余额和交易明细请求
+ * @param request Next.js请求对象
  * @returns Next.js响应对象，包含钱包余额、交易明细或错误信息
  */
-export async function handleGetWalletBalance(): Promise<NextResponse> {
+export async function handleGetWalletBalance(request: NextRequest): Promise<NextResponse> {
   try {
+    // 从请求URL中获取分页参数
+    const url = new URL(request.url);
+    const page = url.searchParams.get('page') || '1';
+    const page_size = url.searchParams.get('page_size') || '20';
+    
+    // 构建带分页参数的请求URL
+    const endpointWithParams = `${GET_WALLET_BALANCE_ENDPOINT}?page=${page}&page_size=${page_size}`;
+    
     // 调用API客户端发送GET请求到获取钱包余额和交易明细端点
-    // 使用GET_WALLET_BALANCE_ENDPOINT常量作为URL
-    // 类型参数ApiResponse<GetWalletBalanceResponse>表示期望的响应数据类型
-    const response = await apiClient.get<ApiResponse<GetWalletBalanceResponse>>(GET_WALLET_BALANCE_ENDPOINT);
+    const response = await apiClient.get<ApiResponse<GetWalletBalanceResponse>>(endpointWithParams);
     
     // 返回响应给客户端
-    // 使用NextResponse.json方法，将响应数据和状态码返回
     return NextResponse.json(response.data, { status: response.status });
     
   } catch (error) {
     // 捕获并处理请求过程中发生的错误
-    // 使用handleApiError函数将原始错误转换为标准化的ApiError对象
     const apiError: ApiError = handleApiError(error);
-    // 使用createErrorResponse函数创建标准化的错误响应
     const errorResponse: ApiResponse = createErrorResponse(apiError);
     
     // 返回错误响应给客户端

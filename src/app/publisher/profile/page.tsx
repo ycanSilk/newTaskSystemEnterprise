@@ -138,7 +138,7 @@ export default function PublisherProfilePage() {
   return (
     <div className="min-h-screen pb-28">
       {/* 顶部用户信息区域 */}
-      <div className="bg-blue-500 text-white p-3 mb-5 mt-5">
+      <div className="bg-blue-500 text-white p-3">
         <div 
           className="flex items-center justify-between space-x-4 cursor-pointer  p-2 transition-colors"
           onClick={() => router.push('/publisher/profile/settings')}

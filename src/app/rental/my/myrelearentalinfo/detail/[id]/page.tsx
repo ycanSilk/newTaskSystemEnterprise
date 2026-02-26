@@ -499,7 +499,7 @@ const RentalRequestDetailPage = () => {
                     columns={3}
                     gridWidth="100%"
                     itemSize="100x100"
-                    defaultImages={formData.accountImages}
+      
                   />
                 ) : (
                   <div className="grid grid-cols-3 gap-2">

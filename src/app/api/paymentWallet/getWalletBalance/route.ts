@@ -5,12 +5,11 @@ import { handleGetWalletBalance } from '../../../../api/handlers/paymentWallet/g
 /**
  * 处理获取钱包余额和交易明细请求
  * 调用handleGetWalletBalance函数，获取用户钱包余额和交易明细
+ * @param request Next.js请求对象
  * @returns Next.js响应对象
  */
-export async function GET(): Promise<NextResponse> {
-  return handleGetWalletBalance();
-  console.log('请求对象:', NextRequest);
-  console.log('请求处理结果:', NextResponse.json);
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return handleGetWalletBalance(request);
 }
 
 /**

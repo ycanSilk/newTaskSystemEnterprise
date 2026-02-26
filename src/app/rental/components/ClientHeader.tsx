@@ -71,7 +71,8 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
     '/rental/my/reviewapplication':'求租匹配申请列表',
     '/rental/workorder':'工单列表',
     '/rental/workorder/detail/[id]':'工单详情',
-    'rental/my':"个人中心"
+    'rental/my':"个人中心",
+
     // 可以根据需要添加更多路由
   };
 
@@ -97,7 +98,7 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
     // 检查是否为特殊路由，点击返回跳转到评论大厅
     if (specialBackRoutes.includes(actualPath)) {
       console.log('当前路由',actualPath);
-      router.push('/commenter/hall');
+      router.push('/publisher/dashboard');
     } 
     // 路径层级大于2级时，调用router.back()处理正常返回
     else if (pathSegments > 2) {
@@ -111,7 +112,7 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
 
   // 检查是否显示返回按钮
   const shouldShowBackButton = () => {
-    return actualPath !== '/commenter/hall';
+    return actualPath !== '/publisher/dashboard';
   };
 
   const handleLogout = async () => {
@@ -156,7 +157,7 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
       // 即使请求失败，也执行本地登出逻辑
     } finally {
       // 清除本地状态并跳转到登录页面
-      router.push('/commenter/auth/login');
+      router.push('/publisher/auth/login');
     }
   };
 
@@ -190,16 +191,16 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
         <div className="mr-2 relative">
           {/* 通知图标按钮，点击跳转到通知页面 */}
           <button
-            onClick={() => router.push('/commenter/notification')}
+            onClick={() => router.push('/publisher/notification')}
             className="cursor-pointer hover:bg-blue-600 rounded-full p-1 transition-colors"
             aria-label="通知"
           >
             <BellOutlined className="text-3xl text-white" />
           </button>
           {/* 通知数量提示，只有当unread_count大于0时显示 */}
-          {userWithUnreadCount && userWithUnreadCount.unread_count > 0 && (
+          {userWithUnreadCount && (userWithUnreadCount as any).unread_count > 0 && (
             <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {userWithUnreadCount.unread_count}
+              {(userWithUnreadCount as any).unread_count}
             </div>
           )}
         </div>
@@ -224,7 +225,7 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
               {/* 个人中心按钮 */}
               <button 
                 onClick={() => {
-                  router.push('/commenter/profile/userinfo');
+                  router.push('/publisher/profile/userinfo');
                   setShowDropdown(false);
                 }}
                 className="w-full text-left px-4 py-3 border-b border-gray-100 text-gray-800 font-medium text-sm hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"

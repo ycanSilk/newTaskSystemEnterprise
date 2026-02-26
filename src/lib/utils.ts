@@ -124,7 +124,7 @@ export function getUserInfoFromCookie(): User | null {
   try {
     if (typeof document === 'undefined') return null;
     
-    const cookieMatch = document.cookie.match(/commenter_user_info=([^;]+)/);
+    const cookieMatch = document.cookie.match(/publisher_user_info=([^;]+)/);
     if (cookieMatch && cookieMatch[1]) {
       return JSON.parse(decodeURIComponent(cookieMatch[1])) as User;
     }

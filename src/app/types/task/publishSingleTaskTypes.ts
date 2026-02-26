@@ -45,8 +45,7 @@ export interface PublishSingleTaskRequest {
   task_count: number;
   // 总价格
   total_price: number;
-  // 支付密码
-  pswd: string;
+ 
   // 推荐标记列表
   recommend_marks: RecommendMark[];
 }

@@ -43,7 +43,7 @@ export interface PublishCombineTaskRequest {
   stage1_count: number;
   stage2_count: number;
   total_price: number;
-  pswd: string;
+
   recommend_marks: RecommendMark[];
 }
 

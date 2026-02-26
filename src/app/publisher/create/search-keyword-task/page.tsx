@@ -11,7 +11,6 @@ interface PublishSingleTaskRequest {
   deadline: number;
   task_count: number;
   total_price: number;
-  pswd: string;
   recommend_marks: Array<{
     comment: string;
     image_url: string;
@@ -100,7 +99,6 @@ export default function PublishSearchKeywordTaskPage() {
         deadline: Math.floor(Date.now() / 1000) + parseInt(formData.deadline) * 60,
         task_count: formData.quantity,
         total_price: baseCost,
-        pswd: '123456',
         recommend_marks: [
           {
             comment: '',

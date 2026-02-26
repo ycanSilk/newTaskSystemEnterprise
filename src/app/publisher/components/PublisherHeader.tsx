@@ -109,6 +109,8 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
     '/publisher/notification': '通知提醒',
     '/publisher/stats': '统计报表',
     '/publisher/allsuborders': '所有子订单',
+    '/publisher/douyin-version': '软件下载',
+    '/publisher/balance/transactionList': '交易记录',
   };
 
   // 获取当前路径的标题

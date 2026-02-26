@@ -3,7 +3,6 @@
 import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PaymentPasswordModal from '@/components/payPalPwd/payPalPwd';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import type {
   CommentData,
@@ -67,10 +66,7 @@ export default function PublishTaskPage() {
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentTime, setCurrentTime] = useState<number>(Math.floor(Date.now() / 1000));
-  const [paymentPassword, setPaymentPassword] = useState('');
-  const [showPaymentError, setShowPaymentError] = useState(false);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -238,7 +234,7 @@ export default function PublishTaskPage() {
   };
 
   // 发布任务
-  const handlePublish = () => {
+  const handlePublish = async () => {
     // 表单验证 - 完整验证逻辑
     if (!formData.videoUrl) {
       showAlert('输入错误', '请输入视频链接', '⚠️');
@@ -251,12 +247,6 @@ export default function PublishTaskPage() {
       return;
     }
     
-    // 显示支付密码模态框
-    setShowPaymentModal(true);
-  };
-
-  // 使用支付密码发布任务
-  const handlePublishWithPassword = async (password: string) => {
     // 显示加载状态
     setIsPublishing(true);
     
@@ -303,7 +293,6 @@ export default function PublishTaskPage() {
         stage1_count: stage1Count,
         stage2_count: stage2Count,
         total_price: totalPrice,
-        pswd: password,
         recommend_marks: recommendMarks
       };
       
@@ -320,8 +309,6 @@ export default function PublishTaskPage() {
       // 解析响应
       const result: PublishCombineTaskResponse = await response.json();
       
-      // 关闭支付密码模态框
-      setShowPaymentModal(false);
       console.log('请求API结果：', result);
       // 处理响应结果
       if (result.code === 0) {
@@ -349,9 +336,6 @@ export default function PublishTaskPage() {
         }
       }
     } catch (error) {
-      // 关闭支付密码模态框
-      setShowPaymentModal(false);
-      
       // 分析错误类型给出更具体的提示
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
         showAlert('网络错误', '无法连接到服务器，请检查网络连接后重试', '⚠️');
@@ -630,13 +614,7 @@ export default function PublishTaskPage() {
         onClose={() => setShowAlertModal(false)}
       />
       
-      {/* 支付密码弹窗 */}
-      <PaymentPasswordModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onSubmit={handlePublishWithPassword}
-        loading={isPublishing}
-      />
+
     </div>
   );
 }

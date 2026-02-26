@@ -19,10 +19,10 @@ export default function DouyinVersionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center py-12 px-4 sm:px-6">
+    <div className="min-h flex items-center justify-center py-12 px-4 sm:px-6">
       <div className="max-w-md w-full text-center">
         {/* 主要内容区域 - 白色卡片 */}
-        <div className="bg-white rounded-lg p-8 shadow-lg">
+        <div className=" rounded-lg p-8 shadow-2xl border border-gray-100">
           {/* 抖音Logo区域 */}
             <div className="flex items-center justify-center w-full mb-8">
               <Image src="/images/douyin-logo.png" alt="抖音Logo" width={120} height={40} className="mx-auto" />
@@ -83,8 +83,8 @@ export default function DouyinVersionPage() {
         </div>
 
         {/* 底部信息 */}
-        <div className="mt-6 text-center text-white text-sm">
-          © {new Date().getFullYear()} 抖音版本下载
+        <div className="mt-6 text-center text-black text-sm">
+          © {new Date().getFullYear()} VERSION-28
         </div>
       </div>
     </div>

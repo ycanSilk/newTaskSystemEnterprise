@@ -3,7 +3,6 @@
 import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PaymentPasswordModal from '@/components/payPalPwd/payPalPwd';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import {
   PublishTaskFormData,
@@ -44,9 +43,6 @@ export default function PublishTaskPage() {
 
   // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
-  
-  // 支付密码模态框状态
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -190,8 +186,8 @@ export default function PublishTaskPage() {
     });
   }, [setFormData, setCommentImages, setCommentImageUrls]);
 
-  // 发布任务 - 处理支付密码提交
-  const handlePublishWithPassword = async (password: string) => {
+  // 发布任务
+  const handlePublish = async () => {
     // 防止重复提交
     if (isPublishing) {
       return;
@@ -200,7 +196,6 @@ export default function PublishTaskPage() {
     // 表单验证
     if (!formData.videoUrl.trim()) {
       showAlert('验证失败', '请输入抖音视频链接', 'error');
-      setShowPasswordModal(false);
       return;
     }
     
@@ -208,14 +203,12 @@ export default function PublishTaskPage() {
     const validComments = formData.comments.filter(comment => comment.content.trim() !== '');
     if (validComments.length === 0) {
       showAlert('验证失败', '请输入评论内容', 'error');
-      setShowPasswordModal(false);
       return;
     }
     
     // 验证任务数量
     if (!formData.quantity || formData.quantity < 1) {
       showAlert('验证失败', '请设置有效的任务数量', 'error');
-      setShowPasswordModal(false);
       return;
     }
     
@@ -237,7 +230,6 @@ export default function PublishTaskPage() {
         deadline,
         task_count: formData.quantity,
         total_price: totalPrice,
-        pswd: password,
         recommend_marks: formData.comments.map(comment => ({
           comment: comment.content.trim(),
           image_url: comment.imageUrl,
@@ -258,9 +250,6 @@ export default function PublishTaskPage() {
       
       const result: PublishSingleTaskResponse = await response.json();
       
-      // 关闭密码模态框
-      setShowPasswordModal(false);
-      
       // 处理响应
       if (result.code === 0) {
         // 成功处理
@@ -274,17 +263,11 @@ export default function PublishTaskPage() {
     } catch (error) {
       // 错误处理
       console.error('发布任务失败:', error);
-      setShowPasswordModal(false);
       showAlert('发布失败', '网络错误，请稍后重试', 'error');
     } finally {
       // 无论成功失败，都重置加载状态
       setIsPublishing(false);
     }
-  };
-
-  // 显示支付密码模态框
-  const handlePublish = () => {
-    setShowPasswordModal(true);
   };
   
   // 计算总费用
@@ -467,13 +450,7 @@ export default function PublishTaskPage() {
         onClose={() => setShowAlertModal(false)}
       />
       
-      {/* 支付密码模态框组件 */}
-      <PaymentPasswordModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        onSubmit={handlePublishWithPassword}
-        loading={isPublishing}
-      />
+
     </div>
   );
 }

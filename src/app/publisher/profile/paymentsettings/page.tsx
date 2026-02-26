@@ -7,11 +7,6 @@ const PaymentSettingsPage: React.FC = () => {
   // 支付设置菜单项数据
   const paymentSettings = [
     {
-      id: 'order',
-      title: '绑定支付宝',
-      hasArrow: true,
-    },
-    {
       id: 'payment-password',
       title: '设置支付密码',
       hasArrow: true,

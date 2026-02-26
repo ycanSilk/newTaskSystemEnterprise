@@ -53,11 +53,19 @@ export interface Pagination {
 /**
  * 获取钱包余额和交易明细响应类型
  */
-export interface GetWalletBalanceResponse {
+export interface GetWalletBalanceResponseData {
   /** 钱包信息 */
   wallet: WalletInfo;
   /** 交易记录列表 */
   transactions: Transaction[];
   /** 分页信息 */
   pagination: Pagination;
+}
+
+export interface GetWalletBalanceResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: GetWalletBalanceResponseData;
+  timestamp: string;
 }

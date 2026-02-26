@@ -152,26 +152,7 @@ export default function NotificationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
-      <div className="bg-white shadow-sm">
-        <div className="px-5 py-4 flex items-center">
-          <button 
-            onClick={handleBack}
-            className="text-gray-600 mr-4"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-medium text-gray-800">通知提醒</h1>
-          {unreadCount > 0 && (
-            <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-              {unreadCount}
-            </span>
-          )}
-        </div>
-      </div>
-
+     
       {/* 未读消息提示和操作 */}
       {unreadCount >= 0 && (
         <div className="bg-orange-50 text-red-700 px-6 py-2 text-sm flex justify-between items-center">
@@ -213,11 +194,11 @@ export default function NotificationPage() {
                   {notification.is_read === 0 && (
                     <div className="inline-block mr-2 w-2 h-2 bg-red-500 rounded-full"></div>
                   )}
-                  标题：{notification.title}
+                 {notification.title}
                   
                 </div>
                 <div className="text-xs text-gray-500 flex flex-col items-end">
-                  <span>创建时间：{notification.created_at}</span>
+                  <span>{notification.created_at}</span>
                 </div>
               </div>
               <div className="">
@@ -233,7 +214,7 @@ export default function NotificationPage() {
               
               {/* 通知内容 */}
               <div className="my-1">
-                <div className="text-sm text-gray-600 bg-gray-200 px-2 py-3 rounded">通知：{notification.preview}</div>
+                <div className="text-sm text-gray-600 bg-gray-200 px-2 py-3 rounded">{notification.preview}</div>
               </div>
             </div>
           ))}

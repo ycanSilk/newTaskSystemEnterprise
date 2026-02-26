@@ -5,7 +5,7 @@
 export const apiConfig = {
   // 基础URL，优先使用环境变量（如果环境变量没配置，就用默认值）
   // 这是调用后端API的基础地址，所有API请求都会拼接到这个地址后面
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://134.122.136.221:4667/api',
+  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://54.179.253.64:28806/api',
   
   // 请求超时时间，单位毫秒
   // 如果请求超过这个时间没有响应，就会自动取消，避免长时间等待

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Card } from 'antd';
 
 // 导入钱包余额和交易明细的类型定义
-import { GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
+import { GetWalletBalanceResponseData, GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
 // 导入通用API响应类型
 import { ApiResponse } from '@/api/types/common';
 
@@ -22,14 +22,14 @@ const BalancePage = () => {
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
-  
+
   // 获取钱包余额和交易明细
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // 调用新的钱包API端点
         const response = await fetch('/api/paymentWallet/getWalletBalance', {
           method: 'GET',
@@ -42,8 +42,8 @@ const BalancePage = () => {
         if (!response.ok) {
           throw new Error(`获取钱包数据失败: ${response.status}`);
         }
-        
-        const walletData: ApiResponse<GetWalletBalanceResponse> = await response.json();
+
+        const walletData: ApiResponse<GetWalletBalanceResponseData> = await response.json();
         console.log('获取钱包余额和交易明细响应:', walletData);
         console.log('获取钱包余额和交易明细响应:', walletData.data);
         if (walletData.code === 0 && walletData.success) {
@@ -53,9 +53,9 @@ const BalancePage = () => {
           // 假设可用余额等于总余额，冻结余额为0，因为新API没有返回这些字段
           setBalance(parseFloat(walletInfo.balance) || 0);
           setFrozenBalance(0);
-          
+
           // 设置交易记录，按创建时间排序（最新的在前）
-          const sortedTransactions = [...walletData.data.transactions].sort((a, b) => 
+          const sortedTransactions = [...walletData.data.transactions].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           setTransactions(sortedTransactions);
@@ -85,7 +85,7 @@ const BalancePage = () => {
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
       return '今天';
     } else if (date.toDateString() === yesterday.toDateString()) {
@@ -108,7 +108,7 @@ const BalancePage = () => {
   };
 
   // 处理充值
-    const handleRecharge = () => {
+  const handleRecharge = () => {
     router.push('/publisher/recharge' as any);
   };
 
@@ -149,15 +149,15 @@ const BalancePage = () => {
                 <div>{totalBalance}</div>
               </div>
             </div>
-            
+
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={handleRecharge}
                 className="bg-blue-700 text-white flex-1 border-none rounded-full"
               >
                 充值
               </Button>
-              <Button 
+              <Button
                 onClick={handleViewAllTransactions}
                 className="bg-blue-700 text-white flex-1 border-none rounded-full"
               >
@@ -172,19 +172,19 @@ const BalancePage = () => {
       <div className="mt-3 bg-white">
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="grid w-full grid-cols-3 border-b border-gray-100">
-            <button 
+            <button
               className={`py-2 px-4 text-sm ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : ''}`}
               onClick={() => setActiveTab('all')}
             >
               全部明细
             </button>
-            <button 
+            <button
               className={`py-2 px-4 text-sm ${activeTab === 'recharge' ? 'text-blue-600 border-b-2 border-blue-600' : ''}`}
               onClick={() => setActiveTab('recharge')}
             >
               收入明细
             </button>
-            <button 
+            <button
               className={`py-2 px-4 text-sm ${activeTab === 'withdraw' ? 'text-blue-600 border-b-2 border-blue-600' : ''}`}
               onClick={() => setActiveTab('withdraw')}
             >
@@ -258,13 +258,13 @@ const BalancePage = () => {
                   // 全部明细：显示所有记录
                   return true;
                 });
-                
+
                 // 2. 分页处理
                 const totalFiltered = filteredTransactions.length;
                 const startIndex = (currentPage - 1) * itemsPerPage;
                 const endIndex = startIndex + itemsPerPage;
                 const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
-                
+
                 return (
                   <>
                     {/* 显示交易记录总数信息 */}
@@ -273,36 +273,37 @@ const BalancePage = () => {
                         共显示 {paginatedTransactions.length} / {totalFiltered} 条记录
                       </div>
                     </div>
-                    
+
                     {/* 交易记录列表 */}
                     {paginatedTransactions.map((transaction) => {
                       const iconInfo = getTransactionIcon();
                       // 根据type字段判断交易类型
                       const isIncome = transaction.type === 1;
                       const { date, time } = extractDateTime(transaction.created_at);
-                      
+
                       return (
-                        <div 
+                        <div
                           key={transaction.id}
-                          onClick={() => handleViewTransaction(transaction)}
-                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 cursor-pointer"
+                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 w-full"
                         >
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold`}>
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold flex-shrink-0`}>
                             <span className={iconInfo.color}>{iconInfo.icon}</span>
                           </div>
-                              
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start mb-1">
-                              <h3 className="font-medium text-gray-900 truncate max-w-[60%]">{transaction.remark || transaction.type_text}</h3>
-                              <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start mb-1 w-full">
+                              <h3 className="font-medium text-gray-900 truncate flex-1 mr-3">
+                                {(transaction.remark || transaction.type_text).slice(0, 8)}{(transaction.remark || transaction.type_text).length > 8 ? '...' : ''}
+                              </h3>
+                              <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'} flex-shrink-0 whitespace-nowrap`}>
                                 {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <div className="text-xs ">
+                            <div className="flex justify-between items-center w-full">
+                              <div className="text-xs flex-shrink-0 whitespace-nowrap">
                                 {formatDate(date)} {time}
                               </div>
-                              <div className="text-xs ">
+                              <div className="text-xs flex-shrink-0 whitespace-nowrap">
                                 余额: {parseFloat(transaction.after_balance).toFixed(2)}
                               </div>
                             </div>
@@ -310,7 +311,7 @@ const BalancePage = () => {
                         </div>
                       );
                     })}
-                    
+
                     {/* 3. 分页控件 */}
                     {totalFiltered > itemsPerPage && (
                       <div className="px-4 py-3 border-t border-gray-100 flex justify-center items-center space-x-2">

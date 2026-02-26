@@ -17,7 +17,6 @@ export const BackButton: React.FC<BackButtonProps> = ({ className = '', customBa
   const moduleHomepages: Record<string, string> = {
     '/publisher': '/publisher/dashboard',
     '/admin': '/admin/dashboard',
-    '/commenter': '/commenter/hall',
     '/accountrental': '/accountrental/account-rental-market'
   };
 
@@ -48,15 +47,15 @@ export const BackButton: React.FC<BackButtonProps> = ({ className = '', customBa
     '/admin/system',
     
     // 抢单模块
-    '/commenter/hall',
-    '/commenter/tasks',
-    '/commenter/earnings',
-    '/commenter/profile',
-    '/commenter/bank-cards',
-    '/commenter/bind-bank-card',
-    '/commenter/invite',
-    '/commenter/lease',
-    '/commenter/hall-content',
+    '/publisher/hall',
+    '/publisher/tasks',
+    '/publisher/earnings',
+    '/publisher/profile',
+    '/publisher/bank-cards',
+    '/publisher/bind-bank-card',
+    '/publisher/invite',
+    '/publisher/lease',
+    '/publisher/hall-content',
     
     // 账号租赁模块
     '/accountrental',
