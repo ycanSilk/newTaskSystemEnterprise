@@ -3,7 +3,7 @@ import Link from 'next/link';
 const AccountRentalPublishPage = () => {
   return (
     <div className="min-h-screen  space-y-3">
-      <div className="max-w-4xl mx-auto pt-8">
+      <div className="max-w-4xl mx-auto p-8">
         {/* 发布账号租赁卡片 */}
         <Link href="/rental/rental_publish/rental" className="block mb-6">
           <div className="mb-4 bg-white rounded-lg border border-blue-200 p-6 hover:shadow-md transition-shadow cursor-pointer">

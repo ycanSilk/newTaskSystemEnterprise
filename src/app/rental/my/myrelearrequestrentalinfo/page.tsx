@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import type { TabsProps } from 'antd';
-import {RentalRequest,  statusTextMap, statusToTabKeyMap, GetRequestRentalMarketListResponse, RentalRequestStatus} from '@/app/rental/types/rental/myrelearrequestrentalinfoTypes';
+import { GetRequestRentalMarketListResponse, RequestRentalItem } from '@/app/types/rental/requestRental/getRequestRentalMarketListTypes';
 
 // 导入API客户端
 
@@ -17,7 +17,7 @@ const RentalOfferPage = () => {
   const [filterModalVisible, setFilterModalVisible] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [rentalOffers, setRentalOffers] = useState<RentalRequest[]>([]); // 存储API返回的求租信息
+  const [rentalOffers, setRentalOffers] = useState<RequestRentalItem[]>([]); // 存储API返回的求租信息
 
   // 获取求租信息列表
   const fetchRentalOffers = async () => {
@@ -26,25 +26,25 @@ const RentalOfferPage = () => {
     try {
       // 构建URL，添加查询参数my=1
       const apiUrl = '/api/rental/requestRental/getRequestRentalMarketList?my=1';
-      
+
       console.log('发送API请求:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-      
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
       if (!response.ok) {
         throw new Error('网络请求失败');
       }
-      
+
       const data = await response.json();
       console.log('API响应数据:', data);
       console.log('响应结果：', data.code);
       console.log('要设置的数据', data.data?.list);
-      
+
       if (data.code === 0) {
         const offers = data.data?.list || [];
         console.log('判断data.code===0为true;要设置的数据', offers);
@@ -74,7 +74,7 @@ const RentalOfferPage = () => {
   ];
 
   // 复制出租编号功能
-  
+
 
   // 格式化日期
   const formatDate = (dateString: string) => {
@@ -100,13 +100,13 @@ const RentalOfferPage = () => {
     // 更新本地求租信息列表
     console.log('应用筛选条件');
   };
-  
+
   // 处理联系客服
   const handleContactService = (offerId: string) => {
     console.log('联系客服，出租ID:', offerId);
     alert('即将为您连接客服，请稍候...');
   };
-  
+
   // 上下架求租信息
   const toggleOfferStatus = async (offerId: number, status: number) => {
     console.log("点击上下架按钮。传递id:", offerId, "状态:", status);
@@ -121,22 +121,22 @@ const RentalOfferPage = () => {
           status: status
         })
       });
-     
+
       const data = await response.json();
 
       console.log('上下架求租信息响应数据:', data);
-      
+
       if (data.code === 0) {
         console.log("状态修改成功", data.data.status_text);
         console.log("状态修改成功", data.data.status);
-        message.success({ content: data.data.status_text , style: { top: '30%', fontSize: '18px', padding: '16px 24px' }, duration: 3 });
+        message.success({ content: data.data.status_text, style: { top: '30%', fontSize: '18px', padding: '16px 24px' }, duration: 3 });
         // 更新本地求租信息列表
         setRentalOffers(prevOffers => {
           return prevOffers.map(offer => {
             if (offer.id === offerId) {
               return {
                 ...offer,
-                status: status as RentalRequestStatus,
+                status: status,
                 status_text: data.data.status_text
               };
             }
@@ -160,7 +160,7 @@ const RentalOfferPage = () => {
       return offer.status === 1; // 1表示发布中
     } else if (activeTab === 'INACTIVE') {
       return offer.status === 2; // 2表示已下架，3表示已过期
-    }else if(activeTab === 'EXPIRED'){
+    } else if (activeTab === 'EXPIRED') {
       return offer.status === 3 // 3表示已过期
     }
     return true;
@@ -189,10 +189,10 @@ const RentalOfferPage = () => {
         <div className="bg-white p-8 text-center">
           <p className="text-sm text-gray-500">暂无{activeTab === 'ALL' ? '求租' : (activeTab === 'ACTIVE' ? '发布中' : '已下架')}的求租信息</p>
           {activeTab !== 'ACTIVE' && (
-            <Button 
-              type="default" 
-              onClick={() => setActiveTab('ACTIVE')} 
-              size="small" 
+            <Button
+              type="default"
+              onClick={() => setActiveTab('ACTIVE')}
+              size="small"
               className="mt-2"
             >
               查看发布中的求租信息
@@ -207,34 +207,54 @@ const RentalOfferPage = () => {
         <Card className="border-0 rounded-none mb-3 cursor-pointer hover:shadow-md transition-shadow">
           {/* 求租头部信息 */}
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm text-black truncate">{offer.title || '未知标题'}</h2>
-            <span className="text-sm text-red-500">{offer.status_text || statusTextMap[offer.status]}</span>
+            <h2 className="text-lg text-black truncate">{offer.title}</h2>
+            <span className="text-sm text-red-500">{offer.status_text}</span>
           </div>
+          <div>{offer.requirements_json.account_info}</div>
           {/* 求租详细信息 - 左右结构，同一行显示，垂直居中 */}
-          <div className="flex flex-row gap-2 items-center">
-            {/* 左侧图片区域 - 求租信息没有图片，显示占位符 */}
-            <div className="flex-shrink-0">
-              <div className="w-20 h-20 bg-gray-100 overflow-hidden">
-                {/* 后端返回的JSON中没有图片字段，始终显示默认图片 */}
-                <img 
-                  src="/images/default.png" 
-                  alt="出租信息图片" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-            </div>
+          <div className="">
+            {/* 筛选项标签展示 */}
+            <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-hidden">
+              {(() => {
+                const tags = [];
+                const contentJson = offer.requirements_json || {};
 
-            {/* 右侧求租信息区域 */}
-            <div className="flex-1">
-                <div className="">{offer.title || '未知标题'}</div>
-                <div className="">预算：{offer.budget_amount_yuan} 元</div>
-                <div className="">所需天数：{offer.days_needed} 天</div>
-                <div className="">截止日期：{offer.deadline_datetime}</div>
+                // 账号要求标签
+                if (contentJson.basic_information === 'true') tags.push('修改基本信息');
+                if (contentJson.post_douyin === 'true') tags.push('发布抖音');
+                if (contentJson.post_ad === 'true') tags.push('发布广告');
+                if (contentJson.deblocking === 'true') tags.push('账号解禁');
+                if (contentJson.identity_verification === 'true') tags.push('实名认证');
+
+                // 登录方式标签
+                if (contentJson.scan_code === 'true') tags.push('扫码登录');
+                if (contentJson.phone_message === 'true') tags.push('短信验证');
+                if (contentJson.account_password === 'true') tags.push('账号密码');
+                if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
+
+                // 最多显示6个标签
+                return tags.slice(0, 6).map((tag, tagIndex) => (
+                  <span key={tagIndex} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
+                    {tag}
+                  </span>
+                ));
+              })()}
+            </div>
+            <div className="text-sm ml-auto">
+              {offer.requirements_json.platform_type && (
+                <span className={`px-5 py-1 rounded-full text-sm bg-blue-100 text-blue-600 mr-3`}>
+                  {offer.requirements_json.platform_type === 'douyin' ? '抖音' : offer.requirements_json.platform_type === 'qq' ? 'QQ' : '抖音'}
+                </span>
+              )}
+              <span>租期: {offer.days_needed} 天</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <h2 className="text-xl text-red-500 truncate">预算: {offer.budget_amount_yuan} 元/天</h2>
+              <span className="text-sm ">截止时间: {offer.deadline_datetime}</span>
             </div>
           </div>
-          
           {/* 按钮区域 */}
-          <div className="flex justify-end items-center mt-3">
+          <div className="flex justify-end items-center mt-1">
             <Space>
               <Button
                 type="default"
@@ -252,18 +272,18 @@ const RentalOfferPage = () => {
               {/* 根据状态显示不同按钮 */}
               {offer.status === 1 && (
                 <>
-                  <Button 
-                    type="default" 
+                  <Button
+                    type="default"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       router.push(`/rental/my/myrelearrequestrentalinfo/detail/${offer.id}?edit=1`);
-                    }} 
+                    }}
                     size="small"
                     className="text-xs border border-gray-400 text-black p-3"
                   >
                     编辑求租
-                  </Button>                        
+                  </Button>
                   <Button
                     onClick={(e) => {
                       e.preventDefault();
@@ -280,12 +300,12 @@ const RentalOfferPage = () => {
 
               {(offer.status === 0 || offer.status === 2) && (
                 <>
-                  <Button 
+                  <Button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       toggleOfferStatus(offer.id, 1);
-                    }} 
+                    }}
                     size="small"
                     className="text-xs border border-red-600 text-red-600 p-3"
                   >
@@ -305,9 +325,9 @@ const RentalOfferPage = () => {
       {/* 选项卡区域 - 包含状态选项和筛选按钮 */}
       <div className="flex flex-row mb-2 items-center">
         {/* 左侧选项按钮区域 - 90%宽度，支持左右滑动 */}
-        <div className="w-[84%] p-2">
-          <div 
-            className="flex overflow-x-auto whitespace-nowrap pb-2"
+        <div className=" p-2">
+          <div
+            className="flex overflow-x-auto whitespace-nowrap"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             onWheel={(e) => {
               if (e.deltaY !== 0) {
@@ -338,12 +358,12 @@ const RentalOfferPage = () => {
             ))}
           </div>
         </div>
-        
-        {/* 右侧筛选按钮区域 - 10%宽度，垂直居中 */}
-        <div className="w-[15%] flex">
-          <button 
-            onClick={handleFilterClick} 
-            className="text-sm text-blue-500 border border-blue-500 text-center px-3 py-1"
+
+        {/* 右侧筛选按钮区域 - 宽度加三分之一，垂直居中 */}
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={handleFilterClick}
+            className="text-sm text-white border border-blue-500 bg-blue-500 text-center px-3 py-1"
             style={{
               fontSize: '14px',
               outline: 'none'

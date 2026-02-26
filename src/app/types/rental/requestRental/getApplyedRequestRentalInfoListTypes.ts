@@ -14,14 +14,18 @@ export interface ApplicationItem {
   demand_title: string;
   applicant_user_id: number;
   applicant_user_type: number;
-  applicant_username: string | null;
+  applicant_username: string ;
   allow_renew: number;
   application_json: ApplicationJson;
   status: number;
   status_text: string;
   review_remark: string | null;
+  is_my: boolean;
+  is_expired: boolean;
   created_at: string;
   reviewed_at: string | null;
+  relation_type: string;
+  relation_text: string;
 }
 
 // 申请列表数据接口

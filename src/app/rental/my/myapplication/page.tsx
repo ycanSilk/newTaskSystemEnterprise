@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ApplicationItem } from '@/app/types/rental/requestRental/getApplyedRequestRentalInfoListTypes';
 
+import { ReviewApplicationRequest, ReviewApplicationResponse } from '@/app/types/rental/requestRental/reviewAppliedRequestRentalInfoTypes';
+
 // 客户端组件
 const MyApplicationsPage = () => {
   // 选中的图片URL，用于放大查看
@@ -16,35 +18,8 @@ const MyApplicationsPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
   const [total, setTotal] = useState<number>(0);
-
   // 筛选状态
   const [filterStatus, setFilterStatus] = useState<number | 'all'>('all');
-
-  // 定期轮询刷新数据（每30秒）
-  useEffect(() => {
-    const pollingInterval = setInterval(() => {
-      fetchApplications();
-    }, 60000);
-
-    return () => {
-      clearInterval(pollingInterval);
-    };
-  }, [currentPage, pageSize, filterStatus]);
-
-  // 页面获得焦点时刷新数据
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchApplications();
-    };
-
-    // 监听页面获得焦点
-    if (typeof window !== 'undefined') {
-      window.addEventListener('focus', handleFocus);
-      return () => {
-        window.removeEventListener('focus', handleFocus);
-      };
-    }
-  }, [currentPage, pageSize, filterStatus]);
 
   // 获取申请列表数据函数
   const fetchApplications = async () => {
@@ -52,8 +27,9 @@ const MyApplicationsPage = () => {
     try {
       // 调用API获取数据，传入当前页码、每页条数、my=1参数和筛选状态
       const statusParam = filterStatus !== 'all' ? `&status=${filterStatus}` : '';
-      console.log('API请求:', `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
-      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
+      const url = `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`;
+      console.log('API调用URL:', url);
+      const response = await fetch(url);
       const data = await response.json();
       console.log('获取申请列表响应:', data);
       
@@ -91,59 +67,83 @@ const MyApplicationsPage = () => {
     }
   };
 
+
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className=" bg-gray-200">
       {/* 主内容区域 */}
-      <div className="max-w-4xl mx-auto py-6 px-4">
-        {/* 页面标题 */}
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">我应征申请的租赁信息</h1>
-        
+      <div className="max-w-4xl mx-auto">
         {/* 状态筛选按钮 */}
-        <div className="flex space-x-2 mb-6">
-          <Button
-            variant={filterStatus === 'all' ? 'primary' : 'ghost'}
+        <div 
+          className="flex gap-4 overflow-x-auto h-16 tab-container bg-white"
+          style={{ 
+            scrollbarWidth: 'none', /* Firefox */
+            msOverflowStyle: 'none', /* IE and Edge */
+            WebkitOverflowScrolling: 'touch' /* iOS */
+          }}
+        >
+          {/* 隐藏滚动条的样式 */}
+          <style jsx global>{`
+            .tab-container::-webkit-scrollbar {
+              display: none; /* Chrome, Safari and Opera */
+            }
+          `}</style>
+          <button
+            key="all"
             onClick={() => {
               console.log('切换到全部');
               setFilterStatus('all');
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 'all' ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             全部
-          </Button>
-          <Button
-            variant={filterStatus === 0 ? 'primary' : 'ghost'}
+            {filterStatus === 'all' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="0"
             onClick={() => {
               console.log('切换到待审核');
               setFilterStatus(0);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 0 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             待审核
-          </Button>
-          <Button
-            variant={filterStatus === 1 ? 'primary' : 'ghost'}
+            {filterStatus === 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="1"
             onClick={() => {
               console.log('切换到已通过');
               setFilterStatus(1);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 1 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             已通过
-          </Button>
-          <Button
-            variant={filterStatus === 2 ? 'primary' : 'ghost'}
+            {filterStatus === 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="2"
             onClick={() => {
-              console.log('切换到已取消');
+              console.log('切换到已驳回');
               setFilterStatus(2);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 2 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
-            已取消
-          </Button>
+            已驳回
+            {filterStatus === 2 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
         </div>
         
         {/* 申请列表 */}
-        <div className="space-y-4">
+        <div className="space-y-2 p-4">
           {loading ? (
             <div className="text-center py-8">
               <p className="text-gray-500">加载中...</p>
@@ -161,53 +161,52 @@ const MyApplicationsPage = () => {
                 {/* 申请卡片内容 */}
                 <div className="p-4">
                   {/* 申请基本信息 */}
-                  <div className="flex justify-between items-start ">
+                  <div className="flex justify-between items-start mb-1">
                     <div>
                       <h2 className="text-lg font-semibold text-gray-800">{application.demand_title}</h2>
-                      <p className="text-sm mt-1">
-                        申请时间: {application.created_at}
-                      </p>
-                      <div className={`w-[60px] text-center px-3 py-1 rounded text-xs font-medium ${getOrderStatusClass(application.status_text)}`}>
+                      <div className="text-sm">申请时间: {application.created_at}</div>
+                      <span className={`text-center px-2 py-1 rounded-full text-sm font-medium ${getOrderStatusClass(application.status_text)}`}>
                         {application.status_text}
-                      </div>
+                      </span>
                     </div>
                   </div>
-                  
                   {/* 账号信息描述 */}
-                  <div className="">
-                    <h3 className="text-sm font-medium  mb-1">账号信息描述:</h3>
-                    <p className="text-sm ">{application.application_json.description}</p>
+                  <div className="text-sm">
+                    <p>账号信息：{application.application_json?.description || ''}</p>
                     {/* 应征人用户名 */}
-                    <p className="text-sm">
-                      出租申请人: {application.applicant_username || '无'}
+                    <p className="">
+                      申请人: {application.applicant_username || '无'}
                     </p>
+                    <p>出租天数：{application.application_json.days || '未填写'}</p>
                   </div>
                   
                   {/* 是否允许续租 */}
                   <div className="">
-                    <h3 className="text-sm font-medium  mb-1">是否允许续租: {application.allow_renew === 1 ? '是' : '否'}</h3>
+                    <span className={`px-3 py-1 rounded-full text-sm ${application.allow_renew === 1 ? 'bg-green-500 text-white' : 'bg-red-100 text-red-600'}`}>
+                      {application.allow_renew === 1 ? '续租' : '不续租'}
+                    </span>
                   </div>
                   
                   {/* 审核信息 */}
                   {(application.status !== 0) && (
                     <div className="">
                       {application.reviewed_at && (
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm mt-1">
                           审核时间: {application.reviewed_at}
                         </p>
                       )}
                       {application.review_remark && (
-                        <div className="mt-1">
+                        <div className="mt-1 bg-red-100 p-2 rounded-md text-red-600">
                           <h3 className="text-sm font-medium  mb-1">审核备注:</h3>
-                          <p className="text-sm ">{application.review_remark}</p>
+                          <p className="text-sm">{application.review_remark}</p>
                         </div>
                       )}
                     </div>
                   )}
                   
                   {/* 截图预览 - 一行最多3张，尺寸100*100 */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium  mb-2">账号截图:</h3>
+                  <div className=" mt-1">
+                    <h3 className="text-sm font-medium">账号截图:</h3>
                     <div className="grid grid-cols-3 gap-3">
                       {application.application_json.screenshots.map((img, index) => (
                         <div 
@@ -224,6 +223,8 @@ const MyApplicationsPage = () => {
                       ))}
                     </div>
                   </div>
+                  
+          
                 </div>
               </div>
             ))
@@ -231,7 +232,7 @@ const MyApplicationsPage = () => {
         </div>
         
         {/* 分页 */}
-        <div className="mt-6 flex justify-center">
+        <div className=" pb-20  flex justify-center">
           <div className="flex items-center space-x-2">
             {/* 上一页按钮 */}
             <Button 

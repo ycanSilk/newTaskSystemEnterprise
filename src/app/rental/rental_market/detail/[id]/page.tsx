@@ -78,21 +78,13 @@ const AccountDetailPage = ({
     loadRentalInfoDetail();
   }, [offerId]);
 
-  // 统一的页面布局组件 - 使用更简单的结构避免Hydration mismatch
-  const PageContainer = ({ children }: { children: React.ReactNode }) => (
-    <div className="container mx-auto py-1 px-4">
-      <h1 className="text-2xl font-bold ">租赁信息详情</h1>
-      {children}
-    </div>
-  );
+
 
   // 加载状态组件
   const LoadingState = () => (
-    <PageContainer>
       <div className="animate-pulse bg-gray-100 p-8 rounded-md">
         <p className="text-gray-500">正在加载租赁信息...</p>
       </div>
-    </PageContainer>
   );
 
   // 错误状态组件
@@ -112,7 +104,7 @@ const AccountDetailPage = ({
     };
 
     return (
-      <PageContainer>
+   
         <div className=" overflow-hidden ">
           <div className="bg-red-50 p-6 border-l-4 border-red-400 ">
             <div className="flex items-start ">
@@ -138,13 +130,12 @@ const AccountDetailPage = ({
             </div>
           </div>
         </div>
-      </PageContainer>
+   
     );
   };
 
   // 无效ID状态组件
   const InvalidIdState = () => (
-    <PageContainer>
       <div className=" overflow-hidden">
         <div className="p-6">
           <div className="flex items-center justify-center py-10">
@@ -163,7 +154,6 @@ const AccountDetailPage = ({
           </div>
         </div>
       </div>
-    </PageContainer>
   );
 
   // 渲染相应的状态
@@ -194,42 +184,48 @@ const AccountDetailPage = ({
   };
 
   return (
-    <div className="mb-5 bg-gray-50">
+    <div className="bg-white p-5">
       {/* 主内容区域 */}
-      <div className="max-w-[1200px] mx-auto px-4">
+      <div className="max-w-[1200px] mx-auto">
         <div className="py-3 space-y-3">
           {/* 主要信息 */}
-          <div className=" overflow-hidden">
-            <div className="py-1 px-4">
+          <div className="overflow-hidden">
+            <div className="">
               {/* 租赁描述 */}
-              <div className="mb-2">
-                <h2 className="text-lg font-medium text-gray-800 mb-2">{rentalInfo.title || "未设置标题"}</h2>
-                <h2 className="text-base font-medium text-gray-800 mb-2">账号描述:</h2>
-                <p className="text-gray-600 leading-relaxed py-3 px-4 border border-blue-200 rounded-md">{rentalInfo.content_json?.account_info || ""}</p>
+              <div className="">
+                <h2 className="text-lg font-medium text-gray-800 ">{rentalInfo.title || "未设置标题"}</h2>
+                <h2 className="text-base font-medium text-gray-800 ">账号描述:</h2>
+                <p className="mb-1 text-gray-600 leading-relaxed py-3 px-4 border border-blue-200 rounded-md">{rentalInfo.content_json?.account_info || ""}</p>
               </div>
-              <p className="text-sm text-gray-600 mb-2">发布时间：{rentalInfo.created_at || "未设置发布时间"}</p>
+              <p className="text-sm text-gray-600 mb-1">发布时间：{rentalInfo.created_at || "未设置发布时间"}</p>
 
               {/* 租赁信息详情 */}
-              <div className="mb-2">
+              <div className="">
                 {/* 续租状态标签 */}
                 <span className={`px-3 py-1 rounded-full text-sm mr-3 ${rentalInfo.allow_renew ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-600'}`}>
                   {rentalInfo.allow_renew ? '续租' : '不续租'}
                 </span>
-                <span className={`px-3 py-1 rounded-full text-sm ${getOrderStatusClass(rentalInfo.status_text)}`}>
+                <span className={`px-3 py-1 rounded-full text-sm mr-3 ${getOrderStatusClass(rentalInfo.status_text)}`}>
                   {rentalInfo.status_text}
                 </span>
+                {/* 平台类型标签 */}
+                {rentalInfo.content_json?.platform_type && (
+                  <span className={`px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800`}>
+                    {rentalInfo.content_json.platform_type === 'douyin' ? '抖音' : 'QQ'}
+                  </span>
+                )}
               </div>
             </div>
             
             {/* 账号图片展示区域 */}
             {rentalInfo && (
-              <div className="bg-white px-4 py-1 ">
+              <div className="py-1 ">
                 <h2 className="text-base font-medium text-gray-800 mb-1">账号图片：</h2>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3 px-1">
                   {/* 判断是否有图片，没有则显示默认图片 */}
                   {(!rentalInfo.content_json?.images || rentalInfo.content_json.images.length === 0) ? (
                     <div
-                      className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-full aspect-square"
+                      className="cursor-pointer overflow-hidden border border-gray-200 rounded-lg hover:border-blue-400 transition-colors w-[120px] h-[120px]"
                       onClick={() => setSelectedImage('')}
                     >
                       <div className="w-full h-full flex items-center justify-center bg-gray-100">
@@ -241,7 +237,7 @@ const AccountDetailPage = ({
                     rentalInfo.content_json.images.map((img, index) => (
                       <div
                         key={index}
-                        className="cursor-pointer overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors w-full aspect-square"
+                        className="cursor-pointer overflow-hidden border border-gray-200 rounded-lg hover:border-blue-400 transition-colors w-[120px] h-[120px]"
                         onClick={() => setSelectedImage(img.trim())}
                       >
                         <img
@@ -263,7 +259,7 @@ const AccountDetailPage = ({
             )}
 
             {/* 账号支持 */}
-            <div className="bg-white px-4 py-1 ">
+            <div className="py-1 ">
               <h2 className="text-base font-medium text-gray-800 mb-1">账号支持</h2>
               <div className="flex flex-wrap gap-2">
                 {rentalInfo.content_json?.basic_information && (
@@ -282,7 +278,7 @@ const AccountDetailPage = ({
             </div>
 
             {/* 登录方式 */}
-            <div className="bg-white px-4 py-1 ">
+            <div className="py-1 ">
               <h2 className="text-base font-medium text-gray-800 mb-1">登录方式</h2>
               <div className="flex flex-wrap gap-2">
                 {rentalInfo.content_json?.scan_code && (
@@ -299,10 +295,10 @@ const AccountDetailPage = ({
           </div>
 
           {/* 价格和操作信息 */}
-          <div className=" py-1 px-4 mb-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
+          <div className="">
+            <div className="flex flex-col md:flex-row md:items-center justify-between ">
               {/* 价格信息 */}
-              <div className="mb-2 md:mb-0">
+              <div className=" md:mb-0">
                 <div className="flex items-baseline">
                   <span className="text-base font-bold text-gray-700">出租单价：</span>
                   <span className="text-2xl font-bold text-red-600 ml-2">¥{rentalInfo.price_per_day_yuan}/天</span>

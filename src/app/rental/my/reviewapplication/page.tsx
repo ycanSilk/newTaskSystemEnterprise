@@ -19,6 +19,11 @@ const MyApplicationsPage = () => {
   const [total, setTotal] = useState<number>(0);
   // 筛选状态
   const [filterStatus, setFilterStatus] = useState<number | 'all'>('all');
+  // 天数输入模态框状态
+  const [daysModalVisible, setDaysModalVisible] = useState<boolean>(false);
+  const [currentApplicationId, setCurrentApplicationId] = useState<number | null>(null);
+  const [selectedDays, setSelectedDays] = useState<number>(0);
+  const [maxDays, setMaxDays] = useState<number>(0);
 
   // 获取申请列表数据函数
   const fetchApplications = async () => {
@@ -26,14 +31,18 @@ const MyApplicationsPage = () => {
     try {
       // 调用API获取数据，传入当前页码、每页条数、my=1参数和筛选状态
       const statusParam = filterStatus !== 'all' ? `&status=${filterStatus}` : '';
-      const response = await fetch(`/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=1${statusParam}`);
+      const url = `/api/rental/requestRental/getApplyedRequestRentalInfoList?page=${currentPage}&page_size=${pageSize}&my=0${statusParam}`;
+      console.log('API调用URL:', url);
+      const response = await fetch(url);
       const data = await response.json();
       console.log('获取申请列表响应:', data);
       
       // 检查响应是否成功
       if (data.success === true && data.data) {
-        setApplications(data.data.list);
-        setTotal(data.data.total);
+        // 过滤掉is_my为true的列表项，只显示is_my为false的
+        const filteredList = data.data.list.filter((item: ApplicationItem) => item.is_my === false);
+        setApplications(filteredList);
+        setTotal(filteredList.length);
         setPageSize(data.data.page_size);
       } else {
         console.error('API响应不符合预期，未设置数据:', data);
@@ -65,12 +74,24 @@ const MyApplicationsPage = () => {
   };
 
   // 处理通过审核按钮点击
-  const handleApprove = async (applicationId: number) => {
+  const handleApprove = (applicationId: number) => {
+    // 获取当前申请的信息
+    const application = applications.find(app => app.id === applicationId);
+    if (application) {
+      // 设置当前申请ID和最大天数
+      setCurrentApplicationId(applicationId);
+      setMaxDays(application.application_json?.days || 0);
+      setSelectedDays(1); // 默认选择1天
+      // 显示天数输入模态框
+      setDaysModalVisible(true);
+    }
+  };
+
+  // 处理确认天数并通过审核
+  const handleConfirmDays = async () => {
+    if (currentApplicationId === null) return;
+    
     try {
-      // 获取当前申请的天数
-      const application = applications.find(app => app.id === applicationId);
-      const days = application?.application_json?.days || 0;
-      
       // 调用审核通过API
       const response = await fetch('/api/rental/requestRental/reviewAppliedRequestRentalInfo', {
         method: 'POST',
@@ -78,9 +99,9 @@ const MyApplicationsPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          application_id: applicationId,
+          application_id: currentApplicationId,
           status: "1", // 1=通过
-          days: days,
+          days: selectedDays,
           reject_reason: ''
         } as ReviewApplicationRequest)
       });
@@ -88,6 +109,8 @@ const MyApplicationsPage = () => {
       const result: ReviewApplicationResponse = await response.json();
       
       if (result.success) {
+        // 关闭模态框
+        setDaysModalVisible(false);
         // 刷新申请列表
         fetchApplications();
         alert(result.message);
@@ -145,58 +168,80 @@ const MyApplicationsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className=" bg-gray-200">
       {/* 主内容区域 */}
-      <div className="max-w-4xl mx-auto py-6 px-4">
-        {/* 页面标题 */}
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">求租信息应征申请审核列表</h1>
-        
+      <div className="max-w-4xl mx-auto">
         {/* 状态筛选按钮 */}
-        <div className="flex space-x-2 mb-6">
-          <Button
-            variant={filterStatus === 'all' ? 'primary' : 'ghost'}
+        <div 
+          className="flex gap-4 overflow-x-auto h-16 tab-container bg-white"
+          style={{ 
+            scrollbarWidth: 'none', /* Firefox */
+            msOverflowStyle: 'none', /* IE and Edge */
+            WebkitOverflowScrolling: 'touch' /* iOS */
+          }}
+        >
+          {/* 隐藏滚动条的样式 */}
+          <style jsx global>{`
+            .tab-container::-webkit-scrollbar {
+              display: none; /* Chrome, Safari and Opera */
+            }
+          `}</style>
+          <button
+            key="all"
             onClick={() => {
               console.log('切换到全部');
               setFilterStatus('all');
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 'all' ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             全部
-          </Button>
-          <Button
-            variant={filterStatus === 0 ? 'primary' : 'ghost'}
+            {filterStatus === 'all' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="0"
             onClick={() => {
               console.log('切换到待审核');
               setFilterStatus(0);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 0 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             待审核
-          </Button>
-          <Button
-            variant={filterStatus === 1 ? 'primary' : 'ghost'}
+            {filterStatus === 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="1"
             onClick={() => {
               console.log('切换到已通过');
               setFilterStatus(1);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 1 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
             已通过
-          </Button>
-          <Button
-            variant={filterStatus === 2 ? 'primary' : 'ghost'}
+            {filterStatus === 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+          <button
+            key="2"
             onClick={() => {
-              console.log('切换到已取消');
+              console.log('切换到已驳回');
               setFilterStatus(2);
             }}
-            className="px-3 py-1 text-sm"
+            className={`py-2 px-3 whitespace-nowrap relative ${filterStatus === 2 ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
-            已取消
-          </Button>
+            已驳回
+            {filterStatus === 2 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
         </div>
         
         {/* 申请列表 */}
-        <div className="space-y-4">
+        <div className="space-y-2 p-4">
           {loading ? (
             <div className="text-center py-8">
               <p className="text-gray-500">加载中...</p>
@@ -214,54 +259,52 @@ const MyApplicationsPage = () => {
                 {/* 申请卡片内容 */}
                 <div className="p-4">
                   {/* 申请基本信息 */}
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-1">
                     <div>
                       <h2 className="text-lg font-semibold text-gray-800">{application.demand_title}</h2>
-                      <p className="text-sm  mt-1">
-                        申请时间: {application.created_at}
-                      </p>
-                      <div className={`w-[60px] text-center px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusClass(application.status_text)}`}>
+                      <div className="text-sm">申请时间: {application.created_at}</div>
+                      <span className={`text-center px-2 py-1 rounded-full text-sm font-medium ${getOrderStatusClass(application.status_text)}`}>
                         {application.status_text}
-                      </div>
+                      </span>
                     </div>
                   </div>
-                  
                   {/* 账号信息描述 */}
-                  <div className="mb-3">
-                    <h3 className="text-sm font-medium  mb-1">账号信息描述:</h3>
-                    <p className="text-sm ">{application.application_json?.description || ''}</p>
+                  <div className="text-sm">
+                    <p>账号信息：{application.application_json?.description || ''}</p>
                     {/* 应征人用户名 */}
-                    <p className="text-sm">
-                      出租申请人: {application.applicant_username || '无'}
+                    <p className="">
+                      申请人: {application.applicant_username || '无'}
                     </p>
-                    <p>出租天数：{application.application_json?.days || ''}</p>
+                    <p>出租天数：{application.application_json.days || '未填写'}</p>
                   </div>
                   
                   {/* 是否允许续租 */}
-                  <div className="mb-3">
-                    <h3 className="text-sm font-medium  mb-1">是否允许续租: {application.allow_renew === 1 ? '是' : '否'}</h3>
+                  <div className="">
+                    <span className={`px-3 py-1 rounded-full text-sm ${application.allow_renew === 1 ? 'bg-green-500 text-white' : 'bg-red-100 text-red-600'}`}>
+                      {application.allow_renew === 1 ? '续租' : '不续租'}
+                    </span>
                   </div>
                   
                   {/* 审核信息 */}
                   {(application.status !== 0) && (
-                    <div className="mb-3">
+                    <div className="">
                       {application.reviewed_at && (
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm mt-1">
                           审核时间: {application.reviewed_at}
                         </p>
                       )}
                       {application.review_remark && (
-                        <div className="mt-1">
+                        <div className="mt-1 bg-red-100 p-2 rounded-md text-red-600">
                           <h3 className="text-sm font-medium  mb-1">审核备注:</h3>
-                          <p className="text-sm ">{application.review_remark}</p>
+                          <p className="text-sm">{application.review_remark}</p>
                         </div>
                       )}
                     </div>
                   )}
                   
                   {/* 截图预览 - 一行最多3张，尺寸100*100 */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium  mb-2">账号截图:</h3>
+                  <div className=" mt-1">
+                    <h3 className="text-sm font-medium">账号截图:</h3>
                     <div className="grid grid-cols-3 gap-3">
                       {application.application_json.screenshots.map((img, index) => (
                         <div 
@@ -303,7 +346,7 @@ const MyApplicationsPage = () => {
         </div>
         
         {/* 分页 */}
-        <div className="mt-6 flex justify-center">
+        <div className=" pb-20  flex justify-center">
           <div className="flex items-center space-x-2">
             {/* 上一页按钮 */}
             <Button 
@@ -355,6 +398,49 @@ const MyApplicationsPage = () => {
               alt="放大预览"
               className="max-w-full max-h-[85vh] object-contain"
             />
+          </div>
+        </div>
+      )}
+      
+      {/* 天数输入模态框 */}
+      {daysModalVisible && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={() => setDaysModalVisible(false)}
+        >
+          <div className="relative bg-white rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              onClick={() => setDaysModalVisible(false)}
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-semibold mb-4">设置租用天数</h3>
+            <p className="text-gray-600 mb-4">请输入租用天数（最大可租 {maxDays} 天）</p>
+            <div className="mb-4">
+              <input
+                type="number"
+                min="1"
+                max={maxDays}
+                value={selectedDays}
+                onChange={(e) => setSelectedDays(parseInt(e.target.value) || 1)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 text-sm"
+                onClick={() => setDaysModalVisible(false)}
+              >
+                取消
+              </Button>
+              <Button
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-sm"
+                onClick={handleConfirmDays}
+              >
+                确认
+              </Button>
+            </div>
           </div>
         </div>
       )}

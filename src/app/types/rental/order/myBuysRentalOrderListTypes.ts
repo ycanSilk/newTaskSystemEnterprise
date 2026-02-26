@@ -2,22 +2,32 @@
 
 // 买家信息接口
 interface BuyerInfoJson {
-  email: string;
-  qq_number: string;
-  deblocking: string;
-  phone_number: string;
-  phone_message: string;
-  requested_all: string;
-  basic_information: string;
-  login_requirements: string;
-  other_requirements: string;
-  account_requirements: string;
+  //购买账号的买家下单时输入的信息
+  notes: string;          //特殊要求/备注
+  usage: string;          // 买账号后的用途说明，例如：用于直播带货C端用户ctongyong测试租赁下单接口
+  contact: string;        //联系方式：QQ/手机号/邮箱
 }
 
 // 卖家信息接口
 interface SellerInfoJson {
-  description: string;
-  screenshots: string[];
+   images: string[];     // 图片列表
+  //账号要求
+  deblocking: string;    // 解除封禁
+  account_info: string;  // 出租信息详细描速
+  identity_verification: string;  // 身份验证，需要实名认证
+  post_douyin:string;             // 发布抖音视频和评论
+  basic_information: string;      // 基本信息，需要完善个人信息
+  order_requirements: string;    // 其他账号要求
+  //登录要求
+  phone_message: string;  // 手机号+短信验证登录
+  requested_all: string;  // 按承租方要求登录
+  scan_code: string;      // 扫码登录
+  
+
+  // 联系方式
+  email: string;          // 邮箱
+  qq_number: string;      // qq号
+  phone_number: string;   // 手机号
 }
 
 // 订单JSON信息接口
@@ -26,9 +36,8 @@ interface OrderJson {
   max_days: number;
   min_days: number;
   start_time: number;
-  demand_title: string;
+  offer_title: string;
   price_per_day: number;
-  application_id: number;
 }
 
 // 分页信息接口

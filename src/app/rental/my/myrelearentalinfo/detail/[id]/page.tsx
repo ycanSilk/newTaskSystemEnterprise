@@ -9,11 +9,12 @@ import ImageUpload from '@/components/imagesUpload/ImageUpload';
 // 导入新的类型定义
 import { GetOffersRentalInfoDetailResponse, RentalInfoDetail } from '@/app/types/rental/rentOut/getOffersRentalInfoDetailTypes';
 
-// 抖音账号租赁表单类型
-interface DouyinAccountRentalForm {
+// 账号租赁表单类型
+interface AccountRentalForm {
   // 基础信息
   title: string; // 新增：出租信息标题
   description: string; // 账号信息
+  platformType: string; // 账号平台类型：qq或douyin
   accountImages: string[];
   price: number;
   minLeaseDays: number;
@@ -24,10 +25,12 @@ interface DouyinAccountRentalForm {
     post_douyin: boolean;
     deblocking: boolean;
     identity_verification: boolean;
+    post_ad: boolean; // 发布广告
   };
   loginMethods: {
     scan_code: boolean;
     phone_message: boolean;
+    account_password: boolean; // 账号密码登录
     other_require: boolean;
   };
   phone: string;
@@ -44,9 +47,10 @@ const RentalRequestDetailPage = () => {
   const isEditMode = editParam === '1';
   
   // 表单状态
-  const [formData, setFormData] = useState<DouyinAccountRentalForm>({
+  const [formData, setFormData] = useState<AccountRentalForm>({
     title: '',
     description: '',
+    platformType: 'douyin', // 账号平台类型，默认抖音
     accountImages: [],
     price: 50,
     minLeaseDays: 1,
@@ -57,10 +61,12 @@ const RentalRequestDetailPage = () => {
       post_douyin: false,
       deblocking: false,
       identity_verification: false,
+      post_ad: false, // 发布广告
     },
     loginMethods: {
       scan_code: true,
       phone_message: false,
+      account_password: false, // 账号密码登录
       other_require: false,
     },
     phone: '',
@@ -78,6 +84,10 @@ const RentalRequestDetailPage = () => {
     message: '',
     icon: null as React.ReactNode | null
   });
+  
+  // 图片预览状态
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
 
   // 从API获取出租详情
   const fetchLeaseInfoDetail = async () => {
@@ -113,6 +123,7 @@ const RentalRequestDetailPage = () => {
         setFormData({
           title: apiData.title || '',
           description: contentJson.account_info || '',
+          platformType: contentJson.platform_type || 'douyin',
           accountImages: contentJson.images || [],
           price: typeof apiData.price_per_day_yuan === 'string' ? parseFloat(apiData.price_per_day_yuan) || 50 : apiData.price_per_day_yuan || 50,
           minLeaseDays: apiData.min_days || 1,
@@ -123,10 +134,12 @@ const RentalRequestDetailPage = () => {
             post_douyin: contentJson.post_douyin === 'true',
             deblocking: contentJson.deblocking === 'true',
             identity_verification: contentJson.identity_verification === 'true',
+            post_ad: contentJson.post_ad === 'true',
           },
           loginMethods: {
             scan_code: contentJson.scan_code === 'true',
             phone_message: contentJson.phone_message === 'true',
+            account_password: contentJson.account_password === 'true',
             other_require: contentJson.requested_all === 'true',
           },
           phone: contentJson.phone_number || '',
@@ -171,6 +184,18 @@ const RentalRequestDetailPage = () => {
         accountImages: ''
       }));
     }
+  };
+  
+  // 处理图片预览
+  const handlePreview = (image: string) => {
+    setPreviewImage(image);
+    setPreviewVisible(true);
+  };
+  
+  // 关闭图片预览
+  const handlePreviewClose = () => {
+    setPreviewVisible(false);
+    setPreviewImage('');
   };
 
   // 显示通用提示框
@@ -217,8 +242,13 @@ const RentalRequestDetailPage = () => {
       newErrors.maxLeaseDays = '最高出租天数必须大于最低出租天数';
     }
     
+    // 平台类型验证
+    if (!formData.platformType) {
+      newErrors.platformType = '请选择账号平台类型';
+    }
+    
     // 登录方式验证
-    const hasLoginMethod = formData.loginMethods.scan_code || formData.loginMethods.phone_message || formData.loginMethods.other_require;
+    const hasLoginMethod = formData.loginMethods.scan_code || formData.loginMethods.phone_message || formData.loginMethods.other_require || formData.loginMethods.account_password;
     if (!hasLoginMethod) {
       newErrors.loginMethods = '请至少选择一种登录方式';
     }
@@ -247,10 +277,33 @@ const RentalRequestDetailPage = () => {
   // 处理输入变化
   const handleInputChange = (field: string, value: string | number | boolean | File | null) => {
     // 允许用户在输入过程中删除内容至空值
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      // 当选择平台类型时，清除其他标签的选中状态
+      if (field === 'platformType') {
+        return {
+          ...prev,
+          [field]: value as string,
+          allow_renew: 1, // 重置为默认值
+          accountRequirements: {
+            basic_information: false,
+            post_douyin: false,
+            deblocking: false,
+            identity_verification: false,
+            post_ad: false,
+          },
+          loginMethods: {
+            scan_code: true, // 保持默认选中扫码登录
+            phone_message: false,
+            account_password: false,
+            other_require: false,
+          }
+        };
+      }
+      return {
+        ...prev,
+        [field]: value
+      };
+    });
     
     // 清除对应字段的错误
     if (errors[field]) {
@@ -287,7 +340,7 @@ const RentalRequestDetailPage = () => {
   // 处理输入框失焦事件 - 当用户离开输入框后，自动填充默认值
   const handleBlur = (field: string, defaultValue: number) => {
     setFormData(prev => {
-      const currentValue = prev[field as keyof DouyinAccountRentalForm];
+      const currentValue = prev[field as keyof AccountRentalForm];
       // 如果值为空或小于等于0，则使用默认值
       if (currentValue === '' || currentValue === null || currentValue === undefined || (typeof currentValue === 'number' && currentValue <= 0)) {
         return {
@@ -322,9 +375,12 @@ const RentalRequestDetailPage = () => {
           post_douyin: formData.accountRequirements.post_douyin ? 'true' : 'false',
           deblocking: formData.accountRequirements.deblocking ? 'true' : 'false',
           identity_verification: formData.accountRequirements.identity_verification ? 'true' : 'false',
+          post_ad: formData.accountRequirements.post_ad ? 'true' : 'false',
           scan_code: formData.loginMethods.scan_code ? 'true' : 'false',
           phone_message: formData.loginMethods.phone_message ? 'true' : 'false',
+          account_password: formData.loginMethods.account_password ? 'true' : 'false',
           other_require: formData.loginMethods.other_require ? 'true' : 'false',
+          platform_type: formData.platformType,
           images: formData.accountImages, // 直接使用上传后的图片URL列表
           phone_number: formData.phone,
           qq_number: formData.qq || '',
@@ -335,7 +391,7 @@ const RentalRequestDetailPage = () => {
       console.log('提交的API请求数据:', requestData);
       
       // 调用后端API提交数据
-      const response = await fetch('/api/rental/rentOut/updateOffersRentalnfo', {
+      const response = await fetch('/api/rental/rentOut/updateRentalInfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -377,7 +433,7 @@ const RentalRequestDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 mt-5 mb-10">
       <div className="px-4 py-2">
         <div className="bg-blue-50 border border-blue-200 p-2">
               <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
@@ -390,7 +446,7 @@ const RentalRequestDetailPage = () => {
         {/* 表单内容 */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden py-5 px-3">
           {/* 基础信息 */}
-          <div className="space-y-1 mb-2">  
+          <div className="space-y-1 mb-1">  
             <div className="space-y-1">
               {/* 出租信息标题 */}
               <div className="space-y-1">
@@ -417,14 +473,14 @@ const RentalRequestDetailPage = () => {
                   账号信息 <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="填写抖音账号出租的详细信息，保信息真实有效，账号无异常,及时响应"
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none ${errors.description ? 'border-red-500' : ''}`}
-                  style={{ height: 150, width: '100%' }}
-                  disabled={!isEditMode}
-                />
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    placeholder={formData.platformType === 'douyin' ? "填写抖音账号出租的详细信息，保信息真实有效，账号无异常,及时响应" : "填写QQ账号出租的详细信息，保信息真实有效，账号无异常,及时响应"}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none ${errors.description ? 'border-red-500' : ''}`}
+                    style={{ height: 100, width: '100%' }}
+                    disabled={!isEditMode}
+                  />
                 {errors.description && (
                   <p className="text-red-500 text-sm">{errors.description}</p>
                 )}
@@ -443,15 +499,20 @@ const RentalRequestDetailPage = () => {
                     columns={3}
                     gridWidth="100%"
                     itemSize="100x100"
+                    defaultImages={formData.accountImages}
                   />
                 ) : (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2">
                     {formData.accountImages.map((image, index) => (
-                      <div key={index} className="relative overflow-hidden rounded-md border border-gray-200">
+                      <div 
+                        key={index} 
+                        className="relative h-[100px] w-[100px] overflow-hidden rounded-md border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => handlePreview(image)}
+                      >
                         <img 
                           src={image} 
                           alt={`账号数据 ${index + 1}`} 
-                          className="h-40 w-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       </div>
                     ))}
@@ -465,7 +526,7 @@ const RentalRequestDetailPage = () => {
           </div>
           
           {/* 商品信息 */}
-          <div className="space-y-6 mb-10">
+          <div className="space-y-1 mb-10">
             <div className="space-y-1">
               {/* 价格 */}
               <div className="space-y-1">
@@ -526,36 +587,53 @@ const RentalRequestDetailPage = () => {
                 )}
               </div>
               
+              {/* 账号平台类型 */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  账号平台类型 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'douyin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleInputChange('platformType', 'douyin')}
+                    disabled={!isEditMode}
+                  >
+                    抖音
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'qq' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleInputChange('platformType', 'qq')}
+                    disabled={!isEditMode}
+                  >
+                    QQ
+                  </button>
+                </div>
+              </div>
+              
               {/* 是否允许续租 */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   是否允许续租 <span className="text-red-500">*</span>
                 </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="allowRenew"
-                      value={1}
-                      checked={formData.allow_renew === 1}
-                      onChange={() => handleInputChange('allow_renew', 1)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      disabled={!isEditMode}
-                    />
-                    <span className="ml-2 text-sm">是</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="allowRenew"
-                      value={0}
-                      checked={formData.allow_renew === 0}
-                      onChange={() => handleInputChange('allow_renew', 0)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      disabled={!isEditMode}
-                    />
-                    <span className="ml-2 text-sm">否</span>
-                  </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.allow_renew === 1 ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleInputChange('allow_renew', 1)}
+                    disabled={!isEditMode}
+                  >
+                    是
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.allow_renew === 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleInputChange('allow_renew', 0)}
+                    disabled={!isEditMode}
+                  >
+                    否
+                  </button>
                 </div>
               </div>
               
@@ -563,11 +641,12 @@ const RentalRequestDetailPage = () => {
             </div>
             
             {/* 账号要求 */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                账号支持 <span className="text-red-500">*</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                账号支持（可多选） <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
+                {/* 抖音和QQ都显示的标签 */}
                 <button
                   type="button"
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.basic_information ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
@@ -575,14 +654,6 @@ const RentalRequestDetailPage = () => {
                   disabled={!isEditMode}
                 >
                   修改基本信息
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_douyin ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
-                  onClick={() => isEditMode && handleTagClick('accountRequirements', 'post_douyin')}
-                  disabled={!isEditMode}
-                >
-                  发布视频和评论
                 </button>
                 <button
                   type="button"
@@ -600,16 +671,53 @@ const RentalRequestDetailPage = () => {
                 >
                   实名认证
                 </button>
+                
+                {/* 抖音特有的标签 */}
+                {formData.platformType === 'douyin' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_douyin ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleTagClick('accountRequirements', 'post_douyin')}
+                    disabled={!isEditMode}
+                  >
+                    发布抖音
+                  </button>
+                )}
+                
+                {/* QQ特有的标签 */}
+                {formData.platformType === 'qq' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_ad ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleTagClick('accountRequirements', 'post_ad')}
+                    disabled={!isEditMode}
+                  >
+                    发布广告
+                  </button>
+                )}
               </div>
               <div className='text-sm text-gray-600'>支持勾选选项越多，出租概率越大。</div>
             </div>
             
             {/* 登录方式 */}
-            <div className="space-y-3 mt-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1 ">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 登录方式（可多选） <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
+                {/* QQ特有的登录方式 */}
+                {formData.platformType === 'qq' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.account_password ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => isEditMode && handleTagClick('loginMethods', 'account_password')}
+                    disabled={!isEditMode}
+                  >
+                    账号密码
+                  </button>
+                )}
+                
+                {/* 抖音和QQ都显示的登录方式 */}
                 <button
                   type="button"
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.scan_code ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
@@ -639,7 +747,7 @@ const RentalRequestDetailPage = () => {
             </div>
             
             {/* 联系方式 */}
-            <div className="space-y-1 mt-3">
+            <div className="space-y-1 ">
               {/* 手机号 */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -697,7 +805,7 @@ const RentalRequestDetailPage = () => {
           </div>
           
           {/* 操作按钮 */}
-          <div className="mt-3 flex justify-center space-x-3">
+          <div className=" flex justify-center space-x-3">
             <Button
               onClick={handleBackToList}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2"
@@ -747,6 +855,23 @@ const RentalRequestDetailPage = () => {
           {alertConfig.icon}
         </div>
         <p className="text-center">{alertConfig.message}</p>
+      </Modal>
+      
+      {/* 图片预览模态框 */}
+      <Modal
+        title="图片预览"
+        open={previewVisible}
+        onCancel={handlePreviewClose}
+        footer={null}
+        width={800}
+      >
+        <div className="flex justify-center">
+          <img 
+            src={previewImage} 
+            alt="预览图片" 
+            className="max-h-[600px] max-w-full object-contain"
+          />
+        </div>
       </Modal>
     </div>
   );

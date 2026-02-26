@@ -7,10 +7,11 @@ import { CreateOffersRentalInfoRequest, CreateOffersRentalInfoApiResponse } from
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 
 // 定义抖音账号租赁表单类型
-interface DouyinAccountRentalForm {
+interface AccountRentalForm {
   // 基础信息
   title: string; // 新增：出租信息标题
   description: string; // 账号信息
+  platformType: string; // 账号平台类型：qq或douyin
   accountImages: string[];
   price: number;
   minLeaseDays: number;
@@ -21,10 +22,12 @@ interface DouyinAccountRentalForm {
     post_douyin: boolean;
     deblocking: boolean;
     identity_verification: boolean;
+    post_ad: boolean; // 发布广告
   };
   loginMethods: {
     scan_code: boolean;
     phone_message: boolean;
+    account_password: boolean; // 账号密码登录
     other_require: boolean;
   };
   phone: string;
@@ -35,9 +38,10 @@ interface DouyinAccountRentalForm {
 
 export default function DouyinAccountRentalPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<DouyinAccountRentalForm>({
+  const [formData, setFormData] = useState<AccountRentalForm>({
     title: '', // 新增：出租信息标题
     description: '', // 账号信息
+    platformType: 'douyin', // 账号平台类型，默认抖音
     accountImages: [],
     price: 50,
     minLeaseDays: 1, 
@@ -48,10 +52,12 @@ export default function DouyinAccountRentalPage() {
       post_douyin: false,
       deblocking: false,
       identity_verification: false,
+      post_ad: false, // 发布广告
     },
     loginMethods: {
       scan_code: true,
       phone_message: false,
+      account_password: false, // 账号密码登录
       other_require: false,
     },
     phone: '',
@@ -132,7 +138,7 @@ export default function DouyinAccountRentalPage() {
     }
     
     // 登录方式验证
-    const hasLoginMethod = formData.loginMethods.scan_code || formData.loginMethods.phone_message || formData.loginMethods.other_require;
+    const hasLoginMethod = formData.loginMethods.scan_code || formData.loginMethods.phone_message || formData.loginMethods.other_require || formData.loginMethods.account_password;
     if (!hasLoginMethod) {
       newErrors.loginMethods = '请至少选择一种登录方式';
     }
@@ -161,12 +167,35 @@ export default function DouyinAccountRentalPage() {
   };
 
   // 处理输入变化
-  const handleInputChange = (field: string, value: string | number | boolean | File | null) => {
+  const handleInputChange = (field: keyof AccountRentalForm, value: string | number | boolean | File | null) => {
     // 允许用户在输入过程中删除内容至空值
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      // 当选择平台类型时，清除其他标签的选中状态
+      if (field === 'platformType') {
+        return {
+          ...prev,
+          [field]: value as string,
+          allow_renew: 1, // 重置为默认值
+          accountRequirements: {
+            basic_information: false,
+            post_douyin: false,
+            deblocking: false,
+            identity_verification: false,
+            post_ad: false,
+          },
+          loginMethods: {
+            scan_code: true, // 保持默认选中扫码登录
+            phone_message: false,
+            account_password: false,
+            other_require: false,
+          }
+        };
+      }
+      return {
+        ...prev,
+        [field]: value as any
+      };
+    });
     
     // 清除对应字段的错误
     if (errors[field]) {
@@ -204,7 +233,7 @@ export default function DouyinAccountRentalPage() {
   // 处理输入框失焦事件 - 当用户离开输入框后，自动填充默认值
   const handleBlur = (field: string, defaultValue: number) => {
     setFormData(prev => {
-      const currentValue = prev[field as keyof DouyinAccountRentalForm];
+      const currentValue = prev[field as keyof AccountRentalForm];
       // 如果值为空或小于等于0，则使用默认值
       if (currentValue === '' || currentValue === null || currentValue === undefined || (typeof currentValue === 'number' && currentValue <= 0)) {
         return {
@@ -239,9 +268,12 @@ export default function DouyinAccountRentalPage() {
           post_douyin: formData.accountRequirements.post_douyin ? 'true' : 'false',
           deblocking: formData.accountRequirements.deblocking ? 'true' : 'false',
           identity_verification: formData.accountRequirements.identity_verification ? 'true' : 'false',
+          post_ad: formData.accountRequirements.post_ad ? 'true' : 'false',
           scan_code: formData.loginMethods.scan_code ? 'true' : 'false',
           phone_message: formData.loginMethods.phone_message ? 'true' : 'false',
+          account_password: formData.loginMethods.account_password ? 'true' : 'false',
           other_require: formData.loginMethods.other_require ? 'true' : 'false',
+          platform_type: formData.platformType,
           images: formData.accountImages, // 直接使用上传后的图片URL列表
           phone_number: formData.phone,
           qq_number: formData.qq || '',
@@ -288,7 +320,7 @@ export default function DouyinAccountRentalPage() {
 
     return (
     <div className="min-h-screen bg-gray-50">
-      <div className="px-4 py-2">
+      <div className="max-w-5xl mx-auto px-4 py-2 mt-3">
         <div className="bg-blue-50 border border-blue-200 p-2">
               <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
               <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
@@ -296,11 +328,11 @@ export default function DouyinAccountRentalPage() {
       </div>
 
         {/* 表单区域 */}
-      <div className="px-4 py-2">
+      <div className="max-w-5xl mx-auto px-4 py-2 mb-10">
         {/* 表单内容 */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden py-5 px-3">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden py-5 px-6">
           {/* 基础信息 */}
-          <div className="space-y-1 mb-2">  
+          <div className="space-y-1">  
             <div className="space-y-1">
               {/* 出租信息标题 */}
               <div className="space-y-1">
@@ -310,14 +342,14 @@ export default function DouyinAccountRentalPage() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
-                  placeholder="请输入出租信息标题，如：抖音高等级账号出租"
-                  className={`input ${errors.title ? 'border-red-500' : ''}`}
+                  placeholder=""
+                  className={`input w-full ${errors.title ? 'border-red-500' : ''}`}
                 />
                 {errors.title && (
                   <p className="text-red-500 text-sm">{errors.title}</p>
                 )}
               </div>
-              
+  
               {/* 账号信息 */}
               <div className="space-y-1">
                 <Label htmlFor="description" required>账号信息</Label>
@@ -325,9 +357,9 @@ export default function DouyinAccountRentalPage() {
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="填写抖音账号出租的详细信息，保信息真实有效，账号无异常,及时响应"
+                  placeholder={formData.platformType === 'douyin' ? "填写抖音账号出租的详细信息，保信息真实有效，账号无异常,及时响应" : "填写QQ账号出租的详细信息，保信息真实有效，账号无异常,及时响应"}
                   className={`${errors.description ? 'border-red-500' : ''} resize-none`}
-                  style={{ height: 150,width: '100%' }}
+                  style={{ height: 100,width: '100%' }}
                 />
                 {errors.description && (
                   <p className="text-red-500 text-sm">{errors.description}</p>
@@ -353,7 +385,7 @@ export default function DouyinAccountRentalPage() {
           </div>
           
           {/* 商品信息 */}
-          <div className="space-y-6 mb-10">
+          <div className="mb-3">
             <div className="space-y-1">
               {/* 价格 */}
               <div className="space-y-1">
@@ -364,7 +396,7 @@ export default function DouyinAccountRentalPage() {
                     value={formData.price || ''}
                     onChange={(e) => handleInputChange('price', e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
                     onBlur={() => handleBlur('price', 50)}
-                    className={`input ${errors.price ? 'border-red-500' : ''}`}
+                    className={`input w-full ${errors.price ? 'border-red-500' : ''}`}
                     step="5"
                   />
                 </div>
@@ -381,7 +413,7 @@ export default function DouyinAccountRentalPage() {
                   value={formData.minLeaseDays || ''}
                   onChange={(e) => handleInputChange('minLeaseDays', e.target.value === '' ? '' : parseInt(e.target.value) || 1)}
                   onBlur={() => handleBlur('minLeaseDays', 1)}
-                  className={`input ${errors.minLeaseDays ? 'border-red-500' : ''}`}
+                  className={`input w-full ${errors.minLeaseDays ? 'border-red-500' : ''}`}
                   step="1"
                 />
                 {errors.minLeaseDays && (
@@ -397,40 +429,51 @@ export default function DouyinAccountRentalPage() {
                   value={formData.maxLeaseDays || ''}
                   onChange={(e) => handleInputChange('maxLeaseDays', e.target.value === '' ? '' : parseInt(e.target.value) || 30)}
                   onBlur={() => handleBlur('maxLeaseDays', 30)}
-                  className={`input ${errors.maxLeaseDays ? 'border-red-500' : ''}`}
+                  className={`input w-full ${errors.maxLeaseDays ? 'border-red-500' : ''}`}
                   step="1"
                 />
                 {errors.maxLeaseDays && (
                   <p className="text-red-500 text-sm">{errors.maxLeaseDays}</p>
                 )}
               </div>
-              
+              {/* 账号平台类型 */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium mb-1">账号平台类型：<span className="text-red-500">*</span></label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'douyin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleInputChange('platformType', 'douyin')}
+                  >
+                    抖音
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'qq' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleInputChange('platformType', 'qq')}
+                  >
+                    QQ
+                  </button>
+                </div>
+              </div>
               {/* 是否允许续租 */}
               <div className="space-y-1">
-                <Label required>是否允许续租</Label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="allowRenew"
-                      value={1}
-                      checked={formData.allow_renew === 1}
-                      onChange={() => handleInputChange('allowRenew', 1)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm">是</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="allowRenew"
-                      value={0}
-                      checked={formData.allow_renew === 0}
-                      onChange={() => handleInputChange('allowRenew', 0)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm">否</span>
-                  </label>
+                <label className="block text-sm font-medium mb-1">是否允许续租：<span className="text-red-500">*</span></label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.allow_renew === 1 ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleInputChange('allow_renew', 1)}
+                  >
+                    续租
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.allow_renew === 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleInputChange('allow_renew', 0)}
+                  >
+                    不续租
+                  </button>
                 </div>
               </div>
               
@@ -438,22 +481,16 @@ export default function DouyinAccountRentalPage() {
             </div>
             
             {/* 账号要求 */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium  mb-2">账号支持</label>
+            <div className="space-y-1 mt-1">
+              <label className="block text-sm font-medium  mb-1">账号支持：<span className="text-red-500">*</span></label>
               <div className="flex flex-wrap gap-2">
+                {/* 抖音和QQ都显示的标签 */}
                 <button
                   type="button"
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.basic_information ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => handleTagClick('accountRequirements', 'basic_information')}
                 >
                   修改基本信息
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_douyin ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
-                  onClick={() => handleTagClick('accountRequirements', 'post_douyin')}
-                >
-                  发布视频和评论
                 </button>
                 <button
                   type="button"
@@ -469,31 +506,65 @@ export default function DouyinAccountRentalPage() {
                 >
                   实名认证
                 </button>
+                
+                {/* 抖音特有的标签 */}
+                {formData.platformType === 'douyin' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_douyin ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleTagClick('accountRequirements', 'post_douyin')}
+                  >
+                    发布抖音
+                  </button>
+                )}
+                
+                {/* QQ特有的标签 */}
+                {formData.platformType === 'qq' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.accountRequirements.post_ad ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleTagClick('accountRequirements', 'post_ad')}
+                  >
+                    发布广告
+                  </button>
+                )}
               </div>
               <div className='text-sm text-gray-600'>支持勾选选项越多，出租概率越大。</div>
             </div>
             
             {/* 登录方式 */}
-            <div className="space-y-3 mt-3">
-              <label className="block text-sm font-medium mb-2">登录方式（可多选）</label>
+            <div className="space-y-1 mt-1">
+              <label className="block text-sm font-medium mb-1">登录方式（可多选）：<span className="text-red-500">*</span></label>
               <div className="flex flex-wrap gap-2">
+                {/* QQ特有的登录方式 */}
+                {formData.platformType === 'qq' && (
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.account_password ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleTagClick('loginMethods', 'account_password')}
+                  >
+                    账号密码
+                  </button>
+                )}
+                
+                {/* 抖音和QQ都显示的登录方式 */}
                 <button
                   type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.scan_code ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.scan_code ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => handleTagClick('loginMethods', 'scan_code')}
                 >
                   扫码登录
                 </button>
                 <button
                   type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.phone_message ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.phone_message ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => handleTagClick('loginMethods', 'phone_message')}
                 >
                   短信验证
                 </button>
                 <button
                   type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.other_require ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.other_require ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => handleTagClick('loginMethods', 'other_require')}
                 >
                   按租赁方要求
@@ -503,7 +574,7 @@ export default function DouyinAccountRentalPage() {
             </div>
             
             {/* 联系方式 */}
-            <div className="space-y-1 mt-3">
+            <div className="space-y-1 mt-1">
               {/* 手机号 */}
               <div className="space-y-1">
                 <Label htmlFor="phone" required>手机号</Label>
@@ -513,7 +584,7 @@ export default function DouyinAccountRentalPage() {
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="请输入手机号"
-                  className={`input ${errors.phone ? 'border-red-500' : ''}`}
+                  className={`input w-full ${errors.phone ? 'border-red-500' : ''}`}
                 />
                 {errors.phone && (
                   <p className="text-red-500 text-sm">{errors.phone}</p>
@@ -529,7 +600,7 @@ export default function DouyinAccountRentalPage() {
                   value={formData.qq}
                   onChange={(e) => handleInputChange('qq', e.target.value)}
                   placeholder="请输入QQ号"
-                  className={`input ${errors.qq ? 'border-red-500' : ''}`}
+                  className={`input w-full ${errors.qq ? 'border-red-500' : ''}`}
                 />
                 {errors.qq && (
                   <p className="text-red-500 text-sm">{errors.qq}</p>
@@ -545,7 +616,7 @@ export default function DouyinAccountRentalPage() {
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="请输入邮箱地址"
-                  className={`input ${errors.email ? 'border-red-500' : ''}`}
+                  className={`input w-full ${errors.email ? 'border-red-500' : ''}`}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-sm">{errors.email}</p>
@@ -555,7 +626,7 @@ export default function DouyinAccountRentalPage() {
           </div>
           
           {/* 操作按钮 - 增加总价显示 */}
-          <div className="mt-3 flex justify-center space-x-3">
+          <div className="flex justify-center space-x-3">
             <Button 
               onClick={() => router.push('/rental/rental_publish')}
               variant="secondary"

@@ -12,7 +12,7 @@ const AccountRentalPage = () => {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="text-2xl mb-2">🔄</div>
         <div>正在进入账号租赁系统...</div>

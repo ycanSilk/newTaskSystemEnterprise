@@ -14,10 +14,13 @@ export interface CreateOffersRentalInfoRequest {
     scan_code: string
     phone_message: string
     other_require: string
+    platform_type: string;
     images: string[];
     phone_number: string;
     qq_number: string;
     email: string;
+    post_ad: string;
+    account_password: string;
   };
 }
 

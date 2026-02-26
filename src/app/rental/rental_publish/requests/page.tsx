@@ -8,25 +8,29 @@ const PublishForm = () => {
   const router = useRouter();
   
   // 表单状态，直接使用API接口类型
-  const [formData, setFormData] = useState<CreateRequestRentalInfoParams>({
+  const [formData, setFormData] = useState<CreateRequestRentalInfoParams & { platformType: string }>({
     title: '',
     budget_amount: 0,
     days_needed: 1,
     deadline: 0,
+    platformType: 'douyin', // 默认抖音
     requirements_json: {
-    account_requirements: '',   // 账号要求
-    basic_information: 'false',          //支持修改账号基本信息
-    other_requirements: 'false',          //需要实名认证
-    deblocking: 'false',                 //需要人脸验证解封
-    post_douyin: 'false',                 //发布抖音
-    additional_requirements_tag: 'false', //其他要求标签
-    requested_all: 'false',           //按承租方要求登录
-    phone_message: 'false',           //手机号+短信验证登录
-    scan_code: 'false',        // 扫码登录
-    qq_number:'',               //联系方式：手机号
-    phone_number:'',            //qq号
-    email:'',                   //邮箱
-    additional_requirements: '' // 其他要求
+      account_requirements: '',   // 账号要求
+      basic_information: 'false',          //支持修改账号基本信息
+      other_requirements: 'false',          //需要实名认证
+      deblocking: 'false',                 //需要人脸验证解封
+      post_douyin: 'false',                 //发布抖音
+      post_ad: 'false',                     //发布广告（QQ）
+      additional_requirements_tag: 'false', //其他要求标签
+      requested_all: 'false',           //按承租方要求登录
+      phone_message: 'false',           //手机号+短信验证登录
+      scan_code: 'false',        // 扫码登录
+      account_password: 'false',        // 账号密码登录（QQ）
+      platform_type: 'douyin',           // 平台类型（抖音或QQ）
+      qq_number:'',               //联系方式：手机号
+      phone_number:'',            //qq号
+      email:'',                   //邮箱
+      additional_requirements: '' // 其他要求
     }
   });
 
@@ -78,6 +82,28 @@ const PublishForm = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // 处理平台类型选择
+  const handlePlatformTypeChange = (platformType: string) => {
+    setFormData(prev => ({
+      ...prev,
+      platformType,
+      requirements_json: {
+        ...prev.requirements_json,
+        platform_type: platformType,
+        basic_information: 'false',
+        other_requirements: 'false',
+        deblocking: 'false',
+        post_douyin: 'false',
+        post_ad: 'false',
+        additional_requirements_tag: 'false',
+        requested_all: 'false',
+        phone_message: 'false',
+        scan_code: 'false',
+        account_password: 'false'
+      }
+    }));
   };
 
   // 输入变化处理函数
@@ -184,14 +210,17 @@ const PublishForm = () => {
         budget_amount: formData.budget_amount * 100, // 转换为分
         requirements_json: {
           ...formData.requirements_json,
+          platform_type: formData.platformType,
           basic_information: formData.requirements_json.basic_information === 'true' ? 1 : 0,
           other_requirements: formData.requirements_json.other_requirements === 'true' ? 1 : 0,
           deblocking: formData.requirements_json.deblocking === 'true' ? 1 : 0,
           post_douyin: formData.requirements_json.post_douyin === 'true' ? 1 : 0,
+          post_ad: formData.requirements_json.post_ad === 'true' ? 1 : 0,
           additional_requirements_tag: formData.requirements_json.additional_requirements_tag === 'true' ? 1 : 0,
           requested_all: formData.requirements_json.requested_all === 'true' ? 1 : 0,
           phone_message: formData.requirements_json.phone_message === 'true' ? 1 : 0,
-          scan_code: formData.requirements_json.scan_code === 'true' ? 1 : 0
+          scan_code: formData.requirements_json.scan_code === 'true' ? 1 : 0,
+          account_password: formData.requirements_json.account_password === 'true' ? 1 : 0
         }
       };
       
@@ -221,13 +250,13 @@ const PublishForm = () => {
   // 渲染函数，所有函数定义在return之前
   return (
     <div className="min-h-screen bg-gray-50 py-3">
-      <div className="max-w-3xl mx-auto px-1">   
+      <div className="max-w-3xl mx-auto px-5 mb-10">   
         <div className="py-2">
-          <div className="bg-blue-50 border border-blue-200 p-2">
-            <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
-            <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
+            <div className="bg-blue-50 border border-blue-200 p-2">
+              <div className="text-blue-700 text-sm mb-1">{formData.platformType === 'douyin' ? '填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应' : '填写QQ账号租赁的详细信息，保信息真实有效，账号无异常,及时响应'}</div>
+              <div className="text-red-700 text-sm mb-1">{formData.platformType === 'douyin' ? '风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。' : '风险提醒:涉及QQ平台规则，账号可能被平台封控，需要协助进行账号解封。'}</div>
+            </div>
           </div>
-        </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
           {/* 标题输入 */}
@@ -260,7 +289,7 @@ const PublishForm = () => {
               value={formData.requirements_json.account_requirements}
               onChange={handleInputChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              placeholder="填写抖音账号求租的详细信息，保信息真实有效，账号无异常,及时响应"
+              placeholder={formData.platformType === 'douyin' ? '填写抖音账号求租的详细信息，保信息真实有效，账号无异常,及时响应' : '填写QQ账号求租的详细信息，保信息真实有效，账号无异常,及时响应'}
               rows={4}
               maxLength={150}
               required
@@ -327,6 +356,27 @@ const PublishForm = () => {
             />
           </div>
 
+          {/* 平台类型 */}
+          <div className="mb-1">
+            <label className="block text-sm font-medium mb-2">平台类型 <span className="text-red-500">*</span></label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'douyin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                onClick={() => handlePlatformTypeChange('douyin')}
+              >
+                抖音
+              </button>
+              <button
+                type="button"
+                className={`px-5 py-1.5 rounded-full text-sm transition-colors ${formData.platformType === 'qq' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                onClick={() => handlePlatformTypeChange('qq')}
+              >
+                QQ
+              </button>
+            </div>
+          </div>
+
           {/* 手机号 */}
           <div className="mb-1">
             <label htmlFor="phone_number" className="block text-sm font-medium  mb-1">
@@ -387,43 +437,52 @@ const PublishForm = () => {
           
           {/* 账号要求 */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium mb-2">账号要求</label>
+            <label className="block text-sm font-medium mb-2">账号要求 <span className="text-red-500">*</span></label>
             <div className="flex flex-wrap gap-2">
+              {/* 抖音和QQ都显示的标签 */}
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.basic_information === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.basic_information === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('basic_information')}
               >
                 修改基本信息
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.deblocking === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.deblocking === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('deblocking')}
               >
                 账号解禁
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.other_requirements === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.other_requirements === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('other_requirements')}
               >
                 实名认证
               </button>
-              <button
-                type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_douyin === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
-                onClick={() => handleTagClick('post_douyin')}
-              >
-                发布抖音
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.additional_requirements_tag === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
-                onClick={() => handleTagClick('additional_requirements_tag')}
-              >
-                其他
-              </button>
+              
+              {/* 抖音特有的标签 */}
+              {formData.platformType === 'douyin' && (
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_douyin === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('post_douyin')}
+                >
+                  发布抖音
+                </button>
+              )}
+              
+              {/* QQ特有的标签 */}
+              {formData.platformType === 'qq' && (
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_ad === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('post_ad')}
+                >
+                  发布广告
+                </button>
+              )}
             </div>
             <div className='text-sm text-gray-600'>选择的要求越多，匹配到合适账号的概率越大。</div>
           </div>
@@ -449,25 +508,37 @@ const PublishForm = () => {
           
           {/* 登录方式 */}
           <div className="space-y-3 mt-3">
-            <label className="block text-sm font-medium mb-2">登录方式（可多选）</label>
+            <label className="block text-sm font-medium mb-2">登录方式（可多选） <span className="text-red-500">*</span></label>
             <div className="flex flex-wrap gap-2">
+              {/* QQ特有的登录方式 */}
+              {formData.platformType === 'qq' && (
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.account_password === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => handleTagClick('account_password')}
+                >
+                  账号密码
+                </button>
+              )}
+              
+              {/* 抖音和QQ都显示的登录方式 */}
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.scan_code === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.scan_code === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('scan_code')}
               >
                 扫码登录
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.phone_message === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.phone_message === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('phone_message')}
               >
                 短信验证
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                 onClick={() => handleTagClick('requested_all')}
               >
                 按租赁方要求
@@ -477,7 +548,7 @@ const PublishForm = () => {
           </div>
 
           {/* 表单操作按钮 */}
-          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 mb-1">
+          <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200 mb-1">
             <button
               type="button"
               className="px-6 py-2.5 border border-gray-300 rounded-lg  hover:bg-gray-50 transition-colors duration-200"

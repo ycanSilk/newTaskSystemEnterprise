@@ -9,11 +9,11 @@ export interface RentalAccountInfo {
   content_json: ContentJson;    //账号要求登录方式等信息数组
   price_per_day: number;       // 每日租金（分）
   price_per_day_yuan: number;  // 每日租金（元）
-  min_days: string;            // 最小租期（天）
+  min_days: number;            // 最小租期（天）
   max_days: number;            // 最大租期（天）
   allow_renew: number;      // 是否允许续租状态
   allow_renew_text: string;       //是否允许续租文本显示
-  status: string;             //出租信息状态
+  status: number;             //出租信息状态
   status_text: string;        //出租信息状态文本显示
   view_count: number;       //浏览次数
   created_at: string;       // 创建时间
@@ -47,13 +47,15 @@ export interface ContentJson {
   account_info: string;  // 出租信息详细描速
   identity_verification: string;  // 身份验证，需要实名认证
   post_douyin:string;             // 发布抖音视频和评论
+  post_ad: string;                // 发布广告（QQ）
   basic_information: string;      // 基本信息，需要完善个人信息
   //登录要求
   phone_message: string;  // 手机号+短信验证登录
   requested_all: string;  // 按承租方要求登录
   scan_code: string;      // 扫码登录
+  account_password: string; // 账号密码登录（QQ）
+  platform_type: string;    // 平台类型（抖音或QQ）
   
-
   // 联系方式
   email: string;          // 邮箱
   qq_number: string;      // qq号

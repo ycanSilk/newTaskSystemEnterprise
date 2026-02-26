@@ -8,8 +8,7 @@ import { RentalOrderItem, MySellerRentalOrderListResponse } from '@/app/types/re
 
 // 订单状态映射
 const statusMap: Record<number, string> = {
-  0: '待支付',
-  1: '已支付待客服',
+  1: '已支付',
   2: '进行中',
   3: '已完成',
   4: '已取消'
@@ -17,7 +16,6 @@ const statusMap: Record<number, string> = {
 
 // 选项卡状态到后端status的映射
 const tabToStatus: Record<string, number | null> = {
-  '待支付': 0,
   '已支付': 1,
   '进行中': 2,
   '已完成': 3,
@@ -36,7 +34,6 @@ const RentalOrderPage = () => {
   // 选项卡配置
   const tabItems = [
     { key: '全部', label: '全部', children: null },
-    { key: '待支付', label: '待支付', children: null },
     { key: '已支付', label: '已支付', children: null },
     { key: '进行中', label: '进行中', children: null },
     { key: '已完成', label: '已完成', children: null },
@@ -56,7 +53,7 @@ const RentalOrderPage = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/rental/order/mySellerRentalOrderList', {
+      const response = await fetch('/api/rental/order/mySellerRentalOrderList?my=0', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -68,9 +65,9 @@ const RentalOrderPage = () => {
         console.log('获取订单列表响应:', data);
         
         // 检查响应数据格式
-        if (data.success && data.data) {
-          setAllOrders(data.data.list);
-          setOrders(data.data.list);
+        if (data.success===true && data.data) {
+          setAllOrders(data.data.list || []);
+          setOrders(data.data.list || []);
         }
       }
     } catch (error) {
@@ -121,139 +118,197 @@ const RentalOrderPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-3">
-      {/* 选项卡区域 - 包含状态选项和筛选按钮 */}
-      <div className="flex flex-row mb-2 items-center">
-        {/* 左侧选项按钮区域 - 90%宽度，支持左右滑动 */}
-        <div className="w-[88%]">
-          <div 
-            className="flex overflow-x-auto whitespace-nowrap" 
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            onWheel={(e) => {
-              if (e.deltaY !== 0) {
-                e.preventDefault();
-                (e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY;
-              }
-            }}
+    <div className=" bg-gray-100 pb-10">
+      {/* 选项卡区域 */}
+      <div 
+        className="flex gap-4 overflow-x-auto h-12 mt-2 tab-container bg-white"
+        style={{ 
+          scrollbarWidth: 'none', /* Firefox */
+          msOverflowStyle: 'none', /* IE and Edge */
+          WebkitOverflowScrolling: 'touch' /* iOS */
+        }}
+      >
+        {/* 隐藏滚动条的样式 */}
+        <style jsx global>{`
+          .tab-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+          }
+        `}</style>
+        {tabItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => handleTabChange(item.key)}
+            className={`py-2 px-3 whitespace-nowrap relative ${activeTab === item.key ? 'text-blue-600 font-medium' : 'text-gray-600'}`}
           >
-            <style jsx global>{`
-              .custom-tabs-container::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            {tabItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => handleTabChange(item.key)}
-                className={`px-2 py-1 mr-1 text-sm transition-all ${item.key === activeTab
-                  ? 'bg-[#ffebeb] border border-[#ff8080]'
-                  : 'bg-white border border-transparent hover:border-gray-200'}`}
-                style={{
-                  fontSize: '12px',
-                  outline: 'none'
-                }}
-              >
-                {item.label}
-              </button>
+            {item.label}
+            {activeTab === item.key && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 卡片列表 */}
+      <div className="p-4">
+        {/* 移动端布局 */}
+        <div className="md:hidden ">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">加载中...</p>
+            </div>
+          ) : orders.map((order) => (
+            <div key={order.id} className="bg-white shadow-sm mb-2 p-2 ">
+              <Link href={`/rental/my/mysellerrentalorder/detail/${order.id}`}>
+                <div className="flex space-x-4 ">
+                  {/* 左侧图片 */}
+                  <div className="w-1/3 ">
+                    <div className="bg-gray-100 overflow-hidden w-full max-h-[130px]">
+                      {order.seller_info_json.images && order.seller_info_json.images.length > 0 && (
+                        <img 
+                          src={order.seller_info_json.images[0]} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {/* 右侧内容 */}
+                  <div className="w-2/3 overflow-hidden">
+                    {/* 标题 */}
+                    <h2 className="text-xl font-semibold line-clamp-1">{order.order_json.offer_title}</h2>
+                    <p className="text-md text-gray-500 line-clamp-1 mb-1">{order.seller_info_json.account_info}</p>
+                    <p className="text-sm text-gray-500 mb-1 line-clamp-1 space-x-3">
+                      <span className={`text-xs px-2 py-1 bg-green-100 text-green-600 rounded-lg`}>
+                        {order.status_text || statusMap[order.status]}
+                      </span>
+                      <span className='px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-lg'>{order.allow_renew === 1 ? '续租' : '不续租'}</span>
+                      <span>租期:{order.days} 天</span>
+                    </p>
+                    {/* 标签横排 */}
+                    <div className="flex flex-wrap gap-1">
+                      {(() => {
+                        const tags = [];
+                        const sellerInfo = order.seller_info_json || {};
+                        
+                        // 账号要求标签
+                        // 账号要求标签
+                        if (sellerInfo.basic_information === 'true') tags.push('修改基本信息');
+                        if (sellerInfo.deblocking === 'true') tags.push('账号解禁');
+                        if (sellerInfo.identity_verification === 'true') tags.push('实名认证');
+                        if (sellerInfo.post_douyin === 'true') tags.push('发布抖音视频');
+                        if (sellerInfo.order_requirements === 'true') tags.push('其他');
+                        
+                        // 登录方式标签
+                        if (sellerInfo.scan_code === 'true') tags.push('扫码登录');
+                        if (sellerInfo.phone_message === 'true') tags.push('短信验证');
+                        if (sellerInfo.requested_all === 'true') tags.push('按租赁方要求');
+                        
+                        // 最多显示3个标签
+                        return tags.slice(0, 3).map((tag, tagIndex) => (
+                          <span key={tagIndex} className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-lg">
+                            {tag}
+                          </span>
+                        ));
+                      })()}
+                    </div>
+                    {/* 按钮 - 右对齐 */}
+                    <div className="flex gap-2 mt-1 justify-between items-center">
+                      <span className='text-red-600 text-xl font-bold'>￥{order.total_amount_yuan}</span>
+                      <button 
+                        className="text-sm border border-gray-400 rounded-sm px-3 py-0.5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleContactService(order.id);
+                        }}
+                      >
+                        联系客服
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+        
+        {/* PC端布局 */}
+        <div className="hidden md:block">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">加载中...</p>
+              </div>
+            ) : orders.map((order) => (
+              <div key={order.id} className="bg-white p-4 shadow-sm">
+                <Link href={`/rental/my/mysellerrentalorder/detail/${order.id}`}>
+                  {/* 图片 - 位于上面 */}
+                  <div className="mb-4">
+                    <div className="bg-gray-100 overflow-hidden h-48">
+                      {order.seller_info_json.images && order.seller_info_json.images.length > 0 && (
+                        <img 
+                          src={order.seller_info_json.images[0]} 
+                          alt="订单截图" 
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {/* 标题 */}
+                  <h2 className="text-xl font-semibold line-clamp-1">{order.order_json.offer_title}</h2>
+                    <p className="text-md text-gray-500 line-clamp-1 mb-1">{order.seller_info_json.account_info}</p>
+                    <p className="text-sm text-gray-500 mb-1 line-clamp-1 space-x-3">
+                      <span className={`text-xs px-2 py-1 bg-green-100 text-green-600 rounded-lg`}>
+                        {order.status_text || statusMap[order.status]}
+                      </span>
+                      <span className='px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-lg'>{order.allow_renew === 1 ? '续租' : '不续租'}</span>
+                      <span>租期:{order.days} 天</span>
+                    </p>
+                  {/* 标签横排 */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(() => {
+                      const tags = [];
+                      const sellerInfo = order.seller_info_json || {};
+                      
+                      // 账号要求标签
+                        if (sellerInfo.basic_information === 'true') tags.push('修改基本信息');
+                        if (sellerInfo.deblocking === 'true') tags.push('账号解禁');
+                        if (sellerInfo.identity_verification === 'true') tags.push('实名认证');
+                        if (sellerInfo.post_douyin === 'true') tags.push('发布抖音视频');
+                        if (sellerInfo.order_requirements === 'true') tags.push('其他');
+                        
+                        // 登录方式标签
+                        if (sellerInfo.scan_code === 'true') tags.push('扫码登录');
+                        if (sellerInfo.phone_message === 'true') tags.push('短信验证');
+                        if (sellerInfo.requested_all === 'true') tags.push('按租赁方要求');
+                      
+                      // 最多显示3个标签
+                      return tags.slice(0, 3).map((tag, tagIndex) => (
+                        <span key={tagIndex} className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-lg">
+                          {tag}
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                  {/* 按钮 - 右对齐 */}
+                    <div className="flex gap-2 mt-1 justify-between items-center">
+                      <span className='text-red-600 text-xl font-bold'>￥{order.total_amount_yuan}</span>
+                      <button 
+                        className="text-sm border border-gray-400 rounded-sm px-3 py-0.5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleContactService(order.id);
+                        }}
+                      >
+                        联系客服
+                      </button>
+                    </div>
+                </Link>
+              </div>
             ))}
           </div>
         </div>
-        
-        {/* 右侧筛选按钮区域 - 10%宽度，垂直居中 */}
-        <div className="w-[12%] flex">
-          <button 
-            onClick={handleFilterClick} 
-            className="text-sm text-blue-500 text-center"
-            style={{
-              fontSize: '14px',
-              outline: 'none'
-            }}
-          >
-            筛选
-          </button>
-        </div>
-      </div>
-
-      {/* 订单列表 */}
-      <div className="">
-        {loading ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-500">加载中...</p>
-          </div>
-        ) : orders.map((order) => (
-            <Link href={`/rental/my/mysellerrentalorder/detail/${order.id}`} key={order.id}>
-              <Card className="rounded-md mb-3 hover:shadow-md">
-                {/* 订单头部信息 */}
-                <div className="">
-                  {/* 标题和状态在同一行显示 */}
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-sm font-medium text-gray-800">{order.order_json.demand_title}</h2>
-                    <span className="text-sm text-red-500">
-                      {order.status_text || statusMap[order.status]}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 订单详细信息 - 左右结构，同一行显示，垂直居中 */}
-                <div className="flex flex-row gap-2 p-1 items-center">
-                  {/* 左侧图片区域 */}
-                  <div className="flex-shrink-0">
-                    <div className="w-20 h-20 bg-gray-100 overflow-hidden">
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        {order.seller_info_json.screenshots && order.seller_info_json.screenshots.length > 0 && (
-                          <img 
-                            src={order.seller_info_json.screenshots[0]} 
-                            alt="订单截图" 
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 右侧信息区域 */}
-                  <div className="flex-1  space-y-1">
-                      <div className="flex justify-between items-center">
-                        <h2 className="text-sm font-medium ">租赁时长：{order.days} 天</h2>
-                        <span className="text-sm text-red-500">
-                          租金：￥{order.total_amount_yuan}
-                        </span>
-                      </div>
-                      <div>
-                        <ul className='flex'>
-                          <li className=''>
-                            联系方式：
-                            <p>邮箱：{order.buyer_info_json.email}</p>
-                          </li>
-
-                          <li className=''>账号要求：
-                            <p>{order.buyer_info_json.other_requirements}</p>
-                            <p>{order.buyer_info_json.deblocking}</p>
-                            <p>{order.buyer_info_json.login_requirements}</p>
-                          </li>
-                        </ul>
-                      </div>
-                  </div>
-                </div>
-                {/* 按钮区域 */}
-                <div className="flex justify-end items-center py-3 px-2">
-                  {/* 客服按钮移至右侧 */}
-                    <Button
-                      type="primary"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleContactService(order.id);
-                      }}
-                      size="small"
-                      className="text-white mr-2"
-                    >
-                      客服
-                    </Button>
-                </div>
-              </Card>
-            </Link>
-          ))}
 
         {/* 如果没有订单 */}
         {!loading && orders.length === 0 && (
@@ -263,42 +318,7 @@ const RentalOrderPage = () => {
         )}
       </div>
 
-      {/* 筛选弹窗 */}
-        <Modal
-          title="订单筛选"
-          open={filterModalVisible}
-          onOk={handleFilterConfirm}
-          onCancel={() => setFilterModalVisible(false)}
-          footer={[
-            <Button key="reset" onClick={() => console.log('重置筛选条件')} size="small">
-              重置
-            </Button>,
-            <Button key="confirm" type="primary" onClick={handleFilterConfirm} size="small">
-              确定
-            </Button>
-          ]}
-        >
-          <ConfigProvider>
-            <div>
-              <div>
-                <h4 className="text-sm text-black mb-2">时间区间</h4>
-                <Radio.Group className="w-full">
-                  <Space direction="vertical" className="w-full">
-                    <Radio value="1">1个月内</Radio>
-                    <Radio value="3">3个月内</Radio>
-                    <Radio value="6">6个月内</Radio>
-                  </Space>
-                </Radio.Group>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <DatePicker className="flex-1" placeholder="起始时间" />
-                <span>-</span>
-                <DatePicker className="flex-1" placeholder="终止时间" />
-              </div>
-            </div>
-          </ConfigProvider>
-        </Modal>
+     
     </div>
   );
 };

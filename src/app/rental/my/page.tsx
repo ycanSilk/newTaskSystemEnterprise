@@ -53,7 +53,7 @@ const MyAccountRentalPage = () => {
     },
     {
       id: 'applied-lease-info',
-      title: '求租匹配申请列表',
+      title: '求租申请',
       color: 'bg-yellow-100',
       path: '/rental/my/reviewapplication'
     },
@@ -75,8 +75,8 @@ const MyAccountRentalPage = () => {
   return (
     <div className="min-h-screen pb-28">
       {/* 功能菜单列表 */}
-      <div className="mb-5">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="mb-5 pt-2">
+        <div className="bg-white shadow-sm overflow-hidden">
           <div className="divide-y">
             {menuItems.map((item) => (
               <div

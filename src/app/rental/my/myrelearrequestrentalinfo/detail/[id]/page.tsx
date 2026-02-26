@@ -334,20 +334,18 @@ const RentalRequestDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-3">
-      <div className="max-w-3xl mx-auto px-1">
-      {/*
-          <div className="py-2">
-          <div className="bg-blue-50 border border-blue-200 p-2">
-            <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
-            <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
-          </div>
+    <div className="min-h-screen bg-gray-50 mt-5 mb-10">
+      <div className="px-4 py-2">
+        <div className="bg-blue-50 border border-blue-200 p-2">
+              <div className="text-blue-700 text-sm mb-1">填写抖音账号求租的详细信息，保信息真实有效，账号无异常,及时响应</div>
+              <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
         </div>
+      </div>
 
-
-      */}
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+      {/* 表单区域 */}
+      <div className="px-4 py-2">
+        {/* 表单内容 */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden py-5 px-3">
           {/* 页面标题 */}
           <div className="mb-4">
             <h1 className="text-xl font-semibold text-gray-900">求租详情</h1>
@@ -358,8 +356,8 @@ const RentalRequestDetailPage: React.FC = () => {
             // 编辑模式
             <div className="space-y-3">
               {/* 标题输入 */}
-              <div className="mb-1">
-                <label htmlFor="title" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                   求租信息标题 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -368,20 +366,20 @@ const RentalRequestDetailPage: React.FC = () => {
                   type="text"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.title ? 'border-red-500' : ''}`}
                   placeholder="请输入求租标题"
                   maxLength={50}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">{formData.title.length}/50 字</p>
+                <p className="text-xs text-gray-500">{formData.title.length}/50 字</p>
                 {errors.title && (
-                  <p className="text-red-500 text-xs mt-1">{errors.title}</p>
+                  <p className="text-red-500 text-sm">{errors.title}</p>
                 )}
               </div>
 
               {/* 描述输入 */}
-              <div className="mb-1">
-                <label htmlFor="description" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                   求租信息描述 <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -389,21 +387,21 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="description"
                   value={formData.requirements_json.account_requirements}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.account_requirements ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none ${errors.account_requirements ? 'border-red-500' : ''}`}
                   placeholder="填写抖音账号求租的详细信息，保信息真实有效，账号无异常,及时响应"
-                  rows={4}
+                  style={{ height: 100, width: '100%' }}
                   maxLength={150}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">{formData.requirements_json.account_requirements.length}/150 字</p>
+                <p className="text-xs text-gray-500">{formData.requirements_json.account_requirements.length}/150 字</p>
                 {errors.account_requirements && (
-                  <p className="text-red-500 text-xs mt-1">{errors.account_requirements}</p>
+                  <p className="text-red-500 text-sm">{errors.account_requirements}</p>
                 )}
               </div>
 
               {/* 预算金额 */}
-              <div className="mb-1">
-                <label htmlFor="budget_amount" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="budget_amount" className="block text-sm font-medium text-gray-700 mb-1">
                   预算金额 (元)/天 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -412,20 +410,20 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="budget_amount"
                   value={formData.budget_amount_yuan === 0 ? '' : formData.budget_amount_yuan}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.budget_amount_yuan ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.budget_amount_yuan ? 'border-red-500' : ''}`}
                   placeholder="请输入预算金额"
                   min="0"
                   step="0.01"
                   required
                 />
                 {errors.budget_amount_yuan && (
-                  <p className="text-red-500 text-xs mt-1">{errors.budget_amount_yuan}</p>
+                  <p className="text-red-500 text-sm">{errors.budget_amount_yuan}</p>
                 )}
               </div>
 
               {/* 需要天数 */}
-              <div className="mb-1">
-                <label htmlFor="days_needed" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="days_needed" className="block text-sm font-medium text-gray-700 mb-1">
                   需要租赁天数 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -434,19 +432,19 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="days_needed"
                   value={formData.days_needed === 0 ? '' : formData.days_needed}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.days_needed ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.days_needed ? 'border-red-500' : ''}`}
                   placeholder="请输入需要天数"
                   min="1"
                   required
                 />
                 {errors.days_needed && (
-                  <p className="text-red-500 text-xs mt-1">{errors.days_needed}</p>
+                  <p className="text-red-500 text-sm">{errors.days_needed}</p>
                 )}
               </div>
 
               {/* 截止时间 */}
-              <div className="mb-1">
-                <label htmlFor="deadline" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
                   截止时间 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -461,17 +459,17 @@ const RentalRequestDetailPage: React.FC = () => {
                     const timestamp = Math.floor(selectedDate.getTime() / 1000);
                     setFormData(prev => ({ ...prev, deadline: timestamp }));
                   }}
-                  className={`w-full px-4 py-2 border ${errors.deadline ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.deadline ? 'border-red-500' : ''}`}
                   required
                 />
                 {errors.deadline && (
-                  <p className="text-red-500 text-xs mt-1">{errors.deadline}</p>
+                  <p className="text-red-500 text-sm">{errors.deadline}</p>
                 )}
               </div>
 
               {/* 手机号 */}
-              <div className="mb-1">
-                <label htmlFor="phone_number" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
                   联系电话（选填）
                 </label>
                 <input
@@ -480,17 +478,17 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="phone_number"
                   value={formData.requirements_json.phone_number}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.phone_number ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.phone_number ? 'border-red-500' : ''}`}
                   placeholder="请输入手机号"
                 />
                 {errors.phone_number && (
-                  <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>
+                  <p className="text-red-500 text-sm">{errors.phone_number}</p>
                 )}
               </div>
               
               {/* 邮箱 */}
-              <div className="mb-1">
-                <label htmlFor="email" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   邮箱（选填）
                 </label>
                 <input
@@ -499,17 +497,17 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="email"
                   value={formData.requirements_json.email}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : ''}`}
                   placeholder="请输入邮箱地址"
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                  <p className="text-red-500 text-sm">{errors.email}</p>
                 )}
               </div>
               
               {/* QQ */}
-              <div className="mb-1">
-                <label htmlFor="qq" className="block text-sm   mb-1">
+              <div className="space-y-1">
+                <label htmlFor="qq" className="block text-sm font-medium text-gray-700 mb-1">
                   QQ号码 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -518,50 +516,52 @@ const RentalRequestDetailPage: React.FC = () => {
                   name="qq"
                   value={formData.requirements_json.qq_number}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border ${errors.qq ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.qq ? 'border-red-500' : ''}`}
                   placeholder="请输入QQ号码"
                   required
                 />
                 {errors.qq && (
-                  <p className="text-red-500 text-xs mt-1">{errors.qq}</p>
+                  <p className="text-red-500 text-sm">{errors.qq}</p>
                 )}
               </div>
               
               {/* 账号要求 */}
               <div className="space-y-3">
-                <label className="block text-sm  mb-2">账号要求</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  账号要求 <span className="text-red-500">*</span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.basic_information === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.basic_information === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('basic_information')}
                   >
                     修改基本信息
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.deblocking === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.deblocking === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('deblocking')}
                   >
                     账号解禁
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.other_requirements === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.other_requirements === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('other_requirements')}
                   >
                     实名认证
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_douyin === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_douyin === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('post_douyin')}
                   >
                     发布抖音
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.additional_requirements_tag === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.additional_requirements_tag === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('additional_requirements_tag')}
                   >
                     其他
@@ -572,8 +572,8 @@ const RentalRequestDetailPage: React.FC = () => {
               
               {/* 其他要求 */}
               {formData.requirements_json.additional_requirements_tag === 'true' && (
-                <div className="mb-1">
-                  <label htmlFor="additional_requirements" className="block text-sm   mb-1">
+                <div className="space-y-1">
+                  <label htmlFor="additional_requirements" className="block text-sm font-medium text-gray-700 mb-1">
                     其他要求（选填）
                   </label>
                   <textarea
@@ -581,9 +581,9 @@ const RentalRequestDetailPage: React.FC = () => {
                     name="additional_requirements"
                     value={formData.requirements_json.additional_requirements}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    style={{ height: 80, width: '100%' }}
                     placeholder="请输入其他特殊要求"
-                    rows={3}
                     maxLength={100}
                   />
                 </div>
@@ -591,25 +591,27 @@ const RentalRequestDetailPage: React.FC = () => {
               
               {/* 登录方式 */}
               <div className="space-y-3 mt-3">
-                <label className="block text-sm  mb-2">登录方式（可多选）</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  登录方式（可多选） <span className="text-red-500">*</span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.scan_code === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.scan_code === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('scan_code')}
                   >
                     扫码登录
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.phone_message === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.phone_message === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('phone_message')}
                   >
                     短信验证
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300  hover:bg-gray-300'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('requested_all')}
                   >
                     按租赁方要求
@@ -620,136 +622,187 @@ const RentalRequestDetailPage: React.FC = () => {
             </div>
           ) : (
             // 查看模式
-            <div className="space-y-1">
-              {/* 基本信息 */}
+            <div className="space-y-1 mb-1">  
               <div className="space-y-1">
-                <div className="text-lg font-bold">
-                  <span className=" mr-2">标题:</span>
-                  <span>{formData.title || '未设置'}</span>
+                {/* 求租信息标题 */}
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    求租信息标题
+                  </label>
+                  <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                    {formData.title || '未设置'}
+                  </div>
                 </div>
-                <div className="">
-                  <span className="text-sm  mr-2">金额:</span>
-                  <span>{formData.budget_amount_yuan || '未设置'} 元/天</span>
-                </div>
-                <div className="">
-                  <span className="text-sm  mr-2">需要租赁天数:</span>
-                  <span>{formData.days_needed || '未设置'} 天</span>
-                </div>
-                <div className="">
-                  <span className="text-sm  mr-2">截止时间:</span>
-                  <span>{formData.deadline ? new Date(formData.deadline * 1000).toLocaleDateString() : '未设置'}</span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-lg font-bold mb-1">信息描述:</span>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <p>{formData.requirements_json.account_requirements || '未设置'}</p>
+                
+                {/* 求租信息描述 */}
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    求租信息描述
+                  </label>
+                  <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                    {formData.requirements_json.account_requirements || '未设置'}
                   </div>
                 </div>
               </div>
-
-              {/* 联系方式 */}
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold">联系方式:</h3>
-                <div className="">
-                  <span className="text-sm mr-2">手机号:</span>
-                  <span>{formData.requirements_json.phone_number || '未设置'}</span>
-                </div>
-                <div className="">
-                  <span className="text-sm mr-2">QQ号:</span>
-                  <span>{formData.requirements_json.qq_number || '未设置'}</span>
-                </div>
-                <div className="">
-                  <span className="text-sm mr-2">邮箱:</span>
-                  <span>{formData.requirements_json.email || '未设置'}</span>
-                </div>
-              </div>
-
-              {/* 账号要求 */}
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold">账号要求:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {formData.requirements_json.basic_information === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">修改基本信息</span>
-                  )}
-                  {formData.requirements_json.deblocking === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">账号解禁</span>
-                  )}
-                  {formData.requirements_json.other_requirements === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">实名认证</span>
-                  )}
-                  {formData.requirements_json.post_douyin === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">发布抖音</span>
-                  )}
-                  {formData.requirements_json.additional_requirements_tag === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">其他</span>
-                  )}
-                  {formData.requirements_json.additional_requirements && (
-                    <div className="w-full mt-2">
-                      <span className="text-lg font-bold mb-1">其他要求:</span>
-                      <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                        <p>{formData.requirements_json.additional_requirements}</p>
-                      </div>
+              
+              {/* 商品信息 */}
+              <div className="space-y-1 mb-10">
+                <div className="space-y-1">
+                  {/* 预算金额 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      预算金额 (元)/天
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.budget_amount_yuan || '未设置'} 元/天
                     </div>
-                  )}
-                  {!formData.requirements_json.basic_information && !formData.requirements_json.deblocking && !formData.requirements_json.other_requirements && 
-                   !formData.requirements_json.post_douyin && !formData.requirements_json.additional_requirements_tag && (
-                    <span className="text-sm text-gray-500">暂无账号要求选项</span>
-                  )}
+                  </div>
+                  
+                  {/* 需要租赁天数 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      需要租赁天数 (天)
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.days_needed || '未设置'} 天
+                    </div>
+                  </div>
+                  
+                  {/* 截止时间 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      截止时间
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.deadline ? new Date(formData.deadline * 1000).toLocaleDateString() : '未设置'}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* 登录方式 */}
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold">登录方式:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {formData.requirements_json.scan_code === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">扫码登录</span>
-                  )}
-                  {formData.requirements_json.phone_message === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">短信验证</span>
-                  )}
-                  {formData.requirements_json.requested_all === 'true' && (
-                    <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">按租赁方要求</span>
-                  )}
-                  {!formData.requirements_json.scan_code && !formData.requirements_json.phone_message && !formData.requirements_json.requested_all && (
-                    <span className="text-sm text-gray-500">暂无登录方式选项</span>
-                  )}
+                
+                {/* 账号要求 */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    账号要求
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.requirements_json.basic_information === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">修改基本信息</span>
+                    )}
+                    {formData.requirements_json.deblocking === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">账号解禁</span>
+                    )}
+                    {formData.requirements_json.other_requirements === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">实名认证</span>
+                    )}
+                    {formData.requirements_json.post_douyin === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">发布抖音</span>
+                    )}
+                    {formData.requirements_json.additional_requirements_tag === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">其他</span>
+                    )}
+                    {formData.requirements_json.additional_requirements && (
+                      <div className="w-full mt-2 space-y-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          其他要求
+                        </label>
+                        <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                          {formData.requirements_json.additional_requirements}
+                        </div>
+                      </div>
+                    )}
+                    {!formData.requirements_json.basic_information && !formData.requirements_json.deblocking && !formData.requirements_json.other_requirements && 
+                     !formData.requirements_json.post_douyin && !formData.requirements_json.additional_requirements_tag && (
+                      <span className="text-sm text-gray-500">暂无账号要求选项</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* 登录方式 */}
+                <div className="space-y-3 mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    登录方式
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.requirements_json.scan_code === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">扫码登录</span>
+                    )}
+                    {formData.requirements_json.phone_message === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">短信验证</span>
+                    )}
+                    {formData.requirements_json.requested_all === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">按租赁方要求</span>
+                    )}
+                    {!formData.requirements_json.scan_code && !formData.requirements_json.phone_message && !formData.requirements_json.requested_all && (
+                      <span className="text-sm text-gray-500">暂无登录方式选项</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* 联系方式 */}
+                <div className="space-y-1 mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    联系方式
+                  </label>
+                  {/* 手机号 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      联系电话
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.requirements_json.phone_number || '未设置'}
+                    </div>
+                  </div>
+                  
+                  {/* QQ号 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      QQ号码
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.requirements_json.qq_number || '未设置'}
+                    </div>
+                  </div>
+                  
+                  {/* 邮箱 */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      邮箱
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                      {formData.requirements_json.email || '未设置'}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* 底部操作按钮 */}
-          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 mb-1">
-            {isEditMode ? (
-              // 编辑模式下的按钮
-              <>
-                <button
-                  type="button"
-                  className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  onClick={handleCancelEdit}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 "
-                  onClick={handleSaveEdit}
-                >
-                  更新求租信息
-                </button>
-              </>
-            ) : (
-              // 查看模式下的按钮
-              <>
-                <button
-                  type="button"
-                  className="px-6 py-2.5 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors duration-200 "
-                  onClick={() => router.push(`/rental/my/myrelearrequestrentalinfo/detail/${id}?edit=1`)}
-                >
-                  编辑
-                </button>
-              </>
+          <div className="mt-3 flex justify-center space-x-3">
+            <button
+              type="button"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
+              onClick={handleCancelEdit}
+            >
+              取消
+            </button>
+            {!isEditMode && (
+              <button
+                type="button"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+                onClick={() => router.push(`/rental/my/myrelearrequestrentalinfo/detail/${id}?edit=1`)}
+              >
+                编辑
+              </button>
+            )}
+            {isEditMode && (
+              <button
+                type="button"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+                onClick={handleSaveEdit}
+              >
+                更新求租信息
+              </button>
             )}
           </div>
         </div>

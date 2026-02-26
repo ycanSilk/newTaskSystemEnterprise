@@ -8,18 +8,30 @@ import { GetApplyedRequestRentalInfoListResponseData, GetApplyedRequestRentalInf
  * 处理获取已申请的求租信息列表
  * @param page - 页码
  * @param pageSize - 每页大小
+ * @param status - 状态筛选
+ * @param my - 是否只显示我的申请
  * @returns 标准化的API响应
  */
 export async function handleGetApplyedRequestRentalInfoList(
   page: number,
-  pageSize: number
+  pageSize: number,
+  status?: string,
+  my?: string
 ): Promise<NextResponse> {
   try {
     // 构建查询参数
-    const params = {
+    const params: any = {
       page,
       page_size: pageSize
     };
+    
+    // 添加可选参数
+    if (status) {
+      params.status = status;
+    }
+    if (my) {
+      params.my = my;
+    }
     
     // 使用apiClient发送GET请求
     const response = await apiClient.get<GetApplyedRequestRentalInfoListResponseData>(

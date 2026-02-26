@@ -46,6 +46,7 @@ export default function RentalOrderingContent() {
     updated_at: '',  // 更新时间
     content_json: {
       images: [] as string[],     // 图片列表
+      platform_type: '',          // 平台类型：douyin 或 qq
       //账号要求
       deblocking: '',    // 解除封禁
       account_info: '',  // 出租信息详细描速
@@ -289,7 +290,14 @@ export default function RentalOrderingContent() {
               
               {/* 账号信息 */}
               <div className="flex-1">
-                <h2 className="font-medium text-gray-900">{accountInfo.title || '未设置标题'}</h2>
+                <div className="flex items-center mb-1">
+                  <h2 className="font-medium text-gray-900">{accountInfo.title || '未设置标题'}</h2>
+                  {accountInfo.content_json?.platform_type && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
+                      {accountInfo.content_json.platform_type === 'douyin' ? '抖音' : 'QQ'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600  line-clamp-2">账号描述: {accountInfo.content_json?.account_info || ''}</p>
                 <p className="text-xs text-gray-500">发布时间: {accountInfo.created_at || '未设置'}</p>
               </div>

@@ -1,17 +1,20 @@
 // 响应数据类型
 export interface ContentJson {
     images: string[];     // 图片列表
+  platform_type: string;    // 平台类型（抖音或QQ）
   //账号要求
   deblocking: string;    // 解除封禁
   account_info: string;  // 出租信息详细描速
   identity_verification: string;  // 身份验证，需要实名认证
-  post_douyin:string;             // 发布抖音视频和评论
+  post_douyin:string;             // 发布抖音
+  post_ad:string;                // 发布广告
+
   basic_information: string;      // 基本信息，需要完善个人信息
   //登录要求
   phone_message: string;  // 手机号+短信验证登录
   requested_all: string;  // 按承租方要求登录
   scan_code: string;      // 扫码登录
-  
+  account_password: string;  // 账号密码登录
 
   // 联系方式
   email: string;          // 邮箱

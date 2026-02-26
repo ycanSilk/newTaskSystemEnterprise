@@ -26,16 +26,22 @@ export default function AccountRentalMarketPage() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   // 筛选选项状态
   const [filterOptions, setFilterOptions] = useState({
+    platformType: {
+      douyin: false,
+      qq: false
+    },
     accountSupport: {
       post_douyin: false,
-      modifyAccountInfo: false,
-      unblockAccount: false,
+      post_ad: false,
+      basic_information: false,
+      deblocking: false,
       identity_verification: false
     },
     loginMethods: {
-      scanCode: false,
-      phoneSms: false,
-      otherRequirements: false
+      scan_code: false,
+      phone_message: false,
+      account_password: false,
+      other_require: false
     }
   });
 
@@ -99,6 +105,73 @@ export default function AccountRentalMarketPage() {
   const filteredAccounts = useMemo(() => {
     let result = [...accounts];
 
+    // 应用筛选条件
+    result = result.filter(account => {
+      const contentJson = account.content_json || {};
+      
+      // 平台类型筛选
+      const platformFilters = Object.entries(filterOptions.platformType)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (platformFilters.length > 0) {
+        if (!contentJson.platform_type || !platformFilters.includes(contentJson.platform_type)) {
+          return false;
+        }
+      }
+      
+      // 账号支持筛选
+      const accountSupportFilters = Object.entries(filterOptions.accountSupport)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (accountSupportFilters.length > 0) {
+        const hasMatchingSupport = accountSupportFilters.some(filter => {
+          switch (filter) {
+            case 'post_douyin':
+              return contentJson.post_douyin === 'true';
+            case 'post_ad':
+              return contentJson.post_ad === 'true';
+            case 'basic_information':
+              return contentJson.basic_information === 'true';
+            case 'deblocking':
+              return contentJson.deblocking === 'true';
+            case 'identity_verification':
+              return contentJson.identity_verification === 'true';
+            default:
+              return false;
+          }
+        });
+        if (!hasMatchingSupport) {
+          return false;
+        }
+      }
+      
+      // 登录方式筛选
+      const loginMethodsFilters = Object.entries(filterOptions.loginMethods)
+        .filter(([_, value]) => value)
+        .map(([key]) => key);
+      if (loginMethodsFilters.length > 0) {
+        const hasMatchingLogin = loginMethodsFilters.some(filter => {
+          switch (filter) {
+            case 'scan_code':
+              return contentJson.scan_code === 'true';
+            case 'phone_message':
+              return contentJson.phone_message === 'true';
+            case 'account_password':
+              return contentJson.account_password === 'true';
+            case 'other_require':
+              return contentJson.requested_all === 'true';
+            default:
+              return false;
+          }
+        });
+        if (!hasMatchingLogin) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
     // 根据排序条件排序
     result.sort((a, b) => {
       if (sortBy === 'time') {
@@ -116,7 +189,7 @@ export default function AccountRentalMarketPage() {
     });
 
     return result;
-  }, [accounts, sortBy, sortOrder]);
+  }, [accounts, sortBy, sortOrder, filterOptions]);
 
   // 当账号列表变化时，重新设置显示的账号
   useEffect(() => {
@@ -195,9 +268,9 @@ export default function AccountRentalMarketPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl mb-2">🔄</div>
+          <div className="text-2xl ">🔄</div>
           <div>加载中...</div>
-          <div className="text-xs text-gray-500 mt-2">
+          <div className="text-sm text-gray-500 mt-2">
             正在获取账号租赁市场数据，请稍候...
           </div>
         </div>
@@ -213,17 +286,17 @@ export default function AccountRentalMarketPage() {
             onClick={() => router.push('/rental/rental_publish/rental')}
             className="flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            发布出租账号
+            发布出租信息
           </Button>
         </div>
         
         {/* 筛选和排序按钮 */}
         <div className="px-4 mb-4 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-3">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between bg-white  shadow-sm p-2">
+            <div className="flex items-center space-x-1">
               <div className="relative">
                 <button 
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'time' ? 'bg-orange-50 text-orange-600 border border-orange-300' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  className={`flex items-center space-x-1 px-2 py-1.5 rounded-lg transition-colors ${sortBy === 'time' ? 'bg-orange-50 text-orange-600 border border-orange-300' : 'bg-gray-100 hover:bg-gray-200'}`}
                   onClick={() => {
                     setSortBy('time');
                     setSortOrder('desc');
@@ -284,13 +357,13 @@ export default function AccountRentalMarketPage() {
           {displayedAccounts.length === 0 && !loading ? (
             <div className="bg-white p-8 text-center">
               <div className="text-4xl mb-4">📱</div>
-              <h3 className="text-lg font-medium text-gray-800 mb-2">暂无账号</h3>
+              <h3 className="text-lg font-medium text-gray-800 ">暂无账号</h3>
               <p className="text-gray-600 mb-4">目前市场上没有可租赁的账号</p>
             </div>
           ) : (
             <div>
               {/* 移动端布局 */}
-              <div className="md:hidden space-y-4">
+              <div className="md:hidden">
                 {displayedAccounts.map((account, index) => (
                   <div
                     key={account.id}
@@ -298,10 +371,10 @@ export default function AccountRentalMarketPage() {
                     onClick={() => handleAccountClick(account.id)}
                   >
                     {/* 移动端布局 - 左右结构 */}
-                    <div className="flex space-x-3 min-h-[120px]">
+                    <div className="flex space-x-3 min-h-[120px] max-h-[155px]">
                       {/* 左侧图片区域 */}
                       {account.content_json && account.content_json.images && account.content_json.images.length > 0 && (
-                        <div className="w-1/3 bg-gray-100 border border-gray-200">
+                        <div className="w-1/3 bg-gray-100 border border-gray-200 min-h-[120px] max-h-[155px]">
                           <img
                             src={account.content_json.images[0]}
                             alt="账号图片"
@@ -310,11 +383,11 @@ export default function AccountRentalMarketPage() {
                         </div>
                       )}
                       {/* 右侧信息区域 */}
-                      <div className="w-2/3">
-                        <h3 className="font-bold text-gray-800 mb-1 line-clamp-1 text-lg">{account.title}</h3>
-                        <p className="text-gray-600 mb-1 line-clamp-2">{account.content_json?.account_info || ''}</p>
+                      <div className="w-2/3 min-h-[120px] max-h-[155px]">
+                        <h3 className="font-bold text-gray-800  line-clamp-1 text-lg">{account.title}</h3>
+                        <p className="text-gray-600  line-clamp-1 text-sm">{account.content_json?.account_info || ''}</p>
                         {/* 筛选项标签展示 */}
-                        <div className="flex flex-wrap gap-1 mb-1">
+                        <div className="flex flex-wrap gap-1 mb-1 max-h-[50px] overflow-hidden">
                           {(() => {
                             const tags = [];
                             const contentJson = account.content_json || {};
@@ -322,36 +395,39 @@ export default function AccountRentalMarketPage() {
                             // 账号要求标签
                             if (contentJson.basic_information === 'true') tags.push('修改基本信息');
                             if (contentJson.post_douyin === 'true') tags.push('发布抖音');
+                            if (contentJson.post_ad === 'true') tags.push('发布广告');
                             if (contentJson.deblocking === 'true') tags.push('账号解禁');
                             if (contentJson.identity_verification === 'true') tags.push('实名认证');
                             
                             // 登录方式标签
                             if (contentJson.scan_code === 'true') tags.push('扫码登录');
                             if (contentJson.phone_message === 'true') tags.push('短信验证');
+                            if (contentJson.account_password === 'true') tags.push('账号密码');
                             if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
                             
-                            // 最多显示5个标签
-                            return tags.slice(0, 5).map((tag, tagIndex) => (
-                              <span key={tagIndex} className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full text-xs">
+                            // 最多显示6个标签
+                            return tags.slice(0, 6).map((tag, tagIndex) => (
+                              <span key={tagIndex} className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
                                 {tag}
                               </span>
                             ));
                           })()}
                         </div>
                         
-                        {/* 续租状态标签 */}
-                        <div className="mb-1">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${account.allow_renew ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                        {/* 续租状态标签和平台类型标签 */}
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded-full text-sm ${account.allow_renew ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                             {account.allow_renew ? '续租' : '不续租'}
                           </span>
+                          {account.content_json && account.content_json.platform_type && (
+                            <span className={`px-2 py-0.5 rounded-full text-sm bg-blue-100 text-blue-600`}>
+                              {account.content_json.platform_type === 'douyin' ? '抖音' : 'QQ'}
+                            </span>
+                          )}
+                          <div className="text-sm text-gray-500 ml-auto">租期: {account.min_days}-{account.max_days}天</div>
                         </div>
                         
-                        <div className="flex justify-between items-center mb-1">
-                          <div className="text-xs text-gray-500">租期: {account.min_days}-{account.max_days}天</div>
-                          <div className="text-xs text-gray-500">{formatTime(account.created_at)}</div>
-                        </div>
-                        
-                        <div className="text-lg text-red-600">¥<span className='text-2xl ml-1'>{account.price_per_day_yuan}</span></div>
+                        <div className="text-lg text-red-600">¥<span className='text-xl ml-1'>{account.price_per_day_yuan}</span></div>
                       </div>
                     </div>
                   </div>
@@ -369,20 +445,20 @@ export default function AccountRentalMarketPage() {
                     >
                       {/* 图片展示区域 - 显示API返回的第一张图片 */}
                       {account.content_json && account.content_json.images && account.content_json.images.length > 0 && (
-                        <div className="bg-gray-100 max-h-72 overflow-hidden">
+                        <div className="bg-gray-100 overflow-hidden">
                           <img
                             src={account.content_json.images[0]}
                             alt="账号图片"
-                            className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+                            className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         </div>
                       )}
 
-                      <div className="p-3">
-                        <h3 className="font-medium text-gray-800 mb-2 line-clamp-1 text-sm">{account.title}</h3>
-                        <p className="text-gray-600 mb-1 line-clamp-2">{account.content_json?.account_info || ''}</p>
+                      <div className="py-1 px-2">
+                        <h3 className="font-medium text-gray-800  line-clamp-1 text-sm">{account.title}</h3>
+                        <p className="text-gray-600  line-clamp-2">{account.content_json?.account_info || ''}</p>
                         {/* 筛选项标签展示 */}
-                        <div className="flex flex-wrap gap-1 mb-2">
+                        <div className="flex flex-wrap gap-1 mb-1 max-h-[50px] overflow-hidden">
                           {(() => {
                             const tags = [];
                             const contentJson = account.content_json || {};
@@ -390,16 +466,18 @@ export default function AccountRentalMarketPage() {
                             // 账号要求标签
                             if (contentJson.basic_information === 'true') tags.push('修改基本信息');
                             if (contentJson.post_douyin === 'true') tags.push('发布抖音');
+                            if (contentJson.post_ad === 'true') tags.push('发布广告');
                             if (contentJson.deblocking === 'true') tags.push('账号解禁');
                             if (contentJson.identity_verification === 'true') tags.push('实名认证');
                             
                             // 登录方式标签
                             if (contentJson.scan_code === 'true') tags.push('扫码登录');
                             if (contentJson.phone_message === 'true') tags.push('短信验证');
+                            if (contentJson.account_password === 'true') tags.push('账号密码');
                             if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
                             
-                            // 最多显示5个标签
-                            return tags.slice(0, 5).map((tag, tagIndex) => (
+                            // 最多显示6个标签
+                            return tags.slice(0, 6).map((tag, tagIndex) => (
                               <span key={tagIndex} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
                                 {tag}
                               </span>
@@ -407,18 +485,20 @@ export default function AccountRentalMarketPage() {
                           })()}
                         </div>
                         
-                        {/* 续租状态标签 */}
-                        <div className="mb-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${account.allow_renew ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                        {/* 续租状态标签和平台类型标签 */}
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded-full text-sm ${account.allow_renew ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                             {account.allow_renew ? '续租' : '不续租'}
                           </span>
+                          {account.content_json && account.content_json.platform_type && (
+                            <span className={`px-2 py-0.5 rounded-full text-sm bg-blue-100 text-blue-600`}>
+                              {account.content_json.platform_type === 'douyin' ? '抖音' : 'QQ'}
+                            </span>
+                          )}
+                          <div className="text-sm text-gray-500 ml-auto">租期: {account.min_days}-{account.max_days}天</div>
+                          
                         </div>
-                        
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="text-xs text-gray-500">租期: {account.min_days}-{account.max_days}天</div>
-                          <div className="text-xs text-gray-500">{formatTime(account.created_at)}</div>
-                        </div>
-                        
+                        <div className="text-sm text-gray-500">{formatTime(account.created_at)}</div>
                         <div className="text-lg font-bold text-red-600">¥{account.price_per_day_yuan}</div>
                       </div>
                     </div>
@@ -449,7 +529,7 @@ export default function AccountRentalMarketPage() {
             <div className="flex items-start space-x-3">
               <span className="text-2xl">💡</span>
               <div>
-                <h3 className="font-medium text-blue-900 mb-1">账号租赁提示</h3>
+                <h3 className="font-medium text-blue-900 ">账号租赁提示</h3>
                 <p className="text-blue-700 text-sm leading-relaxed">
                   请根据您的需求筛选合适的账号进行租赁。租赁前请仔细查看账号详情和租赁条款，确保账号符合您的推广需求。如有疑问，可联系客服咨询。
                 </p>
@@ -479,8 +559,8 @@ export default function AccountRentalMarketPage() {
         
         {/* 筛选模态框 */}
         {showFilterModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
-            <div className="relative bg-white rounded-t-lg rounded-b-none w-full max-w-md max-h-[80vh] overflow-y-auto mb-10">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+            <div className="relative bg-white rounded-lg w-full max-w-[800px] min-h-[600px] max-h-[80vh] overflow-y-auto mx-4">
               <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-4 border-b">
                 <h3 className="text-lg font-medium">快速筛选</h3>
                 <button
@@ -491,6 +571,37 @@ export default function AccountRentalMarketPage() {
                 </button>
               </div>
               <div className="p-4">
+                {/* 平台类型选项 */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3 text-gray-700">平台类型:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.platformType.douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        platformType: {
+                          ...prev.platformType,
+                          douyin: !prev.platformType.douyin
+                        }
+                      }))}
+                    >
+                      抖音
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.platformType.qq ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        platformType: {
+                          ...prev.platformType,
+                          qq: !prev.platformType.qq
+                        }
+                      }))}
+                    >
+                      QQ
+                    </button>
+                  </div>
+                </div>
+                
                 {/* 账号支持选项 */}
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">账号支持:</h4>
@@ -508,6 +619,18 @@ export default function AccountRentalMarketPage() {
                       发布抖音
                     </button>
                     <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_ad: !prev.accountSupport.post_ad
+                        }
+                      }))}
+                    >
+                      发布广告
+                    </button>
+                    <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.identity_verification ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
@@ -521,24 +644,24 @@ export default function AccountRentalMarketPage() {
                     </button>
                 
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.modifyAccountInfo ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.basic_information ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         accountSupport: {
                           ...prev.accountSupport,
-                          modifyAccountInfo: !prev.accountSupport.modifyAccountInfo
+                          basic_information: !prev.accountSupport.basic_information
                         }
                       }))}
                     >
                       修改基本信息
                     </button>
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.unblockAccount ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.deblocking ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         accountSupport: {
                           ...prev.accountSupport,
-                          unblockAccount: !prev.accountSupport.unblockAccount
+                          deblocking: !prev.accountSupport.deblocking
                         }
                       }))}
                     >
@@ -552,59 +675,77 @@ export default function AccountRentalMarketPage() {
                   <h4 className="font-medium mb-3 text-gray-700">登录方式:</h4>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.scanCode ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.scan_code ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         loginMethods: {
                           ...prev.loginMethods,
-                          scanCode: !prev.loginMethods.scanCode
+                          scan_code: !prev.loginMethods.scan_code
                         }
                       }))}
                     >
                       扫码登录
                     </button>
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phoneSms ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         loginMethods: {
                           ...prev.loginMethods,
-                          phoneSms: !prev.loginMethods.phoneSms
+                          phone_message: !prev.loginMethods.phone_message
                         }
                       }))}
                     >
                       短信验证
                     </button>
                     <button
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.otherRequirements ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         loginMethods: {
                           ...prev.loginMethods,
-                          otherRequirements: !prev.loginMethods.otherRequirements
+                          account_password: !prev.loginMethods.account_password
                         }
                       }))}
                     >
-                      按对方要求完成
+                      账号密码
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.other_require ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          other_require: !prev.loginMethods.other_require
+                        }
+                      }))}
+                    >
+                      按租赁方要求
                     </button>
                   </div>
                 </div>
                 
                 {/* 操作按钮 */}
-                <div className="flex space-x-3 pt-4 border-t mb-10">
+                <div className="flex space-x-3 pt-4 border-t 0">
                   <button 
                     className="flex-1 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     onClick={() => setFilterOptions({
+                      platformType: {
+                        douyin: false,
+                        qq: false
+                      },
                       accountSupport: {
                         post_douyin: false,
-                        modifyAccountInfo: false,
-                        unblockAccount: false,
+                        post_ad: false,
+                        basic_information: false,
+                        deblocking: false,
                         identity_verification: false
                       },
                       loginMethods: {
-                        scanCode: false,
-                        phoneSms: false,
-                        otherRequirements: false
+                        scan_code: false,
+                        phone_message: false,
+                        account_password: false,
+                        other_require: false
                       }
                     })}
                   >
@@ -613,8 +754,7 @@ export default function AccountRentalMarketPage() {
                   <button 
                     className="flex-1 py-2 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                     onClick={() => {
-                      // 这里可以添加筛选逻辑
-                      console.log('筛选选项:', filterOptions);
+                      setPage(1); // 重置页码
                       setShowFilterModal(false);
                     }}
                   >
