@@ -19,6 +19,7 @@ const BalancePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [totalBalance, setTotalBalance] = useState(0.00);
+  const [latestBalanceStr, setLatestBalanceStr] = useState('0.00');
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -47,18 +48,28 @@ const BalancePage = () => {
         console.log('获取钱包余额和交易明细响应:', walletData);
         console.log('获取钱包余额和交易明细响应:', walletData.data);
         if (walletData.code === 0 && walletData.success) {
-          // 设置余额信息
-          const walletInfo = walletData.data.wallet;
-          setTotalBalance(parseFloat(walletInfo.balance) || 0);
-          // 假设可用余额等于总余额，冻结余额为0，因为新API没有返回这些字段
-          setBalance(parseFloat(walletInfo.balance) || 0);
-          setFrozenBalance(0);
-
           // 设置交易记录，按创建时间排序（最新的在前）
           const sortedTransactions = [...walletData.data.transactions].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           setTransactions(sortedTransactions);
+          
+          // 设置余额信息
+          const walletInfo = walletData.data.wallet;
+          // 使用最新交易记录的after_balance作为总余额
+          const latestBalance = sortedTransactions.length > 0 
+            ? parseFloat(sortedTransactions[0].after_balance) || 0 
+            : parseFloat(walletInfo.balance) || 0;
+          setTotalBalance(latestBalance);
+          // 存储最新余额的字符串格式
+          const latestBalanceString = sortedTransactions.length > 0 
+            ? sortedTransactions[0].after_balance 
+            : walletInfo.balance;
+          setLatestBalanceStr(latestBalanceString);
+          // 假设可用余额等于总余额，冻结余额为0，因为新API没有返回这些字段
+          setBalance(latestBalance);
+          setFrozenBalance(0);
+          
           // 重置分页到第一页
           setCurrentPage(1);
         } else {
@@ -116,9 +127,9 @@ const BalancePage = () => {
 
   // 处理查看交易详情，传递完整交易记录数据
   const handleViewTransaction = (transaction: Transaction) => {
-    // 使用状态管理或localStorage传递数据
-    localStorage.setItem('transactionData', JSON.stringify(transaction));
-    router.push(`/publisher/balance/transactionDetails/${transaction.id}` as any);
+    // 通过URL参数传递数据
+    const transactionDataStr = encodeURIComponent(JSON.stringify(transaction));
+    router.push(`/publisher/balance/transactionDetails/${transaction.id}?data=${transactionDataStr}` as any);
   };
 
   // 从created_at中提取日期和时间
@@ -146,7 +157,7 @@ const BalancePage = () => {
             <div className="mb-10 grid grid-cols-1 gap-2">
               <div className="text-center bg-green-500 rounded-lg p-2">
                 <div>余额:</div>
-                <div>{totalBalance}</div>
+                <div>{latestBalanceStr}</div>
               </div>
             </div>
 
@@ -284,7 +295,8 @@ const BalancePage = () => {
                       return (
                         <div
                           key={transaction.id}
-                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 w-full"
+                          className="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 flex items-center transition-colors duration-200 w-full cursor-pointer"
+                          onClick={() => handleViewTransaction(transaction)}
                         >
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center ${iconInfo.bgColor} mr-3 text-lg font-bold flex-shrink-0`}>
                             <span className={iconInfo.color}>{iconInfo.icon}</span>
@@ -296,7 +308,7 @@ const BalancePage = () => {
                                 {(transaction.remark || transaction.type_text).slice(0, 8)}{(transaction.remark || transaction.type_text).length > 8 ? '...' : ''}
                               </h3>
                               <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'} flex-shrink-0 whitespace-nowrap`}>
-                                {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
+                                {isIncome ? '+' : '-'}{transaction.amount}
                               </span>
                             </div>
                             <div className="flex justify-between items-center w-full">
@@ -304,7 +316,7 @@ const BalancePage = () => {
                                 {formatDate(date)} {time}
                               </div>
                               <div className="text-xs flex-shrink-0 whitespace-nowrap">
-                                余额: {parseFloat(transaction.after_balance).toFixed(2)}
+                                余额: {transaction.after_balance}
                               </div>
                             </div>
                           </div>
