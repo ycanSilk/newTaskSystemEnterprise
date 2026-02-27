@@ -134,7 +134,7 @@ export const useTokenChecker = () => {
         console.log('No token found in cookie, redirecting to login');
         redirectToLogin();
       }
-    }, 10 * 60 * 1000); // 10分钟
+    }, 24 * 60 * 60 * 1000); // 24小时
 
     // 设置60分钟的间隔检查token有效性
     const tokenCheckInterval = setInterval(() => {
@@ -143,7 +143,9 @@ export const useTokenChecker = () => {
         return;
       }
       checkTokenValidity();
-    }, 60 * 60 * 1000); // 60分钟
+    }, 30 * 60 * 1000); // 30分钟
+
+
 
     // 组件卸载时清除定时器
     return () => {
