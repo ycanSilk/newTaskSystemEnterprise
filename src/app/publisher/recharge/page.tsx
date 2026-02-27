@@ -114,7 +114,7 @@ export default function PublisherFinancePage() {
       
       // 计算7天前的日期
       const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
       
       // 按创建时间倒序排序，只保留7天以内且related_type为recharge的记录
       const sortedTransactions = data.data.transactions
@@ -383,7 +383,7 @@ export default function PublisherFinancePage() {
                       checked={selectedPaymentMethod === 'alipay'} 
                       onChange={() => setSelectedPaymentMethod('alipay')}
                     />
-                    <span className="text-sm">💙 支付宝</span>
+                    <span className="text-2xl">支付宝</span>
                   </label>
                  {/**  
                   * <label className="flex items-center">
@@ -569,7 +569,7 @@ export default function PublisherFinancePage() {
                                 {(transaction.remark || transaction.type_text).slice(0, 8)}{(transaction.remark || transaction.type_text).length > 8 ? '...' : ''}
                               </h3>
                               <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'} flex-shrink-0 whitespace-nowrap`}>
-                                {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
+                                {isIncome ? '+' : '-'}{transaction.amount}
                               </span>
                             </div>
                             <div className="flex justify-between items-center w-full">
@@ -577,7 +577,7 @@ export default function PublisherFinancePage() {
                                 {formatDate(date)} {time}
                               </div>
                               <div className="text-xs flex-shrink-0 whitespace-nowrap">
-                                余额: {parseFloat(transaction.after_balance).toFixed(2)}
+                                余额: {transaction.after_balance}
                               </div>
                             </div>
                           </div>
@@ -677,7 +677,7 @@ export default function PublisherFinancePage() {
           
           {/* 底部提示 */}
           <div className="px-4 py-4 text-center text-xs text-gray-500">
-            <p>只显示近7天的充值记录</p>
+            <p>只显示近30天的充值记录</p>
           </div>
         </>
       )}

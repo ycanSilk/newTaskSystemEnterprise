@@ -138,22 +138,24 @@ class RefreshStrategy {
     const task = this.tasks.get(id);
     if (!task || !task.enabled) return;
 
-    // 检查是否已经在执行
-    if (this.runningTasks.has(id)) return;
+    console.warn('Refresh strategy is disabled. Only static file caching is enabled.');
+    // 不再执行刷新任务
+    // // 检查是否已经在执行
+    // if (this.runningTasks.has(id)) return;
 
-    // 检查并发任务数
-    if (this.runningTasks.size >= this.config.maxConcurrentTasks) return;
+    // // 检查并发任务数
+    // if (this.runningTasks.size >= this.config.maxConcurrentTasks) return;
 
-    this.runningTasks.add(id);
+    // this.runningTasks.add(id);
 
-    try {
-      await task.callback();
-      task.lastExecuted = Date.now();
-    } catch (error) {
-      console.error(`刷新任务执行失败 (${id}):`, error);
-    } finally {
-      this.runningTasks.delete(id);
-    }
+    // try {
+    //   await task.callback();
+    //   task.lastExecuted = Date.now();
+    // } catch (error) {
+    //   console.error(`刷新任务执行失败 (${id}):`, error);
+    // } finally {
+    //   this.runningTasks.delete(id);
+    // }
   }
 
   // 执行任务（带防抖）

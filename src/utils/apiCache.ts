@@ -109,12 +109,16 @@ class ApiCache {
   ): Promise<T> {
     // 合并配置
     const mergedConfig = { ...DEFAULT_CACHE_CONFIG, ...config };
-    const { expiry, enableCache, enableDeduplication } = mergedConfig;
+    const { expiry, enableDeduplication } = mergedConfig;
+    
+    // 只缓存静态文件数据，判断是否为静态文件
+    const isStaticFile = /\.(js|css|png|jpg|jpeg|gif|svg|ico|json)$/i.test(url);
+    const enableCache = isStaticFile;
 
     // 生成缓存键
     const cacheKey = this.generateCacheKey(url, options);
 
-    // 检查缓存
+    // 检查缓存（仅静态文件）
     if (enableCache) {
       const cachedData = this.getFromCache<T>(cacheKey);
       if (cachedData) {
@@ -144,7 +148,7 @@ class ApiCache {
 
         const data = await response.json();
 
-        // 缓存响应数据
+        // 缓存响应数据（仅静态文件）
         if (enableCache) {
           this.setCache(cacheKey, data, expiry);
         }

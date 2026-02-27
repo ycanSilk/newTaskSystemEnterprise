@@ -108,7 +108,7 @@ const CreateWorkOrderPage = () => {
             ]}
           >
             <Input
-              placeholder="请输入工单标题（如：诈骗、账号问题等）"
+              placeholder="请输入工单标题（如：账号问题等）"
               className="w-full"
             />
           </Form.Item>

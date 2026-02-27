@@ -40,7 +40,7 @@ export default function DouyinAccountRentalPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<AccountRentalForm>({
     title: '', // 新增：出租信息标题
-    description: '', // 账号信息
+    description: '账号真实有效，无异常，及时回应租客消息', // 账号信息
     platformType: 'douyin', // 账号平台类型，默认抖音
     accountImages: [],
     price: 50,
@@ -536,8 +536,6 @@ export default function DouyinAccountRentalPage() {
             <div className="space-y-1 mt-1">
               <label className="block text-sm font-medium mb-1">登录方式（可多选）：<span className="text-red-500">*</span></label>
               <div className="flex flex-wrap gap-2">
-                {/* QQ特有的登录方式 */}
-                {formData.platformType === 'qq' && (
                   <button
                     type="button"
                     className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.account_password ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
@@ -545,8 +543,7 @@ export default function DouyinAccountRentalPage() {
                   >
                     账号密码
                   </button>
-                )}
-                
+
                 {/* 抖音和QQ都显示的登录方式 */}
                 <button
                   type="button"
@@ -567,7 +564,7 @@ export default function DouyinAccountRentalPage() {
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.other_require ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => handleTagClick('loginMethods', 'other_require')}
                 >
-                  按租赁方要求
+                  不登录，按承租方需求修改账户相关
                 </button>
               </div>
               <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高账号出租概率。</div>

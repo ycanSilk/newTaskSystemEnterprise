@@ -15,7 +15,6 @@ export default function RentalOrderingContent() {
   // 表单状态
   const [formData, setFormData] = useState({
     phone: '',
-    qq: '',
     email: '',
     purpose: 'promotion',
     customPurpose: '',
@@ -26,7 +25,6 @@ export default function RentalOrderingContent() {
   // 错误状态
   const [errors, setErrors] = useState({
     phone: '',
-    qq: '',
     customPurpose: ''
   });
   
@@ -116,12 +114,13 @@ export default function RentalOrderingContent() {
   const validateForm = () => {
     const newErrors = {
       phone: '',
-      qq: '',
       customPurpose: ''
     };
     
-    // 手机号验证（仅验证格式，不要求必填）
-    if (formData.phone && !/^1[3-9]\d{9}$/.test(formData.phone)) {
+    // 手机号验证（必填且验证格式）
+    if (!formData.phone) {
+      newErrors.phone = '请输入手机号';
+    } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
       newErrors.phone = '请输入正确的手机号';
     }
     
@@ -173,9 +172,6 @@ export default function RentalOrderingContent() {
       try {
         // 构建联系方式字符串
         let contactParts = [];
-        if (formData.qq) {
-          contactParts.push(`QQ:${formData.qq}`);
-        }
         if (formData.phone) {
           contactParts.push(`手机号:${formData.phone}`);
         }
@@ -357,36 +353,21 @@ export default function RentalOrderingContent() {
           {/* 手机号 */}
           <div className="mb-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              手机号
+              手机号<span className='text-red-500'>*</span>
             </label>
             <input 
               type="tel" 
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md ${errors.phone ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
-              placeholder="请输入手机号（或QQ号）"
+              placeholder="请输入手机号"
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
             )}
           </div>
           
-          {/* QQ号 */}
-          <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              QQ号
-            </label>
-            <input 
-              type="text" 
-              value={formData.qq}
-              onChange={(e) => handleInputChange('qq', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md ${errors.qq ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
-              placeholder="请输入QQ号（或手机号）"
-            />
-            {errors.qq && (
-              <p className="mt-1 text-sm text-red-600">{errors.qq}</p>
-            )}
-          </div>
+
         </div>
         
         {/* 用途说明模块 */}
@@ -473,7 +454,7 @@ export default function RentalOrderingContent() {
               className="mt-1"
             />
             <label htmlFor="agreement" className="text-sm text-gray-600">
-              确认购买即阅读并同意《交易猫平台虚拟物品交易规则》《交易猫用户服务协议》
+              确认购买即阅读并同意《平台虚拟物品交易规则》《用户服务协议》
             </label>
           </div>
         </div>

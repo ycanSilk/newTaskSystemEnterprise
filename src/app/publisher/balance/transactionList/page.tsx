@@ -3,7 +3,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from 'antd';
 
-import { GetWalletBalanceResponseData, GetWalletBalanceResponse,WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
+// 导入钱包余额和交易明细的类型定义
+import { GetWalletBalanceResponseData, GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
+// 导入通用API响应类型
+import { ApiResponse } from '@/api/types/common';
 
 
 const TransactionListPage = () => {
@@ -80,37 +83,37 @@ const TransactionListPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: GetWalletBalanceResponse = await response.json();
-      console.log('获取交易记录成功:', data.data.transactions);
-      if (!data.success || !data.data) {
+      const data: ApiResponse<GetWalletBalanceResponseData> = await response.json();
+      console.log('获取交易记录成功:', data.data?.transactions);
+      if (data.code === 0 && data.success && data.data) {
+        // 计算30天前的日期
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // 按创建时间倒序排序，并只保留30天以内的记录
+        console.log('获取交易记录成功:', data.data.transactions);
+        console.log('30天前日期:', thirtyDaysAgo);
+        
+        const sortedTransactions = data.data.transactions
+          // 只保留最近30天的记录
+          .filter(transaction => {
+            const transactionDate = new Date(transaction.created_at);
+            console.log('交易记录日期:', transaction.created_at, '是否有效:', !isNaN(transactionDate.getTime()), '是否在30天以内:', transactionDate >= thirtyDaysAgo);
+            return transactionDate >= thirtyDaysAgo;
+          })
+          // 按创建时间倒序排序
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        console.log('过滤后的交易记录:', sortedTransactions);
+        setTransactions(sortedTransactions);
+        
+        // 更新分页信息
+        if (data.data.pagination) {
+          setTotalRecords(data.data.pagination.total || 0);
+          setTotalPages(data.data.pagination.total_pages || 1);
+        }
+      } else {
         throw new Error(data.message || '获取交易记录失败');
-      }
-      
-      // 计算7天前的日期
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      // 按创建时间倒序排序，并只保留7天以内的记录
-      console.log('获取交易记录成功:', data.data.transactions);
-      console.log('7天前日期:', sevenDaysAgo);
-      
-      const sortedTransactions = data.data.transactions
-        // 只保留最近7天的记录
-        .filter(transaction => {
-          const transactionDate = new Date(transaction.created_at);
-          console.log('交易记录日期:', transaction.created_at, '是否有效:', !isNaN(transactionDate.getTime()), '是否在7天以内:', transactionDate >= sevenDaysAgo);
-          return transactionDate >= sevenDaysAgo;
-        })
-        // 按创建时间倒序排序
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
-      console.log('过滤后的交易记录:', sortedTransactions);
-      setTransactions(sortedTransactions);
-      
-      // 更新分页信息
-      if (data.data.pagination) {
-        setTotalRecords(data.data.pagination.total || 0);
-        setTotalPages(data.data.pagination.total_pages || 1);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取交易记录失败');
@@ -283,7 +286,7 @@ const TransactionListPage = () => {
                                       {(transaction.remark || transaction.type_text).slice(0, 8)}{(transaction.remark || transaction.type_text).length > 8 ? '...' : ''}
                                     </h3>
                                     <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'} flex-shrink-0 whitespace-nowrap`}>
-                                      {isIncome ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)}
+                                      {isIncome ? '+' : '-'}{transaction.amount}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center w-full">
@@ -291,7 +294,7 @@ const TransactionListPage = () => {
                                       {formatDate(date)} {time}
                                     </div>
                                     <div className="text-xs flex-shrink-0 whitespace-nowrap">
-                                      余额: {parseFloat(transaction.after_balance).toFixed(2)}
+                                      余额: {transaction.after_balance}
                                     </div>
                                   </div>
                                 </div>
@@ -393,7 +396,7 @@ const TransactionListPage = () => {
 
       {/* 底部提示 */}
       <div className="px-4 py-4 text-center text-xs text-gray-500">
-        <p>只显示近7天的交易记录</p>
+        <p>只显示近30天的交易记录</p>
       </div>
     </div>
   );

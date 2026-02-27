@@ -150,7 +150,59 @@ export default function PublisherLoginPage() {
         refreshCaptcha(); // 验证码错误时刷新
       }
     } catch (error) {
-      setErrorMessage('网络连接失败，请检查网络设置后重试');
+      // 解析错误信息，显示后端API返回的具体错误
+      if (error instanceof Error) {
+        // 检查是否是API错误响应
+        if (error.message.includes('API Error:')) {
+          try {
+            // 提取API错误信息
+            const errorMatch = error.message.match(/API Error: (.*)/);
+            if (errorMatch && errorMatch[1]) {
+              const apiError = JSON.parse(errorMatch[1]);
+              // 优先使用data.message
+              if (apiError.data && apiError.data.message) {
+                setErrorMessage(apiError.data.message);
+              } else if (apiError.message) {
+                setErrorMessage(apiError.message);
+              } else {
+                setErrorMessage('登录失败，账号或密码错误');
+              }
+            } else {
+              setErrorMessage('登录失败，账号或密码错误');
+            }
+          } catch (parseError) {
+            // 尝试直接解析错误消息，可能是直接的JSON字符串
+            try {
+              const apiError = JSON.parse(error.message);
+              if (apiError.data && apiError.data.message) {
+                setErrorMessage(apiError.data.message);
+              } else if (apiError.message) {
+                setErrorMessage(apiError.message);
+              } else {
+                setErrorMessage('登录失败，账号或密码错误');
+              }
+            } catch (e) {
+              setErrorMessage('登录失败，账号或密码错误');
+            }
+          }
+        } else {
+          // 尝试直接解析错误消息，可能是直接的JSON字符串
+          try {
+            const apiError = JSON.parse(error.message);
+            if (apiError.data && apiError.data.message) {
+              setErrorMessage(apiError.data.message);
+            } else if (apiError.message) {
+              setErrorMessage(apiError.message);
+            } else {
+                setErrorMessage('登录失败，账号或密码错误');
+              }
+          } catch (e) {
+            setErrorMessage('登录失败，账号或密码错误');
+          }
+        }
+      } else {
+        setErrorMessage('登录失败，账号或密码错误');
+      }
       refreshCaptcha();
     } finally {
       setIsLoading(false);

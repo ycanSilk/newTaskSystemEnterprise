@@ -496,6 +496,7 @@ export default function PublishTaskPage() {
             value={formData.deadline}
             onChange={(e) => setFormData({...formData, deadline: e.target.value})}
           >
+            <option value="10">10分钟内</option>
             <option value="30">30分钟内</option>
             <option value="720">12小时内</option>
             <option value="1440">24小时内</option>
@@ -521,36 +522,39 @@ export default function PublishTaskPage() {
             
             {/* 上评评论输入框 - 固定一条 */}
             <div className="mb-1 py-2 border-b border-gray-900">
-              <textarea
-                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder="请输入上评评论内容"
-                value={formData.topComment.comment}
-                onChange={(e) => {
-                  setFormData({...formData, topComment: {...formData.topComment, comment: e.target.value}});
-                }}
-              />
-              
-              {/* 图片上传区域 */}
-              <div className="mt-1">
-                <ImageUpload 
-                  maxCount={1} 
-                  columns={1}
-                  gridWidth="200px"
-                  itemSize="200x200"
-                  title=""
-                  onImagesChange={(images: File[], urls: string[]) => {
-                    setFormData((prev: FormData) => ({
-                      ...prev,
-                      topComment: {
-                        ...prev.topComment,
-                        imageUrl: urls[0] || ''
-                      }
-                    }));
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                上评评论
+              </label>
+              <div className="flex space-x-3">
+                <textarea
+                  className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                  placeholder="请输入上评评论内容"
+                  value={formData.topComment.comment}
+                  onChange={(e) => {
+                    setFormData({...formData, topComment: {...formData.topComment, comment: e.target.value}});
                   }}
+                  style={{ height: '80px' }}
                 />
-                <div className="text-xs text-gray-500 mt-2">
-                  支持JPG、PNG格式，最大200KB
+                
+                {/* 图片上传区域 */}
+                <div>
+                  <ImageUpload 
+                    maxCount={1} 
+                    columns={1}
+                    gridWidth="80px"
+                    itemSize="80x80"
+                    title=""
+                    onImagesChange={(images: File[], urls: string[]) => {
+                      setFormData((prev: FormData) => ({
+                        ...prev,
+                        topComment: {
+                          ...prev.topComment,
+                          imageUrl: urls[0] || ''
+                        }
+                      }));
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -580,34 +584,34 @@ export default function PublishTaskPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     中评评论{index + 1}
                   </label>
-                  <textarea
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
-                    placeholder={`默认最后一条评论带@功能`}
-                    value={comment.comment}
-                    onChange={(e) => {
-                      const newComments = [...formData.middleComments];
-                      newComments[index] = {...newComments[index], comment: e.target.value};
-                      setFormData({...formData, middleComments: newComments});
-                    }}
-                  />
-                  
-                  {/* 图片上传区域 */}
-                  <div className="mt-1">
-                    <ImageUpload 
-                      maxCount={1} 
-                      columns={1}
-                      gridWidth="200px"
-                      itemSize="200x200"
-                      title=""
-                      onImagesChange={(images: File[], urls: string[]) => {
+                  <div className="flex space-x-3">
+                    <textarea
+                      className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      rows={3}
+                      placeholder={`默认最后一条评论带@功能`}
+                      value={comment.comment}
+                      onChange={(e) => {
                         const newComments = [...formData.middleComments];
-                        newComments[index] = {...newComments[index], imageUrl: urls[0] || ''};
+                        newComments[index] = {...newComments[index], comment: e.target.value};
                         setFormData({...formData, middleComments: newComments});
                       }}
+                      style={{ height: '80px' }}
                     />
-                    <div className="text-xs text-gray-500 mt-2">
-                      支持JPG、PNG格式，最大200KB
+                    
+                    {/* 图片上传区域 */}
+                    <div>
+                      <ImageUpload 
+                        maxCount={1} 
+                        columns={1}
+                        gridWidth="80px"
+                        itemSize="80x80"
+                        title=""
+                        onImagesChange={(images: File[], urls: string[]) => {
+                          const newComments = [...formData.middleComments];
+                          newComments[index] = {...newComments[index], imageUrl: urls[0] || ''};
+                          setFormData({...formData, middleComments: newComments});
+                        }}
+                      />
                     </div>
                   </div>
                 </div>

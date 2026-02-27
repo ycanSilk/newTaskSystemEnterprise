@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MessageOutlined } from '@ant-design/icons';
 import { GetRequestRentalInfoDetailResponse, RequestRentalInfoDetail } from '@/app/types/rental/requestRental/getRequestRentalInfoDetail';
-
+import { BtnCustomerServiceButton } from '@/components/button/btnCustomerServiceButton';
 // 复制状态接口
 interface CopyStatus {
   [key: string]: boolean;
@@ -16,6 +16,13 @@ const RentalRequestDetailPage: React.FC = () => {
   const [request, setRequest] = useState<RequestRentalInfoDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>({});
+  const [isClient, setIsClient] = useState(false);
+
+  
+  // 只在客户端设置 isClient 为 true
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // 获取URL参数中的id
   const params = useParams<{ id: string }>();
@@ -209,12 +216,12 @@ const RentalRequestDetailPage: React.FC = () => {
 
           {/* 按钮区域 */}
           <div className="p-3 bg-gray-50 flex justify-end space-x-2">
-            <button
-              onClick={handleContact}
-              className="px-4 py-2 bg-white border border-blue-500 text-blue-600 rounded-lg text-sm font-medium shadow-sm hover:bg-blue-50 active:scale-95 transition-all flex items-center"
-            >
-              联系对方
-            </button>
+            {isClient && (
+              <BtnCustomerServiceButton 
+                CustomerServiceId={'kefu'}
+                className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white border border-gray-300 rounded-lg"
+              />
+            )}
             <button
               onClick={handleRentNow}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-md active:scale-95 transition-all flex items-center"

@@ -1,8 +1,5 @@
 'use client';
 import { useState, useRef } from 'react';
-import { CustomerServiceOutlined } from '@ant-design/icons';
-
-
 
 interface CustomerServiceButtonProps {
   // 可以根据需要添加更多props，使组件更灵活
@@ -14,7 +11,7 @@ interface CustomerServiceButtonProps {
   size?: number;
 }
 
-export const CustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
+export const BtnCustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
   className = '',
   buttonText = '联系客服',
   CustomerServiceId = 'kefu',
@@ -42,9 +39,9 @@ export const CustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
       {/* 客服按钮 */}
       <button 
         onClick={openChatModal} 
-        className={`flex items-center justify-center transition-colors ${className}`}
+        className={` ${className}`}
       >
-        <CustomerServiceOutlined style={{ fontSize: size }} />
+          {buttonText}
       </button>
       
       {/* 客服聊天模态框 */}
@@ -77,6 +74,4 @@ export const CustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
       )}
     </>
   );
-
-  // 使用iframe直接加载聊天页面，不再需要useEffect动态加载脚本
 };

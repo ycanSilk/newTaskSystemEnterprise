@@ -133,7 +133,6 @@ class GlobalFetch {
     const mergedConfig = { ...DEFAULT_CONFIG, ...config };
     const { 
       expiry, 
-      enableCache, 
       enableDeduplication, 
       enableDebounce, 
       debounceTime,
@@ -141,11 +140,15 @@ class GlobalFetch {
       retryCount,
       retryDelay
     } = mergedConfig;
+    
+    // 只缓存静态文件数据，判断是否为静态文件
+    const isStaticFile = /\.(js|css|png|jpg|jpeg|gif|svg|ico|json)$/i.test(url);
+    const enableCache = isStaticFile;
 
     // 生成缓存键
     const cacheKey = this.generateCacheKey(url, options);
 
-    // 检查缓存
+    // 检查缓存（仅静态文件）
     if (enableCache) {
       const cachedData = this.getFromCache<T>(cacheKey);
       if (cachedData) {
@@ -174,7 +177,10 @@ class GlobalFetch {
           this.debounceTimers.delete(cacheKey);
           
           try {
-            const result = await this.executeRequest<T>(url, options, cacheKey, mergedConfig);
+            const result = await this.executeRequest<T>(url, options, cacheKey, {
+              ...mergedConfig,
+              enableCache
+            });
             resolve(result);
           } catch (error) {
             reject(error);
@@ -186,7 +192,10 @@ class GlobalFetch {
     }
 
     // 直接执行请求
-    return this.executeRequest<T>(url, options, cacheKey, mergedConfig);
+    return this.executeRequest<T>(url, options, cacheKey, {
+      ...mergedConfig,
+      enableCache
+    });
   }
 
   // 执行实际请求（带重试机制）

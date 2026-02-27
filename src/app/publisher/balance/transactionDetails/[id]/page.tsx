@@ -3,20 +3,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card } from 'antd';
 
-// 交易记录类型定义
-interface Transaction {
-  id: string;
-  amount: string;
-  type: number;
-  type_text: string;
-  remark: string;
-  created_at: string;
-  after_balance: string;
-  before_balance?: string;
-  status?: string;
-  channel?: string;
-  order_no?: string;
-}
+// 导入交易记录类型定义
+import { Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
 
 const TransactionDetailPage = () => {
   const router = useRouter();
@@ -120,16 +108,13 @@ const TransactionDetailPage = () => {
                 <span className="text-4xl text-amber-500">¥</span>
               </div>
               <h2 className="">
-                {transaction.type_text || transaction.remark}
+                <span className={`text-3xl font-bold ${parseFloat(transaction.amount.replace(',', '')) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {parseFloat(transaction.amount.replace(',', '')) > 0 ? '+' : ''}{parseFloat(transaction.amount.replace(',', '')).toFixed(2)}
+              </span>
               </h2>
             </div>
 
-            {/* 交易金额 */}
-            <div className="flex justify-center mb-10">
-              <span className={`text-3xl font-bold ${parseFloat(transaction.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {parseFloat(transaction.amount) > 0 ? '+' : ''}{parseFloat(transaction.amount).toFixed(2)}
-              </span>
-            </div>
+  
 
             {/* 交易信息列表 */}
             <div className="space-y-4">
@@ -145,28 +130,34 @@ const TransactionDetailPage = () => {
                 <span className="">{transaction.type_text || '-'}</span>
               </div>
 
-              {/* 交易状态 */}
+              {/* 交易金额 */}
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="">交易状态</span>
-                <span className="">{transaction.status || '成功'}</span>
+                <span className="">交易金额</span>
+                <span className="">{transaction.amount}</span>
               </div>
 
-              {/* 支付渠道 */}
+              {/* 交易前余额 */}
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="">支付渠道</span>
-                <span className="">{transaction.channel || '-'}</span>
+                <span className="">交易前余额</span>
+                <span className="">{transaction.before_balance || '-'}</span>
+              </div>
+
+              {/* 交易后余额 */}
+              <div className="flex justify-between py-2 border-b border-gray-100">
+                <span className="">交易后余额</span>
+                <span className="">{transaction.after_balance || '-'}</span>
+              </div>
+
+              {/* 关联ID */}
+              <div className="flex justify-between py-2 border-b border-gray-100">
+                <span className="">订单号</span>
+                <span className="">{transaction.related_id || '-'}</span>
               </div>
 
               {/* 备注 */}
               <div className="flex justify-between py-2 border-b border-gray-100">
                 <span className="">备注</span>
                 <span className="">{transaction.remark || '-'}</span>
-              </div>
-
-              {/* 余额信息 */}
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="">交易后余额</span>
-                <span className="">{parseFloat(transaction.after_balance).toFixed(2)}</span>
               </div>
             </div>
           </div>

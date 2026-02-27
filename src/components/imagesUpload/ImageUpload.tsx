@@ -149,7 +149,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               /* 空槽位上传按钮 */
               <label className="upload-label w-full h-full flex flex-col items-center justify-center cursor-pointer">
                 <span className="upload-icon text-4xl font-light text-gray-500 hover:text-blue-500 mb-2">+</span>
-                <span className="upload-text text-sm text-gray-500 hover:text-blue-500">点击上传图片</span>
+                <span className="upload-text text-sm text-gray-500 hover:text-blue-500">上传图片</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png"

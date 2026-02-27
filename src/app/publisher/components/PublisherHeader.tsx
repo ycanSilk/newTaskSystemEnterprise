@@ -273,7 +273,7 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
           <CustomerServiceButton 
             buttonText="联系客服" 
             modalTitle="在线客服" 
-            CustomerServiceId={'admin'} 
+            CustomerServiceId={'kefu'} 
             className="text-white font-bold mr-2 flex items-center gap-1 px-3 py-1 rounded"
           />
         )}

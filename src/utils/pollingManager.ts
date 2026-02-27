@@ -104,8 +104,10 @@ class PollingManager {
       return;
     }
 
-    this.executeTask(taskId);
-    task.isRunning = true;
+    console.warn('Polling is disabled. Only static file caching is enabled.');
+    // 不再执行轮询任务
+    // this.executeTask(taskId);
+    // task.isRunning = true;
   }
 
   /**

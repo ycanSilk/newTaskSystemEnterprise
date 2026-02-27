@@ -428,9 +428,10 @@ export default function PublishTaskPage() {
             value={formData.deadline}
             onChange={(e) => setFormData({...formData, deadline: e.target.value})}
           >
-            <option value="0.5">30分钟内</option>
-            <option value="12">12小时</option>
-            <option value="24">24小时</option>
+            <option value="10">10分钟内</option>
+            <option value="30">30分钟内</option>
+            <option value="720">12小时内</option>
+            <option value="1440">24小时内</option>
           </select>
         </div>
 
@@ -464,32 +465,34 @@ export default function PublishTaskPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 推荐评论 {index + 1}
               </label>
-              <textarea
-                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder={`请输入推荐评论内容`}
-                value={comment.content}
-                onChange={(e) => {
-                  const newComments = [...formData.comments];
-                  newComments[index] = {...newComments[index], content: e.target.value};
-                  setFormData({...formData, comments: newComments});
-                }}
-              
-              />
-                    
+              <div className="flex space-x-3">
+                <textarea
+                  className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                  placeholder={`请输入推荐评论内容`}
+                  value={comment.content}
+                  onChange={(e) => {
+                    const newComments = [...formData.comments];
+                    newComments[index] = {...newComments[index], content: e.target.value};
+                    setFormData({...formData, comments: newComments});
+                  }}
+                  style={{ height: '80px' }}
+                />
+                          
                   {/* 图片上传组件 */}
-                  <div className="mt-3">
+                  <div>
                     <ImageUpload
                       maxCount={1}
                       onImagesChange={(images, urls) => handleImagesChange(index, images, urls)}
                       savePath="comments"
-                      title="上传评论图片"
+                      title=""
                       columns={1}
-                      gridWidth="100px" // 设置网格宽度与单个上传项宽度一致
-                      itemSize="100x100" // 设置单个上传项尺寸为100x100像素
+                      gridWidth="80px"
+                      itemSize="80x80"
                     />
                   </div>
                 </div>
+              </div>
           ))}
 
         </div>

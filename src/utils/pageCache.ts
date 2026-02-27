@@ -24,9 +24,9 @@ export interface PageCacheConfig {
 const DEFAULT_CONFIG: Required<PageCacheConfig> = {
   defaultExpiry: 30 * 60 * 1000, // 默认30分钟
   maxCacheSize: 50, // 默认最多缓存50个页面
-  enableScrollRestore: true,
-  enableStateCache: true,
-  enableBackgroundRefresh: true,
+  enableScrollRestore: false,
+  enableStateCache: false,
+  enableBackgroundRefresh: false,
 };
 
 // 页面缓存类
