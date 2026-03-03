@@ -142,9 +142,7 @@ const RentalRequestDetailPage = () => {
             account_password: contentJson.account_password === 'true',
             other_require: contentJson.other_require === 'true',
           },
-          phone: contentJson.phone_number || '',
-          qq: contentJson.qq_number || '',
-          email: contentJson.email || '',
+          phone: contentJson.phone_number || ''
         });
       } else {
         const errorMessage = data.message || '获取出租信息失败';
@@ -253,22 +251,14 @@ const RentalRequestDetailPage = () => {
       newErrors.loginMethods = '请至少选择一种登录方式';
     }
     
-    // 联系方式验证
-    if (!formData.phone.trim()) {
-      newErrors.phone = '请输入手机号';
-    } else if (!/^1[3-9]\d{9}$/.test(formData.phone.trim())) {
-      newErrors.phone = '请输入有效的手机号';
-    }
+    // 联系方式验证 - 由于手机号是禁用状态，跳过验证
+    // if (!formData.phone.trim()) {
+    //   newErrors.phone = '请输入手机号';
+    // } else if (!/^1[3-9]\d{9}$/.test(formData.phone.trim())) {
+    //   newErrors.phone = '请输入有效的手机号';
+    // }
     
-    // QQ号验证（如果填写）
-    if (formData.qq && !/^[1-9]\d{4,10}$/.test(formData.qq.trim())) {
-      newErrors.qq = '请输入有效的QQ号';
-    }
-    
-    // 邮箱验证（如果填写）
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = '请输入有效的邮箱地址';
-    }
+
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -370,7 +360,7 @@ const RentalRequestDetailPage = () => {
         max_days: formData.maxLeaseDays || 30,
         allow_renew: formData.allow_renew ? 1 : 0,
         content_json: {
-          account_info: formData.description,
+          account_requirements: formData.description,
           basic_information: formData.accountRequirements.basic_information ? 'true' : 'false',
           post_douyin: formData.accountRequirements.post_douyin ? 'true' : 'false',
           deblocking: formData.accountRequirements.deblocking ? 'true' : 'false',
@@ -382,9 +372,6 @@ const RentalRequestDetailPage = () => {
           other_require: formData.loginMethods.other_require ? 'true' : 'false',
           platform_type: formData.platformType,
           images: formData.accountImages, // 直接使用上传后的图片URL列表
-          phone_number: formData.phone,
-          qq_number: formData.qq || '',
-          email: formData.email || ''
         }
       };
       
@@ -437,7 +424,7 @@ const RentalRequestDetailPage = () => {
       <div className="px-4 py-2">
         <div className="bg-blue-50 border border-blue-200 p-2">
               <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
-              <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
+              <div className="text-red-700 text-sm mb-1">风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归账号信息。原主需要自行解除账号风控。</div>
         </div>
       </div>
 
@@ -704,18 +691,6 @@ const RentalRequestDetailPage = () => {
                 登录方式（可多选） <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
-                {/* QQ特有的登录方式 */}
-                {formData.platformType === 'qq' && (
-                  <button
-                    type="button"
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.account_password ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
-                    onClick={() => isEditMode && handleTagClick('loginMethods', 'account_password')}
-                    disabled={!isEditMode}
-                  >
-                    账号密码
-                  </button>
-                )}
-                
                 {/* 抖音和QQ都显示的登录方式 */}
                 <button
                   type="button"
@@ -733,13 +708,21 @@ const RentalRequestDetailPage = () => {
                 >
                   短信验证
                 </button>
+                  <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.account_password ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  onClick={() => isEditMode && handleTagClick('loginMethods', 'other_require')}
+                  disabled={!isEditMode}
+                >
+                  账号密码
+                </button>
                 <button
                   type="button"
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.loginMethods.other_require ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                   onClick={() => isEditMode && handleTagClick('loginMethods', 'other_require')}
                   disabled={!isEditMode}
                 >
-                  按租赁方要求
+                  不登录，按承租方需求修改账户相关方要求
                 </button>
               </div>
               <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高账号出租概率。</div>
@@ -758,46 +741,10 @@ const RentalRequestDetailPage = () => {
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="请输入手机号"
                   className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.phone ? 'border-red-500' : ''}`}
-                  disabled={!isEditMode}
+                  disabled={true}
                 />
                 {errors.phone && (
                   <p className="text-red-500 text-sm">{errors.phone}</p>
-                )}
-              </div>
-              
-              {/* QQ号 */}
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  QQ号（选填）
-                </label>
-                <input
-                  type="text"
-                  value={formData.qq}
-                  onChange={(e) => handleInputChange('qq', e.target.value)}
-                  placeholder="请输入QQ号"
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.qq ? 'border-red-500' : ''}`}
-                  disabled={!isEditMode}
-                />
-                {errors.qq && (
-                  <p className="text-red-500 text-sm">{errors.qq}</p>
-                )}
-              </div>
-              
-              {/* 邮箱 */}
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  邮箱（选填）
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="请输入邮箱地址"
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : ''}`}
-                  disabled={!isEditMode}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email}</p>
                 )}
               </div>
             </div>

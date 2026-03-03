@@ -27,8 +27,6 @@ const RentalOfferPage = () => {
       // 构建URL，添加查询参数my=1
       const apiUrl = '/api/rental/requestRental/getRequestRentalMarketList?my=1';
 
-      console.log('发送API请求:', apiUrl);
-
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -41,20 +39,15 @@ const RentalOfferPage = () => {
       }
 
       const data = await response.json();
-      console.log('API响应数据:', data);
-      console.log('响应结果：', data.code);
-      console.log('要设置的数据', data.data?.list);
 
       if (data.code === 0) {
         const offers = data.data?.list || [];
-        console.log('判断data.code===0为true;要设置的数据', offers);
         setRentalOffers(offers);
       } else {
         setError(data.message || '获取出租信息失败');
       }
     } catch (err) {
       setError('获取出租信息失败，请稍后重试');
-      console.error('获取出租信息失败:', err);
     } finally {
       setLoading(false);
     }
@@ -84,7 +77,6 @@ const RentalOfferPage = () => {
 
   // 处理选项卡切换
   const handleTabChange = (key: string) => {
-    console.log('当前点击的选项卡的状态:', key);
     setActiveTab(key);
     setError(null);
   };
@@ -98,18 +90,15 @@ const RentalOfferPage = () => {
   const handleFilterConfirm = () => {
     setFilterModalVisible(false);
     // 更新本地求租信息列表
-    console.log('应用筛选条件');
   };
 
   // 处理联系客服
   const handleContactService = (offerId: string) => {
-    console.log('联系客服，出租ID:', offerId);
     alert('即将为您连接客服，请稍候...');
   };
 
   // 上下架求租信息
   const toggleOfferStatus = async (offerId: number, status: number) => {
-    console.log("点击上下架按钮。传递id:", offerId, "状态:", status);
     try {
       const response = await fetch('/api/rental/requestRental/toggleRequestRentalInfoStatus', {
         method: 'POST',
@@ -124,11 +113,8 @@ const RentalOfferPage = () => {
 
       const data = await response.json();
 
-      console.log('上下架求租信息响应数据:', data);
 
       if (data.code === 0) {
-        console.log("状态修改成功", data.data.status_text);
-        console.log("状态修改成功", data.data.status);
         message.success({ content: data.data.status_text, style: { top: '30%', fontSize: '18px', padding: '16px 24px' }, duration: 3 });
         // 更新本地求租信息列表
         setRentalOffers(prevOffers => {
@@ -148,7 +134,6 @@ const RentalOfferPage = () => {
       }
     } catch (err) {
       message.error({ content: '状态修改失败，请稍后重试', style: { top: '30%', fontSize: '18px', padding: '16px 24px' }, duration: 3 });
-      console.error('上下架求租信息失败:', err);
     }
   };
 
@@ -206,7 +191,7 @@ const RentalOfferPage = () => {
       <Link href={`/rental/my/myrelearrequestrentalinfo/detail/${offer.id}?edit=0`} key={offer.id}>
         <Card className="border-0 rounded-none mb-3 cursor-pointer hover:shadow-md transition-shadow">
           {/* 求租头部信息 */}
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <h2 className="text-lg text-black truncate">{offer.title}</h2>
             <span className="text-sm text-red-500">{offer.status_text}</span>
           </div>
@@ -214,23 +199,23 @@ const RentalOfferPage = () => {
           {/* 求租详细信息 - 左右结构，同一行显示，垂直居中 */}
           <div className="">
             {/* 筛选项标签展示 */}
-            <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-hidden">
+            <div className="flex flex-wrap gap-1 mb-1 max-h-[50px] overflow-hidden">
               {(() => {
                 const tags = [];
                 const contentJson = offer.requirements_json || {};
 
                 // 账号要求标签
-                if (contentJson.basic_information === 'true') tags.push('修改基本信息');
-                if (contentJson.post_douyin === 'true') tags.push('发布抖音');
-                if (contentJson.post_ad === 'true') tags.push('发布广告');
-                if (contentJson.deblocking === 'true') tags.push('账号解禁');
-                if (contentJson.identity_verification === 'true') tags.push('实名认证');
+                if (contentJson.basic_information) tags.push('修改基本信息');
+                if (contentJson.post_douyin) tags.push('发布抖音');
+                if (contentJson.post_ad) tags.push('发布广告');
+                if (contentJson.deblocking) tags.push('账号解禁');
+                if (contentJson.identity_verification) tags.push('实名认证');
 
                 // 登录方式标签
-                if (contentJson.scan_code === 'true') tags.push('扫码登录');
-                if (contentJson.phone_message === 'true') tags.push('短信验证');
-                if (contentJson.account_password === 'true') tags.push('账号密码');
-                if (contentJson.other_require === 'true') tags.push('不登录，按承租方需求修改账户相关方要求');
+                if (contentJson.scan_code) tags.push('扫码登录');
+                if (contentJson.phone_message) tags.push('短信验证');
+                if (contentJson.account_password) tags.push('账号密码');
+                if (contentJson.other_require) tags.push('按租赁方要求');
 
                 // 最多显示6个标签
                 return tags.slice(0, 6).map((tag, tagIndex) => (
@@ -240,19 +225,21 @@ const RentalOfferPage = () => {
                 ));
               })()}
             </div>
-            <div className="text-sm ml-auto">
+            <div className="text-xs">
               {offer.requirements_json.platform_type && (
-                <span className={`px-5 py-1 rounded-full text-sm bg-blue-100 text-blue-600 mr-3`}>
+                <span className={`px-2 py-0.5 rounded-full text-sm bg-blue-100 text-blue-600 mr-3`}>
                   {offer.requirements_json.platform_type === 'douyin' ? '抖音' : offer.requirements_json.platform_type === 'qq' ? 'QQ' : '抖音'}
                 </span>
               )}
-              <span>租期: {offer.days_needed} 天</span>
-              <span>申请人数: {offer.application_count}</span>
+              <span className='mr-3 text-gray-600'>期望租期:{offer.days_needed}天</span>
+              <span className='mr-3 text-gray-600 '>申请人数:{offer.application_count}</span>
+              <span className="text-gray-600">截止时间: {formatDate(offer.deadline_datetime).split(' ')[0]}</span>
             </div>
             <div className="flex items-center justify-between mt-1">
               <h2 className="text-xl text-red-500 truncate">预算: {offer.budget_amount_yuan} 元/天</h2>
-              <span className="text-sm ">截止时间: {offer.deadline_datetime}</span>
+              
             </div>
+            
           </div>
           {/* 按钮区域 */}
           <div className="flex justify-end items-center mt-1">
@@ -324,7 +311,7 @@ const RentalOfferPage = () => {
   return (
     <div className="min-h-screen bg-gray-100 px-3 pt-8">
       {/* 选项卡区域 - 包含状态选项和筛选按钮 */}
-      <div className="flex flex-row mb-2 items-center">
+      <div className="flex flex-row mb-1 items-center">
         {/* 左侧选项按钮区域 - 90%宽度，支持左右滑动 */}
         <div className=" p-2">
           <div
@@ -398,7 +385,7 @@ const RentalOfferPage = () => {
         <ConfigProvider locale={zhCN}>
           <div>
             <div>
-              <h4 className="text-sm text-black mb-2">时间区间</h4>
+              <h4 className="text-sm text-black mb-1">时间区间</h4>
               <Radio.Group className="w-full">
                 <Space orientation="vertical" className="w-full">
                   <Radio value="1">1个月内</Radio>

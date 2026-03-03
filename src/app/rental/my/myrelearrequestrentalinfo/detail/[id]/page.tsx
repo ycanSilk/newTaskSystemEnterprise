@@ -21,10 +21,10 @@ interface RentalRequestDetailResponse {
     requested_all: string;
     phone_message: string;
     scan_code: string;
-    qq_number: string;
+    post_ad: string;
+    account_password: string;
     phone_number: string;
-    email: string;
-    additional_requirements: string;
+
   };
   status: string;
   createTime: string;
@@ -52,6 +52,7 @@ const RentalRequestDetailPage: React.FC = () => {
     days_needed: 1,
     deadline: 0,
     requirements_json: {
+      account_password: 'false',
       account_requirements: '',
       basic_information: 'false',
       other_requirements: 'false',
@@ -61,10 +62,8 @@ const RentalRequestDetailPage: React.FC = () => {
       requested_all: 'false',
       phone_message: 'false',
       scan_code: 'false',
-      qq_number: '',
       phone_number: '',
-      email: '',
-      additional_requirements: ''
+      post_ad: 'false',
     },
     status: '',
     createTime: ''
@@ -94,7 +93,7 @@ const RentalRequestDetailPage: React.FC = () => {
         const apiData = responseData.data;
         console.log('API原始数据:', apiData);
         
-        // 确保所有字段都被正确设置，包括字符串布尔值字段
+        // 确保所有字段都被正确设置，包括布尔值字段
         const finalData: RentalRequestDetailResponse = {
           id: apiData.id || '',
           userId: apiData.userId || '',
@@ -103,19 +102,18 @@ const RentalRequestDetailPage: React.FC = () => {
           days_needed: apiData.days_needed || 1,
           deadline: apiData.deadline || 0,
           requirements_json: {
+            account_password: apiData.requirements_json?.account_password ? 'true' : 'false',
             account_requirements: apiData.requirements_json?.account_requirements || '',
-            basic_information: apiData.requirements_json?.basic_information === 1 ? 'true' : 'false',
-            other_requirements: apiData.requirements_json?.other_requirements === 1 ? 'true' : 'false',
-            deblocking: apiData.requirements_json?.deblocking === 1 ? 'true' : 'false',
-            post_douyin: apiData.requirements_json?.post_douyin === 1 ? 'true' : 'false',
-            additional_requirements_tag: apiData.requirements_json?.additional_requirements_tag === 1 ? 'true' : 'false',
-            requested_all: apiData.requirements_json?.requested_all === 1 ? 'true' : 'false',
-            phone_message: apiData.requirements_json?.phone_message === 1 ? 'true' : 'false',
-            scan_code: apiData.requirements_json?.scan_code === 1 ? 'true' : 'false',
-            qq_number: apiData.requirements_json?.qq_number || '',
+            basic_information: apiData.requirements_json?.basic_information ? 'true' : 'false',
+            other_requirements: apiData.requirements_json?.other_requirements ? 'true' : 'false',
+            deblocking: apiData.requirements_json?.deblocking ? 'true' : 'false',
+            post_douyin: apiData.requirements_json?.post_douyin ? 'true' : 'false',
+            additional_requirements_tag: apiData.requirements_json?.additional_requirements_tag ? 'true' : 'false',
+            requested_all: apiData.requirements_json?.requested_all ? 'true' : 'false',
+            phone_message: apiData.requirements_json?.phone_message ? 'true' : 'false',
+            scan_code: apiData.requirements_json?.scan_code ? 'true' : 'false',
             phone_number: apiData.requirements_json?.phone_number || '',
-            email: apiData.requirements_json?.email || '',
-            additional_requirements: apiData.requirements_json?.additional_requirements || ''
+            post_ad: apiData.requirements_json?.post_ad ? 'true' : 'false',
           },
           status: String(apiData.status || ''),
           createTime: String(apiData.createTime || ''),
@@ -167,22 +165,9 @@ const RentalRequestDetailPage: React.FC = () => {
     if (!formData.requirements_json.account_requirements?.trim()) {
       newErrors.account_requirements = '描述不能为空';
     }
-    
-    // QQ号码验证
-    if (!formData.requirements_json.qq_number?.trim()) {
-      newErrors.qq = '请输入QQ号码';
-    } else if (!/^[1-9]\d{4,10}$/.test(formData.requirements_json.qq_number)) {
-      newErrors.qq = '请输入有效的QQ号码';
-    }
-    
     // 手机号验证（选填）
     if (formData.requirements_json.phone_number?.trim() && !/^1[3-9]\d{9}$/.test(formData.requirements_json.phone_number)) {
       newErrors.phone_number = '请输入有效的手机号';
-    }
-    
-    // 邮箱验证（选填）
-    if (formData.requirements_json.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.requirements_json.email)) {
-      newErrors.email = '请输入有效的邮箱地址';
     }
     
     setErrors(newErrors);
@@ -276,10 +261,10 @@ const RentalRequestDetailPage: React.FC = () => {
         requested_all: formData.requirements_json.requested_all,
         phone_message: formData.requirements_json.phone_message,
         scan_code: formData.requirements_json.scan_code,
-        qq_number: formData.requirements_json.qq_number,
         phone_number: formData.requirements_json.phone_number,
-        email: formData.requirements_json.email,
-        additional_requirements: formData.requirements_json.additional_requirements
+        post_ad: formData.requirements_json.post_ad,
+        account_password: formData.requirements_json.account_password,
+
       }
     };
     
@@ -485,45 +470,7 @@ const RentalRequestDetailPage: React.FC = () => {
                   <p className="text-red-500 text-sm">{errors.phone_number}</p>
                 )}
               </div>
-              
-              {/* 邮箱 */}
-              <div className="space-y-1">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  邮箱（选填）
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.requirements_json.email}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : ''}`}
-                  placeholder="请输入邮箱地址"
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email}</p>
-                )}
-              </div>
-              
-              {/* QQ */}
-              <div className="space-y-1">
-                <label htmlFor="qq" className="block text-sm font-medium text-gray-700 mb-1">
-                  QQ号码 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="qq"
-                  name="qq"
-                  value={formData.requirements_json.qq_number}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${errors.qq ? 'border-red-500' : ''}`}
-                  placeholder="请输入QQ号码"
-                  required
-                />
-                {errors.qq && (
-                  <p className="text-red-500 text-sm">{errors.qq}</p>
-                )}
-              </div>
+    
               
               {/* 账号要求 */}
               <div className="space-y-3">
@@ -561,6 +508,13 @@ const RentalRequestDetailPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.post_ad === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleTagClick('post_ad')}
+                  >
+                    发布广告
+                  </button>
+                  <button
+                    type="button"
                     className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.additional_requirements_tag === 'true' ? 'bg-blue-100 text-blue-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('additional_requirements_tag')}
                   >
@@ -569,26 +523,7 @@ const RentalRequestDetailPage: React.FC = () => {
                 </div>
                 <div className='text-sm text-gray-600'>选择的要求越多，匹配到合适账号的概率越大。</div>
               </div>
-              
-              {/* 其他要求 */}
-              {formData.requirements_json.additional_requirements_tag === 'true' && (
-                <div className="space-y-1">
-                  <label htmlFor="additional_requirements" className="block text-sm font-medium text-gray-700 mb-1">
-                    其他要求（选填）
-                  </label>
-                  <textarea
-                    id="additional_requirements"
-                    name="additional_requirements"
-                    value={formData.requirements_json.additional_requirements}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    style={{ height: 80, width: '100%' }}
-                    placeholder="请输入其他特殊要求"
-                    maxLength={100}
-                  />
-                </div>
-              )}
-              
+          
               {/* 登录方式 */}
               <div className="space-y-3 mt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -611,10 +546,17 @@ const RentalRequestDetailPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.account_password === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    onClick={() => handleTagClick('account_password')}
+                  >
+                    账号密码
+                  </button>
+                  <button
+                    type="button"
                     className={`px-3 py-1.5 rounded-full text-sm transition-colors ${formData.requirements_json.requested_all === 'true' ? 'bg-green-100 text-green-800' : 'bg-gray-300 hover:bg-gray-200'}`}
                     onClick={() => handleTagClick('requested_all')}
                   >
-                    按租赁方要求
+                    不登录，按承租方需求修改账户相关方要求
                   </button>
                 </div>
                 <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高匹配概率。</div>
@@ -697,21 +639,14 @@ const RentalRequestDetailPage: React.FC = () => {
                     {formData.requirements_json.post_douyin === 'true' && (
                       <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">发布抖音</span>
                     )}
+                    {formData.requirements_json.post_ad === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">发布广告</span>
+                    )}
                     {formData.requirements_json.additional_requirements_tag === 'true' && (
                       <span className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-800">其他</span>
                     )}
-                    {formData.requirements_json.additional_requirements && (
-                      <div className="w-full mt-2 space-y-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          其他要求
-                        </label>
-                        <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
-                          {formData.requirements_json.additional_requirements}
-                        </div>
-                      </div>
-                    )}
                     {!formData.requirements_json.basic_information && !formData.requirements_json.deblocking && !formData.requirements_json.other_requirements && 
-                     !formData.requirements_json.post_douyin && !formData.requirements_json.additional_requirements_tag && (
+                     !formData.requirements_json.post_douyin && !formData.requirements_json.post_ad && !formData.requirements_json.additional_requirements_tag && (
                       <span className="text-sm text-gray-500">暂无账号要求选项</span>
                     )}
                   </div>
@@ -729,10 +664,13 @@ const RentalRequestDetailPage: React.FC = () => {
                     {formData.requirements_json.phone_message === 'true' && (
                       <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">短信验证</span>
                     )}
+                    {formData.requirements_json.account_password === 'true' && (
+                      <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">账号密码</span>
+                    )}
                     {formData.requirements_json.requested_all === 'true' && (
                       <span className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800">按租赁方要求</span>
                     )}
-                    {!formData.requirements_json.scan_code && !formData.requirements_json.phone_message && !formData.requirements_json.requested_all && (
+                    {!formData.requirements_json.scan_code && !formData.requirements_json.phone_message && !formData.requirements_json.account_password && !formData.requirements_json.requested_all && (
                       <span className="text-sm text-gray-500">暂无登录方式选项</span>
                     )}
                   </div>
@@ -740,9 +678,6 @@ const RentalRequestDetailPage: React.FC = () => {
                 
                 {/* 联系方式 */}
                 <div className="space-y-1 mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    联系方式
-                  </label>
                   {/* 手机号 */}
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -750,26 +685,6 @@ const RentalRequestDetailPage: React.FC = () => {
                     </label>
                     <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
                       {formData.requirements_json.phone_number || '未设置'}
-                    </div>
-                  </div>
-                  
-                  {/* QQ号 */}
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      QQ号码
-                    </label>
-                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
-                      {formData.requirements_json.qq_number || '未设置'}
-                    </div>
-                  </div>
-                  
-                  {/* 邮箱 */}
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      邮箱
-                    </label>
-                    <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
-                      {formData.requirements_json.email || '未设置'}
                     </div>
                   </div>
                 </div>
