@@ -687,7 +687,7 @@ export default function PublisherFinancePage() {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
+        
         onClose={() => setShowAlertModal(false)}
         onButtonClick={handleAlertButtonClick}
       />

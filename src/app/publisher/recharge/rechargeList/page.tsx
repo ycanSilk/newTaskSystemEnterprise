@@ -565,7 +565,7 @@ export default function PublisherTransactionsPage() {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
+        
         onClose={handleAlertClose}
       />
     </div>

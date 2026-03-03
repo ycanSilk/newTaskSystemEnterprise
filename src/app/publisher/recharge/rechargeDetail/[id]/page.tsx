@@ -136,7 +136,7 @@ const TransactionDetailComponent: React.FC<{
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
+        
         onClose={onAlertClose}
       />
     </div>

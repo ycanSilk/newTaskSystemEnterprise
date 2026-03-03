@@ -239,7 +239,7 @@ const TransactionDetailTemplate: React.FC<TransactionDetailTemplateProps> = ({
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
+        
         onClose={onAlertClose}
       />
     </div>

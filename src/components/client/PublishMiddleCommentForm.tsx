@@ -467,7 +467,7 @@ const PublishMiddleCommentForm = () => {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
+        
         buttonText={alertConfig.buttonText}
         onClose={() => setShowAlertModal(false)}
         onButtonClick={() => {
