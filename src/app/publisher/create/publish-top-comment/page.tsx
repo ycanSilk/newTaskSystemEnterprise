@@ -4,6 +4,8 @@ import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
+import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+
 import {
   PublishTaskFormData,
   PublishSingleTaskRequest,
@@ -11,6 +13,14 @@ import {
 } from '@/app/types/task/publishSingleTaskTypes';
 
 export default function PublishTaskPage() {
+
+    // 状态管理 - 只保留必要的UI状态
+  const [showModal, setShowModal] = useState(false); // 控制模态框显示
+  const [modalMessage, setModalMessage] = useState(''); // 模态框消息内容
+  const [selectedImage, setSelectedImage] = useState<string | null>(null); // 用于放大查看的图片URL
+  const [currentTemplateId, setCurrentTemplateId] = useState<number | null>(null); // 当前任务的template_id
+  const [showTaskAssistance, setShowTaskAssistance] = useState(false); // 控制任务帮助模态框显示
+
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -76,7 +86,23 @@ export default function PublishTaskPage() {
   };
 
   // 任务数量变化处理 - 允许1-10个任务
-  const handleQuantityChange = (newQuantity: number) => {
+  const [quantityInput, setQuantityInput] = useState(formData.quantity.toString());
+  
+  const handleQuantityChange = (newQuantityStr: string) => {
+    // 只允许输入数字
+    const cleanValue = newQuantityStr.replace(/[^0-9]/g, '');
+    setQuantityInput(cleanValue);
+    
+    // 如果输入为空，保持内部状态为1
+    if (!cleanValue) {
+      setFormData(prevData => ({
+        ...prevData,
+        quantity: 1 // 内部状态保持为1，确保其他逻辑正常
+      }));
+      return;
+    }
+    
+    const newQuantity = parseInt(cleanValue);
     // 限制数量在1-10之间
     const quantity = Math.max(1, Math.min(10, newQuantity));
     
@@ -182,6 +208,8 @@ export default function PublishTaskPage() {
   // AI生成评论评论功能
   const handleAIPolishComments = async () => {
     try {
+      const commentCount = formData.comments.length;
+      
       // 获取第一个评论的内容作为提示词
       let firstComment = formData.comments[0]?.content || '';
       
@@ -205,29 +233,61 @@ export default function PublishTaskPage() {
       }
       
       setIsPublishing(true);
-      console.log('润色提示词:', firstComment);
-      const response = await fetch('/api/deepseek/polish', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ draft: firstComment }),
-      });
+      console.log('生成提示词:', firstComment);
       
-      const result = await response.json();
-      console.log('DeepSeek API 响应:', result);
-      if (!response.ok) throw new Error(result.error || '润色失败');
+      // 为每个评论生成不同的内容
+      const generatedComments: string[] = [];
+      
+      for (let i = 0; i < commentCount; i++) {
+        const response = await fetch('/api/deepseek/polish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            draft: firstComment, 
+            variation: i + 1 // 添加变化参数，确保生成不同的评论
+          }),
+        });
+        
+        const result = await response.json();
+        console.log(`DeepSeek API 响应 ${i + 1}:`, result);
+        if (!response.ok) throw new Error(result.error || '生成失败');
+        
+        // 确保评论不重复
+        let comment = result.polished || '';
+        while (generatedComments.includes(comment)) {
+          // 如果重复，重新生成
+          const retryResponse = await fetch('/api/deepseek/polish', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              draft: firstComment, 
+              variation: i + 1 + Math.random() // 添加随机值确保不同
+            }),
+          });
+          const retryResult = await retryResponse.json();
+          comment = retryResult.polished || '';
+        }
+        
+        generatedComments.push(comment);
+      }
+      
+      // 更新所有评论输入框
       setFormData(prevData => ({
         ...prevData,
-        comments: prevData.comments.map(comment => ({
+        comments: prevData.comments.map((comment, index) => ({
           ...comment,
-          content: result.polished || ''
+          content: generatedComments[index] || ''
         }))
       }));
-      showAlert('润色成功', '评论内容已通过AI生成评论！', '✨');
+      
+      showAlert('成功', `已为${commentCount}条评论生成内容！`, '✨');
     } catch (error) {
       console.error('AI生成评论评论失败:', error);
-      showAlert('润色失败', '网络错误，请稍后重试', 'error');
+      showAlert('生成失败', '网络错误，请稍后重试', 'error');
     } finally {
       setIsPublishing(false);
     }
@@ -262,6 +322,11 @@ export default function PublishTaskPage() {
     });
   }, [setFormData, setCommentImages, setCommentImageUrls]);
 
+  // 检查评论是否包含屏蔽词并返回具体的屏蔽词
+  const checkShieldWordsWithDetails = (content: string, shieldWords: string[]) => {
+    return shieldWords.filter(word => content.includes(word));
+  };
+
   // 发布任务
   const handlePublish = async () => {
     // 防止重复提交
@@ -269,20 +334,26 @@ export default function PublishTaskPage() {
       return;
     }
     
-    // 表单验证
+    // 1. 验证视频链接
     if (!formData.videoUrl.trim()) {
       showAlert('验证失败', '请输入抖音视频链接', 'error');
       return;
     }
     
-    // 验证评论内容
+    // 2. 验证截止时间
+    if (!formData.deadline) {
+      showAlert('验证失败', '请选择任务截止时间', 'error');
+      return;
+    }
+    
+    // 3. 验证评论内容
     const validComments = formData.comments.filter(comment => comment.content.trim() !== '');
     if (validComments.length === 0) {
       showAlert('验证失败', '请输入评论内容', 'error');
       return;
     }
     
-    // 验证任务数量
+    // 4. 验证任务数量
     if (!formData.quantity || formData.quantity < 1) {
       showAlert('验证失败', '请设置有效的任务数量', 'error');
       return;
@@ -292,16 +363,19 @@ export default function PublishTaskPage() {
       // 加载屏蔽词列表
       const shieldWords = await loadShieldWords();
       
-      // 检查评论是否包含屏蔽词
-      let hasShieldWords = false;
+      // 5. 检查评论是否包含屏蔽词
+      let foundShieldWords: string[] = [];
       formData.comments.forEach(comment => {
-        if (checkShieldWords(comment.content, shieldWords)) {
-          hasShieldWords = true;
+        const commentShieldWords = checkShieldWordsWithDetails(comment.content, shieldWords);
+        if (commentShieldWords.length > 0) {
+          foundShieldWords = [...foundShieldWords, ...commentShieldWords];
         }
       });
       
-      if (hasShieldWords) {
-        showAlert('验证失败', '评论中包含敏感词，请重新输入评论', 'error');
+      if (foundShieldWords.length > 0) {
+        // 去重并显示屏蔽词
+        const uniqueShieldWords = foundShieldWords.filter((word, index, self) => self.indexOf(word) === index);
+        showAlert('验证失败', `评论中包含敏感词: ${uniqueShieldWords.join('、')}，请重新输入评论`, 'error');
         return;
       }
       
@@ -396,17 +470,32 @@ export default function PublishTaskPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="px-4 py-3 space-y-4">
+      <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
           发布上评评论
         </h1>
-
+        <div className="ml-5">
+          <button 
+            onClick={() => setShowTaskAssistance(true)}
+            className="transition-colors flex items-center text-blue-600"
+          >
+            任务接单帮助
+          </button>
+        </div>
+         {/* 任务帮助模态框 */}
+        <TaskAssistance 
+          isOpen={showTaskAssistance} 
+          onClose={() => setShowTaskAssistance(false)} 
+        />
         <div className="text-lg pl-5 text-red-500">
-          <span className="text-1xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
+          <span className="text-1xl text-red-500">⚠️</span>派单禁止提示：<br />
+            1.作者有删除评论习惯的视频<br />
+            2.违反平台的：引导词，极限词，赌博以及其他限制词<br />
+            3.违反国家禁止的言论
         </div>
 
         {/* 视频链接 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-md px-4  py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             视频链接 <span className="text-red-500">*</span>
           </label>
@@ -419,7 +508,7 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 截止时间 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-md px-4  py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务截止时间
           </label>
@@ -436,32 +525,41 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 评论内容 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">
+        <div className="bg-white rounded-md px-4  py-2 shadow-sm overflow-y-auto">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             评论内容
           </label>
           
           {/* AI优化评论功能按钮 */}
-          <div className="mb-4 flex justify-center space-x-4">
-          {/*
-            <Button 
-              onClick={() => handleAIGenerateComments()}
-              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 max-w-xs"
-            >
-              AI生成评论
-            </Button>
-            */}
+          <div className="mb-2 flex justify-center space-x-4">
             <Button 
               onClick={() => handleAIPolishComments()}
-              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 max-w-xs"
+              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 "
             >
               AI生成评论
             </Button>
           </div>
-          
+          {/* 任务数量 */}
+        <div className="bg-white rounded-md shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            任务数量 <span className="text-red-500">*</span>
+          </label>
+          <div className="flex-1">
+            <Input
+              type="text"
+              value={quantityInput}
+              onChange={(e) => handleQuantityChange(e.target.value)}
+              className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="请输入任务数量"
+            />
+          </div>
+          <div className="mt-2 text-sm text-gray-500">
+            上评任务单价为¥{taskPrice}，最多可发布10个任务
+          </div>
+        </div>
           {/* 动态渲染评论输入框 */}
           {formData.comments.map((comment, index) => (
-            <div key={index} className="mb-4 py-2 border-b border-gray-200 last:border-b-0">
+            <div key={index} className="mb-2 py-2 border-b border-gray-200 last:border-b-0">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 推荐评论 {index + 1}
               </label>
@@ -497,44 +595,10 @@ export default function PublishTaskPage() {
 
         </div>
 
-        {/* 任务数量 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务数量 <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => handleQuantityChange(formData.quantity - 1)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-colors ${formData.quantity <= 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-              disabled={formData.quantity <= 1}
-            >
-              -
-            </button>
-            <div className="flex-1">
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={formData.quantity}
-                onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <button 
-              onClick={() => handleQuantityChange(formData.quantity + 1)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-colors ${formData.quantity >= 10 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-              disabled={formData.quantity >= 10}
-            >
-              +
-            </button>
-          </div>
-          <div className="mt-2 text-sm text-gray-500">
-            上评任务单价为¥{taskPrice}，最多可发布10个任务
-          </div>
-        </div>
+        
 
         {/* 费用预览 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-md px-4  py-2 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
@@ -556,14 +620,14 @@ export default function PublishTaskPage() {
         <Button 
           onClick={handlePublish}
           disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing}
-          className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
+          className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md font-bold text-lg disabled:opacity-50"
         >
           发布任务 - ¥{totalCost}
         </Button>
         <Button 
           onClick={() => router.back()}
           variant="secondary"
-          className="w-full py-3 border border-gray-200 text-gray-700 rounded-2xl"
+          className="w-full py-3 border border-gray-200 text-gray-700 rounded-md"
         >
           取消
         </Button>
@@ -574,7 +638,6 @@ export default function PublishTaskPage() {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
         buttonText={alertConfig.buttonText}
         onButtonClick={() => {
           alertConfig.onButtonClick();

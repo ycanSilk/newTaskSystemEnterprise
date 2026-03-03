@@ -108,7 +108,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       
       {/* 上传状态 */}
       {uploadStatus && (
-        <div className="mb-4 p-2 bg-blue-50 text-blue-700 rounded-md">
+        <div className="mb-1 p-2 bg-blue-50 text-blue-700 rounded-md">
           {uploadStatus}
         </div>
       )}

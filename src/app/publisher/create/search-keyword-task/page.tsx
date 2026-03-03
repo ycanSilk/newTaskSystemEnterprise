@@ -269,7 +269,6 @@ export default function PublishSearchKeywordTaskPage() {
         isOpen={showAlert}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
         buttonText={alertConfig.buttonText}
         onButtonClick={() => {
           alertConfig.onButtonClick();

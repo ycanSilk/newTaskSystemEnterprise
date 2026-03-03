@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
+import config from '../config.json';
 
 const SENSITIVE_WORDS = ['违规词1', '违规词2']; // 按需扩展
 
 async function callDeepSeek(prompt: string): Promise<string> {
-  const apiKey = 'sk-0f35e0a14ee34eeda82422c7ffb1c02e';
-  const baseURL = 'https://api.deepseek.com';
-  const model = 'deepseek-chat';
+  const apiKey = config.apiKey;
+  const baseURL = config.baseURL;
+  const model = config.model;
 
   const response = await fetch(`${baseURL}/chat/completions`, {
     method: 'POST',

@@ -188,24 +188,7 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
               <div className="font-semibold text-lg mb-2 text-blue-800 flex items-center gap-2">
                 <span className="bg-blue-500 text-white text-sm font-semibold w-6 h-6 rounded-md flex items-center justify-center shadow-blue-200">Q</span>
                 为了避免封号可能，请仔细阅读并遵守以下的事项：
-              </div>
-              <div className="text-blue-900 leading-relaxed pl-8 relative">
-                <span className="absolute left-1.5 top-0 text-blue-500 font-semibold text-sm opacity-80">A</span>
-                <p><br/>              
-                  1. 交单后留意审核，不通过的及时删除评论<br/>
-                  2. 同一个抖音号隔开几分钟再单<br/>
-                  3. 看到任务评论有人做@就放弃此单<br/>
-                  4. 掉@掉评论 不能强做，放弃此单<br/>
-                  5. 1个号不要超过（8条）评论<br/>
-                  6. 特殊情况还是会有，尝试解封<br/>
-                  7. 新号要正常使用养3-5天再接单<br/>
-                  8. 平时不要给非任务的视频点赞和评论相关，会影响号和接单数量<br/>
-                  9. 被封号后解封，最少养号3-5天再进行接单<br/>
-                  10. 我们的文案不能有引导性的目的。不能乱发文案<br/>
-                  11. 我们自己下载了旧版抖音，就可以马上复制口令，如若复制不了，马上删掉，更改文案，再次如此马上休息养号。<br/>
-                  12. 多号时WiFi和数据换着用。
-                </p>
-              </div>
+              </div>             
             </div>
 
             {/* 任务做单方法 */}

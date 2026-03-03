@@ -203,7 +203,6 @@ export default function CreateTask() {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
         onClose={() => setShowAlertModal(false)}
       />
     </div>

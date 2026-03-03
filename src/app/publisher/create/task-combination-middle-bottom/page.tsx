@@ -4,6 +4,7 @@ import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
+import TaskAssistance from '@/components/taskAssistance/taskAssistance';
 import type {
   CommentData,
   FormData,
@@ -67,6 +68,9 @@ export default function PublishTaskPage() {
     ],
     deadline: '1440' // 存储分钟数，默认24小时
   });
+  
+  // 下评任务数量输入状态
+  const [middleQuantityInput, setMiddleQuantityInput] = useState(formData.middleQuantity.toString());
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
@@ -79,6 +83,9 @@ export default function PublishTaskPage() {
     buttonText: '确认',
     onButtonClick: () => {}
   });
+  
+  // 任务帮助模态框状态
+  const [showTaskAssistance, setShowTaskAssistance] = useState(false);
 
   // 显示通用提示框
   const showAlert = (
@@ -99,15 +106,30 @@ export default function PublishTaskPage() {
   };
 
   // 处理下评任务数量变化，实现与评论输入框的联动
-  const handleMiddleQuantityChange = (newQuantity: number) => {
+  const handleMiddleQuantityChange = (newQuantityStr: string) => {
+    // 只允许输入数字
+    const cleanValue = newQuantityStr.replace(/[^0-9]/g, '');
+    setMiddleQuantityInput(cleanValue);
+    
+    // 如果输入为空，保持内部状态为1
+    if (!cleanValue) {
+      setFormData((prevData: FormData) => ({
+        ...prevData,
+        middleQuantity: 1 // 内部状态保持为1，确保其他逻辑正常
+      }));
+      return;
+    }
+    
+    const newQuantity = parseInt(cleanValue);
     const quantity = Math.max(1, newQuantity); // 中评数量至少为1
+    
     setFormData((prevData: FormData) => {
       let newComments = [...prevData.middleComments];
       
       // 如果新数量大于现有评论数量，添加新评论
       while (newComments.length < quantity) {
         newComments.push({
-          comment: `🔺下评评论${newComments.length + 1}，请输入评论内容`,
+          comment: ``,
           image: null,
           imageUrl: ''
         });
@@ -285,26 +307,50 @@ export default function PublishTaskPage() {
       setIsPublishing(true);
       
       // 为每个提示词生成评论
-      const newComments: Array<{ comment: string; image: null; imageUrl: string }> = [];
-      for (const prompt of prompts) {
+      const generatedComments: string[] = [];
+      for (let i = 0; i < formData.middleQuantity; i++) {
         const response = await fetch('/api/deepseek/polish', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ draft: prompt }),
+          body: JSON.stringify({ 
+            draft: prompts[i], 
+            variation: i + 1 // 添加变化参数，确保生成不同的评论
+          }),
         });
         
         const result = await response.json();
-        console.log('DeepSeek API 响应:', result);
+        console.log(`DeepSeek API 响应 ${i + 1}:`, result);
         if (!response.ok) throw new Error(result.error || '润色失败');
         
-        newComments.push({
-          comment: result.polished || '',
-          image: null,
-          imageUrl: ''
-        });
+        // 确保评论不重复
+        let comment = result.polished || '';
+        while (generatedComments.includes(comment)) {
+          // 如果重复，重新生成
+          const retryResponse = await fetch('/api/deepseek/polish', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              draft: prompts[i], 
+              variation: i + 1 + Math.random() // 添加随机值确保不同
+            }),
+          });
+          const retryResult = await retryResponse.json();
+          comment = retryResult.polished || '';
+        }
+        
+        generatedComments.push(comment);
       }
+      
+      // 构建新的评论数组
+      const newComments: Array<{ comment: string; image: null; imageUrl: string }> = generatedComments.map(comment => ({
+        comment,
+        image: null,
+        imageUrl: ''
+      }));
       
       // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
       if (mentions.length > 0 && newComments.length > 0) {
@@ -471,8 +517,26 @@ export default function PublishTaskPage() {
           发布中下评评论
         </h1>
 
+        <div className="ml-5">
+          <button 
+            onClick={() => setShowTaskAssistance(true)}
+            className="transition-colors flex items-center text-blue-600"
+          >
+            任务接单帮助
+          </button>
+        </div>
+         {/* 任务帮助模态框 */}
+        <TaskAssistance 
+          isOpen={showTaskAssistance} 
+          onClose={() => setShowTaskAssistance(false)} 
+        />
         <div className="text-lg pl-5 text-red-500">
-          <span className="text-2xl text-red-500">⚠️</span>提示：发布评论需求请规避抖音平台敏感词，否则会无法完成任务导致浪费宝贵时间。
+          <span className="text-1xl text-red-500">⚠️</span>提示：<br />
+            1.违反平台的：引导词，极限词，赌博以及其他限制词<br />
+            2.违反国家禁止的言论<br />
+            3.本评论已经有人在做“广告@”<br />
+            4.发布上评的点开头像发现没有作品，没什么关注或者粉丝的假人号和新号
+            5.上评发布的时间不可低于15分钟
         </div>
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -580,6 +644,25 @@ export default function PublishTaskPage() {
               </Button>
             </div>
             
+            {/* 任务数量 */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                下评任务数量 <span className="text-red-500">*</span>
+              </label>
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  value={middleQuantityInput}
+                  onChange={(e) => handleMiddleQuantityChange(e.target.value)}
+                  className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="请输入任务数量"
+                />
+              </div>
+              <div className="mt-2 text-sm text-gray-500">
+                中评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
+              </div>
+            </div>
+            
             {/* 动态生成下评评论输入框 */}
             {formData.middleComments.map((comment: CommentData, index: number) => {
               return (
@@ -662,38 +745,7 @@ export default function PublishTaskPage() {
           )}
         </div>
 
-        {/* 任务数量 - 移至评论区域下方 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              下评任务数量 <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => handleMiddleQuantityChange(Math.max(1, formData.middleQuantity - 1))}
-                className="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center text-lg font-bold transition-colors"
-              >
-                -
-              </button>
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  min="1"
-                  value={formData.middleQuantity.toString()}
-                  onChange={(e) => handleMiddleQuantityChange(parseInt(e.target.value) || 1)}
-                  className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <button 
-                onClick={() => handleMiddleQuantityChange(formData.middleQuantity + 1)}
-                className="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center text-lg font-bold transition-colors"
-              >
-                +
-              </button>
-            </div>
-            <div className="mt-2 text-sm text-gray-500">
-              中评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
-            </div>
-          </div>
+
 
         {/* 费用预览 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">         
@@ -727,7 +779,6 @@ export default function PublishTaskPage() {
         isOpen={showAlertModal}
         title={alertConfig.title}
         message={alertConfig.message}
-        icon={alertConfig.icon}
         buttonText={alertConfig.buttonText}
         onButtonClick={() => {
           alertConfig.onButtonClick();
