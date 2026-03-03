@@ -237,8 +237,7 @@ const RentalOfferPage = () => {
                   if (contentJson.scan_code === 'true') tags.push('扫码登录');
                   if (contentJson.phone_message === 'true') tags.push('短信验证');
                   if (contentJson.account_password === 'true') tags.push('账号密码');
-                  if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
-
+                  if (contentJson.other_require === 'true') tags.push('不登录，按承租方需求修改账户相关方要求');
                   // 最多显示6个标签
                   return tags.slice(0, 6).map((tag, tagIndex) => (
                     <span key={tagIndex} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">

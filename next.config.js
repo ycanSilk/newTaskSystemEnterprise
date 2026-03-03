@@ -93,7 +93,9 @@ const nextConfig = {
           // 开启严格的传输安全策略
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           // 禁用浏览器默认的内容安全策略
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://54.179.253.64:28806; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
+          { 
+              key: 'Content-Security-Policy', 
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://54.179.253.64:28806 https://api.kktaskpaas.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
         ],
       },
       {

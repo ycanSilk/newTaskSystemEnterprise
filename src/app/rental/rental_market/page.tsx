@@ -159,7 +159,7 @@ export default function AccountRentalMarketPage() {
             case 'account_password':
               return contentJson.account_password === 'true';
             case 'other_require':
-              return contentJson.requested_all === 'true';
+              return contentJson.other_require === 'true';
             default:
               return false;
           }
@@ -180,9 +180,9 @@ export default function AccountRentalMarketPage() {
         const timeB = new Date(b.created_at || '').getTime();
         return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       } else if (sortBy === 'price') {
-        // 按价格排序
-        const priceA = typeof a.price_per_day_yuan === 'number' ? a.price_per_day_yuan : 0;
-        const priceB = typeof b.price_per_day_yuan === 'number' ? b.price_per_day_yuan : 0;
+        // 按价格排序，确保转换为数字类型
+        const priceA = (a.price_per_day_yuan) ;
+        const priceB = (b.price_per_day_yuan) ;
         return sortOrder === 'desc' ? priceB - priceA : priceA - priceB;
       }
       return 0;
@@ -403,10 +403,10 @@ export default function AccountRentalMarketPage() {
                             if (contentJson.scan_code === 'true') tags.push('扫码登录');
                             if (contentJson.phone_message === 'true') tags.push('短信验证');
                             if (contentJson.account_password === 'true') tags.push('账号密码');
-                            if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
+                            if (contentJson.other_require === 'true') tags.push('不登录，按承租方需求修改账户相关方要求');
                             
                             // 最多显示6个标签
-                            return tags.slice(0, 6).map((tag, tagIndex) => (
+                            return tags.slice(0, 10).map((tag, tagIndex) => (
                               <span key={tagIndex} className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
                                 {tag}
                               </span>
@@ -474,10 +474,10 @@ export default function AccountRentalMarketPage() {
                             if (contentJson.scan_code === 'true') tags.push('扫码登录');
                             if (contentJson.phone_message === 'true') tags.push('短信验证');
                             if (contentJson.account_password === 'true') tags.push('账号密码');
-                            if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
+                            if (contentJson.other_require === 'true') tags.push('不登录，按承租方需求修改账户相关方要求');
                             
                             // 最多显示6个标签
-                            return tags.slice(0, 6).map((tag, tagIndex) => (
+                            return tags.slice(0, 10).map((tag, tagIndex) => (
                               <span key={tagIndex} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
                                 {tag}
                               </span>
@@ -580,19 +580,8 @@ export default function AccountRentalMarketPage() {
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         platformType: {
-                          douyin: true,
-                          qq: false
-                        },
-                        // 重置其他筛选选项
-                        accountSupport: {
-                          ...prev.accountSupport,
-                          post_douyin: false,
-                          post_ad: false
-                        },
-                        loginMethods: {
-                          ...prev.loginMethods,
-                          phone_message: false,
-                          account_password: false
+                          ...prev.platformType,
+                          douyin: !prev.platformType.douyin
                         }
                       }))}
                     >
@@ -603,19 +592,8 @@ export default function AccountRentalMarketPage() {
                       onClick={() => setFilterOptions(prev => ({
                         ...prev,
                         platformType: {
-                          douyin: false,
-                          qq: true
-                        },
-                        // 重置其他筛选选项
-                        accountSupport: {
-                          ...prev.accountSupport,
-                          post_douyin: false,
-                          post_ad: false
-                        },
-                        loginMethods: {
-                          ...prev.loginMethods,
-                          phone_message: false,
-                          account_password: false
+                          ...prev.platformType,
+                          qq: !prev.platformType.qq
                         }
                       }))}
                     >
@@ -628,39 +606,30 @@ export default function AccountRentalMarketPage() {
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">账号支持:</h4>
                   <div className="flex flex-wrap gap-2">
-                    {/* 抖音平台特有标签 */}
-                    {filterOptions.platformType.douyin && (
-                      <button
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                        onClick={() => setFilterOptions(prev => ({
-                          ...prev,
-                          accountSupport: {
-                            ...prev.accountSupport,
-                            post_douyin: !prev.accountSupport.post_douyin
-                          }
-                        }))}
-                      >
-                        发布抖音
-                      </button>
-                    )}
-                    
-                    {/* QQ平台特有标签 */}
-                    {filterOptions.platformType.qq && (
-                      <button
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                        onClick={() => setFilterOptions(prev => ({
-                          ...prev,
-                          accountSupport: {
-                            ...prev.accountSupport,
-                            post_ad: !prev.accountSupport.post_ad
-                          }
-                        }))}
-                      >
-                        发布广告
-                      </button>
-                    )}
-                    
-                    {/* 通用标签 */}
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_douyin ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_douyin: !prev.accountSupport.post_douyin
+                        }
+                      }))}
+                    >
+                      发布抖音
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.post_ad ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        accountSupport: {
+                          ...prev.accountSupport,
+                          post_ad: !prev.accountSupport.post_ad
+                        }
+                      }))}
+                    >
+                      发布广告
+                    </button>
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.accountSupport.identity_verification ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -705,7 +674,6 @@ export default function AccountRentalMarketPage() {
                 <div className="mb-6">
                   <h4 className="font-medium mb-3 text-gray-700">登录方式:</h4>
                   <div className="flex flex-wrap gap-2">
-                    {/* 通用标签 */}
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.scan_code ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -718,39 +686,30 @@ export default function AccountRentalMarketPage() {
                     >
                       扫码登录
                     </button>
-                    
-                    {/* 抖音平台特有标签 */}
-                    {filterOptions.platformType.douyin && (
-                      <button
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                        onClick={() => setFilterOptions(prev => ({
-                          ...prev,
-                          loginMethods: {
-                            ...prev.loginMethods,
-                            phone_message: !prev.loginMethods.phone_message
-                          }
-                        }))}
-                      >
-                        短信验证
-                      </button>
-                    )}
-                    
-                    {/* QQ平台特有标签 */}
-                    {filterOptions.platformType.qq && (
-                      <button
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
-                        onClick={() => setFilterOptions(prev => ({
-                          ...prev,
-                          loginMethods: {
-                            ...prev.loginMethods,
-                            account_password: !prev.loginMethods.account_password
-                          }
-                        }))}
-                      >
-                        账号密码
-                      </button>
-                    )}
-                    
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.phone_message ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          phone_message: !prev.loginMethods.phone_message
+                        }
+                      }))}
+                    >
+                      短信验证
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.account_password ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+                      onClick={() => setFilterOptions(prev => ({
+                        ...prev,
+                        loginMethods: {
+                          ...prev.loginMethods,
+                          account_password: !prev.loginMethods.account_password
+                        }
+                      }))}
+                    >
+                      账号密码
+                    </button>
                     <button
                       className={`px-3 py-1 rounded-full text-sm transition-colors ${filterOptions.loginMethods.other_require ? 'bg-orange-100 text-orange-600 border border-orange-300' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}
                       onClick={() => setFilterOptions(prev => ({
@@ -761,7 +720,7 @@ export default function AccountRentalMarketPage() {
                         }
                       }))}
                     >
-                      按租赁方要求
+                      不登录，按承租方需求修改账户相关
                     </button>
                   </div>
                 </div>

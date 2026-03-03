@@ -2,16 +2,26 @@
 
 // 求租要求JSON数据接口
 export interface RequirementsJson {
-  email: string;
-  qq_number: string;
-  deblocking: number;
-  phone_number: string;
-  phone_message: number;
-  requested_all: number;
-  scan_code_login: number;
-  basic_information: number;
-  other_requirements: number;
-  account_requirements: string;
+account_info: string;
+    basic_information: string;//支持修改账号基本信息
+    post_douyin: string;//发布抖音
+    deblocking: string;//需要人脸验证解封
+    identity_verification: string;//需要实名认证
+    scan_code: string;//扫码登录
+    phone_message: string;//手机号+短信验证登录
+    other_require: string;//按承租方要求登录
+
+    platform_type: string;//平台类型（抖音或QQ）
+
+    images: string[];//求租图片
+
+    phone_number: string;//联系方式：手机号
+
+    post_ad: string;//发布广告（QQ）
+
+    account_password: string;//账号密码登录（QQ）
+
+    account_requirements: string;//求租信息详情描速
 }
 
 // 求租信息详情数据接口
@@ -35,6 +45,7 @@ export interface RequestRentalInfoDetail {
   created_at: string;
   updated_at: string;
   is_owner: boolean;
+  application_count: number;
 }
 
 // API响应数据接口

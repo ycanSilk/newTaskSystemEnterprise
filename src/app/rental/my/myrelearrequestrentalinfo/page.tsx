@@ -210,7 +210,7 @@ const RentalOfferPage = () => {
             <h2 className="text-lg text-black truncate">{offer.title}</h2>
             <span className="text-sm text-red-500">{offer.status_text}</span>
           </div>
-          <div>{offer.requirements_json.account_info}</div>
+          <div>{offer.requirements_json.account_requirements}</div>
           {/* 求租详细信息 - 左右结构，同一行显示，垂直居中 */}
           <div className="">
             {/* 筛选项标签展示 */}
@@ -230,7 +230,7 @@ const RentalOfferPage = () => {
                 if (contentJson.scan_code === 'true') tags.push('扫码登录');
                 if (contentJson.phone_message === 'true') tags.push('短信验证');
                 if (contentJson.account_password === 'true') tags.push('账号密码');
-                if (contentJson.requested_all === 'true') tags.push('按租赁方要求');
+                if (contentJson.other_require === 'true') tags.push('不登录，按承租方需求修改账户相关方要求');
 
                 // 最多显示6个标签
                 return tags.slice(0, 6).map((tag, tagIndex) => (
@@ -247,6 +247,7 @@ const RentalOfferPage = () => {
                 </span>
               )}
               <span>租期: {offer.days_needed} 天</span>
+              <span>申请人数: {offer.application_count}</span>
             </div>
             <div className="flex items-center justify-between mt-1">
               <h2 className="text-xl text-red-500 truncate">预算: {offer.budget_amount_yuan} 元/天</h2>

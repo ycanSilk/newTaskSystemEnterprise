@@ -140,7 +140,7 @@ const RentalRequestDetailPage = () => {
             scan_code: contentJson.scan_code === 'true',
             phone_message: contentJson.phone_message === 'true',
             account_password: contentJson.account_password === 'true',
-            other_require: contentJson.requested_all === 'true',
+            other_require: contentJson.other_require === 'true',
           },
           phone: contentJson.phone_number || '',
           qq: contentJson.qq_number || '',
@@ -498,8 +498,7 @@ const RentalRequestDetailPage = () => {
                     title=""
                     columns={3}
                     gridWidth="100%"
-                    itemSize="100x100"
-      
+                    itemSize="100x100"                   
                   />
                 ) : (
                   <div className="grid grid-cols-3 gap-2">

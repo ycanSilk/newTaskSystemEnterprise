@@ -16,6 +16,7 @@ export interface RequestRentalItem {
   status: number;
   status_text: string;
   view_count: number;
+  application_count: number;
   created_at: string;
   updated_at: string;
   is_my: boolean;
@@ -48,27 +49,21 @@ export interface GetRequestRentalMarketListResponse {
 // 求租要求JSON数据接口
 export interface RequirementsJson {
   account_requirements: string; // 账号要求
-    basic_information: string;       //支持修改账号基本信息
-    other_requirements: string;      //其他要求
-    deblocking: string;              //需要人脸验证解封
+
+  basic_information: string;       //支持修改账号基本信息
+  identity_verification: string;      //需要实名认证
+  deblocking: string;              //需要人脸验证解封
+  post_douyin: string;              //发布抖音
+  post_ad: string;                  //发布广告（QQ）
 
 
-  account_info: string;  // 出租信息详细描速
-  identity_verification: string;  // 身份验证，需要实名认证
-  post_douyin:string;             // 发布抖音视频和评论
-  post_ad: string;                // 发布广告（QQ）
+  other_require: string;           //按承租方要求登录
+  phone_message: string;           //手机号+短信验证登录
+  scan_code: string;        // 扫码登录
+  account_password: string;        // 账号密码登录（QQ）
 
-  //登录要求
-  phone_message: string;  // 手机号+短信验证登录
-  requested_all: string;  // 按承租方要求登录
-  scan_code: string;      // 扫码登录
-  account_password: string; // 账号密码登录（QQ）
-  
-  platform_type: string;    // 平台类型（抖音或QQ）
-  
-  // 联系方式
-  email: string;          // 邮箱
-  qq_number: string;      // qq号
-  phone_number: string;   // 手机号
+  platform_type: string;           // 平台类型（抖音或QQ）
+
+  qq_number: string;               //联系方式：qq号
 }
 

@@ -51,7 +51,7 @@ export interface ContentJson {
   basic_information: string;      // 基本信息，需要完善个人信息
   //登录要求
   phone_message: string;  // 手机号+短信验证登录
-  requested_all: string;  // 按承租方要求登录
+  other_require: string;  // 按承租方要求登录
   scan_code: string;      // 扫码登录
   account_password: string; // 账号密码登录（QQ）
   platform_type: string;    // 平台类型（抖音或QQ）

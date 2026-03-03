@@ -17,8 +17,6 @@ export interface CreateOffersRentalInfoRequest {
     platform_type: string;
     images: string[];
     phone_number: string;
-    qq_number: string;
-    email: string;
     post_ad: string;
     account_password: string;
   };

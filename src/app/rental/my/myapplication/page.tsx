@@ -174,11 +174,7 @@ const MyApplicationsPage = () => {
                   </div>
                   {/* 账号信息描述 */}
                   <div className="text-sm">
-                    <p>账号信息：{application.application_json?.description || ''}</p>
-                    {/* 应征人用户名 */}
-                    <p className="">
-                      申请人: {application.applicant_username || '无'}
-                    </p>
+                    <p>账号信息：{application.application_json?.description || ''}</p>                  
                     <p>{application.relation_text}</p>
                     <p>出租天数：{application.application_json.days || '未填写'}</p>
                   </div>

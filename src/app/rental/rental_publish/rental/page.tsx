@@ -31,8 +31,7 @@ interface AccountRentalForm {
     other_require: boolean;
   };
   phone: string;
-  qq?: string;
-  email?: string;
+  smsCode: string; // 新增：短信验证码
 }
 
 
@@ -61,11 +60,14 @@ export default function DouyinAccountRentalPage() {
       other_require: false,
     },
     phone: '',
-    qq: '',
-    email: ''
+    smsCode: '' // 新增：短信验证码
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  
+  // 短信验证码相关状态
+  const [smsCooldown, setSmsCooldown] = useState<boolean>(false);
+  const [cooldownTimer, setCooldownTimer] = useState<number>(60);
   
   // API调用逻辑已移至按钮点击事件中
   
@@ -110,14 +112,14 @@ export default function DouyinAccountRentalPage() {
     // 基础信息验证
     if (!formData.title.trim()) {
       newErrors.title = '请输入出租信息标题';
-    } else if (formData.title.length < 5 || formData.title.length > 100) {
-      newErrors.title = '出租信息标题长度需在5-100个字符之间';
+    } else if (formData.title.length < 4 || formData.title.length > 20) {
+      newErrors.title = '出租信息标题长度需在4-20个字符之间';
     }
     
     if (!formData.description.trim()) {
       newErrors.description = '请输入账号信息';
-    } else if (formData.description.length < 5 || formData.description.length > 300) {
-      newErrors.description = '账号信息长度需在5-300个字符之间';
+    } else if (formData.description.length < 4 || formData.description.length > 50) {
+      newErrors.description = '账号信息长度需在4-50个字符之间';
     }
     
     if (formData.accountImages.length === 0) {
@@ -125,16 +127,50 @@ export default function DouyinAccountRentalPage() {
     }
     
     // 商品信息验证
-    if (formData.price <= 0) {
-      newErrors.price = '价格必须大于0';
+    if (!formData.price) {
+      newErrors.price = '请输入价格';
+    } else if (!Number.isInteger(formData.price)) {
+      newErrors.price = '价格必须为整数';
+    } else if (formData.price < 20 || formData.price > 200) {
+      newErrors.price = '价格取值范围为20-200元/天';
     }
     
-    if (formData.minLeaseDays <= 0) {
-      newErrors.minLeaseDays = '最低出租天数必须大于0';
+    if (!formData.minLeaseDays) {
+      newErrors.minLeaseDays = '请输入最低出租天数';
+    } else if (!Number.isInteger(formData.minLeaseDays)) {
+      newErrors.minLeaseDays = '最低出租天数必须为整数';
+    } else if (formData.minLeaseDays < 1 || formData.minLeaseDays > 30) {
+      newErrors.minLeaseDays = '最低出租天数取值范围为1-30天';
     }
     
-    if (formData.maxLeaseDays <= formData.minLeaseDays) {
-      newErrors.maxLeaseDays = '最高出租天数必须大于最低出租天数';
+    if (!formData.maxLeaseDays) {
+      newErrors.maxLeaseDays = '请输入最高出租天数';
+    } else if (!Number.isInteger(formData.maxLeaseDays)) {
+      newErrors.maxLeaseDays = '最高出租天数必须为整数';
+    } else if (formData.maxLeaseDays < formData.minLeaseDays) {
+      newErrors.maxLeaseDays = '最高出租天数必须大于等于最低出租天数';
+    } else if (formData.maxLeaseDays > 30) {
+      newErrors.maxLeaseDays = '最高出租天数不能超过30天';
+    }
+    
+    // 账号平台类型验证
+    if (!formData.platformType) {
+      newErrors.platformType = '请选择账号平台类型';
+    }
+    
+    // 是否允许续租验证
+    if (formData.allow_renew !== 0 && formData.allow_renew !== 1) {
+      newErrors.allow_renew = '请选择是否允许续租';
+    }
+    
+    // 账号支持验证
+    const hasAccountRequirement = formData.accountRequirements.basic_information || 
+                                  formData.accountRequirements.post_douyin || 
+                                  formData.accountRequirements.deblocking || 
+                                  formData.accountRequirements.identity_verification || 
+                                  formData.accountRequirements.post_ad;
+    if (!hasAccountRequirement) {
+      newErrors.accountRequirements = '请至少选择一项账号支持';
     }
     
     // 登录方式验证
@@ -149,16 +185,7 @@ export default function DouyinAccountRentalPage() {
     } else if (!/^1[3-9]\d{9}$/.test(formData.phone.trim())) {
       newErrors.phone = '请输入有效的手机号';
     }
-    
-    // QQ号验证（如果填写）
-    if (formData.qq && !/^[1-9]\d{4,10}$/.test(formData.qq.trim())) {
-      newErrors.qq = '请输入有效的QQ号';
-    }
-    
-    // 邮箱验证（如果填写）
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = '请输入有效的邮箱地址';
-    }
+
     
 
     
@@ -245,9 +272,86 @@ export default function DouyinAccountRentalPage() {
     });
   };
 
+  // 处理获取短信验证码
+  const handleGetSmsCode = async () => {
+    // 先对表单中的所有必填项进行完整性校验
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      // 调用短信验证码发送API
+      const response = await fetch('/api/sms/getSmsSendCode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone_number: formData.phone.trim()
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      const result = await response.json();
+      
+      if (result.code === 0) {
+        // 发送成功，启动倒计时
+        setSmsCooldown(true);
+        setCooldownTimer(60);
+        
+        // 倒计时逻辑
+        const timer = setInterval(() => {
+          setCooldownTimer(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              setSmsCooldown(false);
+              return 60;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        showAlert('发送成功', '短信验证码已发送，请查收手机', true);
+      } else {
+        // 发送失败
+        showAlert('发送失败', result.message || '发送验证码失败，请稍后重试', false);
+      }
+    } catch (error) {
+      console.error('获取短信验证码错误:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        showAlert('请求超时', '请求超时，请检查网络连接后重试', false);
+      } else {
+        showAlert('发送失败', '发送验证码失败，请稍后重试', false);
+      }
+    }
+  };
+
   // 表单提交
   const handleSubmit = async () => {
     if (!validateForm()) {
+      return;
+    }
+        
+    // 短信验证码验证
+    if (!formData.smsCode.trim()) {
+      setErrors(prev => ({
+        ...prev,
+        smsCode: '请输入短信验证码'
+      }));
+      return;
+    } 
+    if (formData.smsCode.trim().length !== 6) {
+      setErrors(prev => ({
+        ...prev,
+        smsCode: '短信验证码长度必须为6位'
+      }));
+      return;
+    } 
+    if (!/^\d{6}$/.test(formData.smsCode.trim())) {
+      setErrors(prev => ({
+        ...prev,
+        smsCode: '短信验证码必须为6位数字'
+      }));
       return;
     }
     
@@ -255,6 +359,28 @@ export default function DouyinAccountRentalPage() {
     setApiError(null); // 清除之前的错误
     
     try {
+      // 先调用短信验证码校验API
+      const smsVerifyResponse = await fetch('/api/sms/cheakSmsVerifyCode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: formData.phone.trim(),
+          verifyCode: formData.smsCode.trim()
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      const smsVerifyResult = await smsVerifyResponse.json();
+      
+      if (smsVerifyResult.code !== 0) {
+        // 短信验证码校验失败
+        showAlert('验证码错误', '短信验证码错误，请重新输入', false);
+        setIsLoading(false);
+        return;
+      }
+      
       // 构建后端API所需的请求参数
       const requestData: CreateOffersRentalInfoRequest = {
         title: formData.title,
@@ -275,9 +401,7 @@ export default function DouyinAccountRentalPage() {
           other_require: formData.loginMethods.other_require ? 'true' : 'false',
           platform_type: formData.platformType,
           images: formData.accountImages, // 直接使用上传后的图片URL列表
-          phone_number: formData.phone,
-          qq_number: formData.qq || '',
-          email: formData.email || ''
+          phone_number: formData.phone
         }
       };
       
@@ -290,14 +414,13 @@ export default function DouyinAccountRentalPage() {
         },
         body: JSON.stringify(requestData)
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const result: CreateOffersRentalInfoApiResponse = await response.json();
+
+      if (result.code !== 0) {
+        throw new Error(result.message || '发布失败');
       }
       
-      const result: CreateOffersRentalInfoApiResponse = await response.json();
-      
-      if (result.success) {
+      if (result.code === 0) {
         showAlert('发布成功', result.message || '抖音账号租赁信息已成功发布', true);
         // 发布成功后跳转到账号租赁市场页面
         setTimeout(() => {
@@ -322,8 +445,8 @@ export default function DouyinAccountRentalPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-2 mt-3">
         <div className="bg-blue-50 border border-blue-200 p-2">
-              <div className="text-blue-700 text-sm mb-1">填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应</div>
-              <div className="text-red-700 text-sm mb-1">风险提醒:涉及抖音平台规则，账号可能被平台封控，需要协助进行账号解封。</div>
+              <div className="text-blue-700 text-sm mb-1">{formData.platformType === 'douyin' ? '填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应' : '填写QQ账号租赁的详细信息，保信息真实有效，账号无异常,及时响应'}</div>
+              <div className="text-red-700 text-sm mb-1">{formData.platformType === 'douyin' ? '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归账号信息。原主需要自行解除账号风控。' : '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归账号信息。原主需要自行解除账号风控。'}</div>
         </div>
       </div>
 
@@ -455,6 +578,9 @@ export default function DouyinAccountRentalPage() {
                     QQ
                   </button>
                 </div>
+                {errors.platformType && (
+                  <p className="text-red-500 text-sm">{errors.platformType}</p>
+                )}
               </div>
               {/* 是否允许续租 */}
               <div className="space-y-1">
@@ -475,6 +601,9 @@ export default function DouyinAccountRentalPage() {
                     不续租
                   </button>
                 </div>
+                {errors.allow_renew && (
+                  <p className="text-red-500 text-sm">{errors.allow_renew}</p>
+                )}
               </div>
               
 
@@ -529,6 +658,9 @@ export default function DouyinAccountRentalPage() {
                   </button>
                 )}
               </div>
+              {errors.accountRequirements && (
+                <p className="text-red-500 text-sm">{errors.accountRequirements}</p>
+              )}
               <div className='text-sm text-gray-600'>支持勾选选项越多，出租概率越大。</div>
             </div>
             
@@ -543,7 +675,7 @@ export default function DouyinAccountRentalPage() {
                   >
                     账号密码
                   </button>
-
+                
                 {/* 抖音和QQ都显示的登录方式 */}
                 <button
                   type="button"
@@ -567,6 +699,9 @@ export default function DouyinAccountRentalPage() {
                   不登录，按承租方需求修改账户相关
                 </button>
               </div>
+              {errors.loginMethods && (
+                <p className="text-red-500 text-sm">{errors.loginMethods}</p>
+              )}
               <div className='text-sm text-gray-600'>请至少选择一种登录方式。支持多种登录方式可以提高账号出租概率。</div>
             </div>
             
@@ -575,48 +710,44 @@ export default function DouyinAccountRentalPage() {
               {/* 手机号 */}
               <div className="space-y-1">
                 <Label htmlFor="phone" required>手机号</Label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="请输入手机号"
-                  className={`input w-full ${errors.phone ? 'border-red-500' : ''}`}
-                />
+                <div className="flex space-x-2">
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="请输入手机号"
+                    className={`input flex-1 ${errors.phone ? 'border-red-500' : ''}`}
+                    maxLength={11}
+                  />
+                  <button
+                    type="button"
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${smsCooldown ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                    onClick={handleGetSmsCode}
+                    disabled={smsCooldown}
+                  >
+                    {smsCooldown ? `${cooldownTimer}秒后重试` : '获取验证码'}
+                  </button>
+                </div>
                 {errors.phone && (
                   <p className="text-red-500 text-sm">{errors.phone}</p>
                 )}
               </div>
               
-              {/* QQ号 */}
+              {/* 短信验证码 */}
               <div className="space-y-1">
-                <Label htmlFor="qq">QQ号（选填）</Label>
+                <Label htmlFor="smsCode" required>短信验证码</Label>
                 <input
-                  id="qq"
+                  id="smsCode"
                   type="text"
-                  value={formData.qq}
-                  onChange={(e) => handleInputChange('qq', e.target.value)}
-                  placeholder="请输入QQ号"
-                  className={`input w-full ${errors.qq ? 'border-red-500' : ''}`}
+                  value={formData.smsCode}
+                  onChange={(e) => handleInputChange('smsCode', e.target.value)}
+                  placeholder="请输入短信验证码"
+                  className={`input w-full ${errors.smsCode ? 'border-red-500' : ''}`}
+                  maxLength={6}
                 />
-                {errors.qq && (
-                  <p className="text-red-500 text-sm">{errors.qq}</p>
-                )}
-              </div>
-              
-              {/* 邮箱 */}
-              <div className="space-y-1">
-                <Label htmlFor="email">邮箱（选填）</Label>
-                <input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="请输入邮箱地址"
-                  className={`input w-full ${errors.email ? 'border-red-500' : ''}`}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email}</p>
+                {errors.smsCode && (
+                  <p className="text-red-500 text-sm">{errors.smsCode}</p>
                 )}
               </div>
             </div>

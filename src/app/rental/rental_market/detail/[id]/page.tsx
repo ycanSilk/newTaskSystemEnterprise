@@ -5,8 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 
 // 导入新的类型定义
-import { GetOffersRentalInfoDetailResponse, RentalInfoDetail } from '../../../../types/rental/rentOut/getOffersRentalInfoDetailTypes';
-import { BtnCustomerServiceButton } from '@/components/button/btnCustomerServiceButton';
+import { GetOffersRentalInfoDetailResponse, RentalInfoDetail } from '@/app/types/rental/rentOut/getOffersRentalInfoDetailTypes';
 
 // 客户端组件
 const AccountDetailPage = ({
@@ -26,12 +25,6 @@ const AccountDetailPage = ({
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [leaseDays, setLeaseDays] = useState<number>(0);
-  const [isClient, setIsClient] = useState(false);
-
-  // 只在客户端设置 isClient 为 true
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   // 当rentalInfo加载完成后，可以根据需要设置默认租赁天数，但允许用户修改为0
   useEffect(() => {
@@ -294,8 +287,12 @@ const AccountDetailPage = ({
                 {rentalInfo.content_json?.phone_message && (
                   <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">短信验证</span>
                 )}
-                {rentalInfo.content_json?.requested_all && (
-                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">按租赁方要求</span>
+                {rentalInfo.content_json?.account_password && (
+                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">账号密码</span>
+                )}
+
+                {rentalInfo.content_json?.other_require && (
+                  <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">不登录，按承租方需求修改账户相关</span>
                 )}
               </div>
             </div>
@@ -322,13 +319,12 @@ const AccountDetailPage = ({
             
             {/* 操作按钮 */}
             <div className="flex justify-end space-x-3 mt-10">
-              {isClient && (
-                <BtnCustomerServiceButton 
-                  CustomerServiceId={'kefu'}
-                  className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white border border-gray-300 rounded-lg "
-                />
-              )}
-             
+              <Button
+                variant="ghost"
+                className="py-1 px-4 "
+              >
+                联系客服
+              </Button>
               <Button
                 className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-6"
                 onClick={() => {

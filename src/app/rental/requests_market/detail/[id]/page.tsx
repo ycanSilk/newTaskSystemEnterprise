@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MessageOutlined } from '@ant-design/icons';
 import { GetRequestRentalInfoDetailResponse, RequestRentalInfoDetail } from '@/app/types/rental/requestRental/getRequestRentalInfoDetail';
-import { BtnCustomerServiceButton } from '@/components/button/btnCustomerServiceButton';
+
 // 复制状态接口
 interface CopyStatus {
   [key: string]: boolean;
@@ -16,13 +16,6 @@ const RentalRequestDetailPage: React.FC = () => {
   const [request, setRequest] = useState<RequestRentalInfoDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>({});
-  const [isClient, setIsClient] = useState(false);
-
-  
-  // 只在客户端设置 isClient 为 true
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   // 获取URL参数中的id
   const params = useParams<{ id: string }>();
@@ -143,7 +136,7 @@ const RentalRequestDetailPage: React.FC = () => {
 
           {/* 订单基本信息 */}
           <div className="py-2 px-3">
-            <h3 className="text-lg font-semibold px-2 flex items-center"> 基本信息 </h3>
+            <h3 className="text-lg font-semibold px-2 flex items-center"> 基本信息: </h3>
             
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center px-2 rounded-lg">
@@ -154,9 +147,10 @@ const RentalRequestDetailPage: React.FC = () => {
 
             <div className="grid grid-cols-1 pl-2">  
                 <div className="">期望租期：{request.days_needed}天</div>
+                <div className="">申请人数：{request.application_count}</div>
                 <div className="">金额：<span className="font-bold text-red-600">¥{request.budget_amount_yuan}/天</span></div>
                 <div className="flex items-center">发布时间：{request.created_at}</div>
-                <div className="">截止时间：{request.deadline_datetime}</div>
+               
             </div>
           </div>
 
@@ -170,32 +164,41 @@ const RentalRequestDetailPage: React.FC = () => {
 
           {/* 账号要求 */}
           <div className="py-2 px-3 border-t border-gray-100">
-            <h3 className="text-lg font-medium text-gray-800 mb-1 pl-2">账号要求</h3>
+            <h3 className="text-lg font-medium text-gray-800 mb-1 pl-2">账号要求:</h3>
             <div className="flex flex-wrap gap-2">
-              {request.requirements_json.deblocking === 1 && (
+              {request.requirements_json.deblocking && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">账号解封</span>
               )}
-              {request.requirements_json.other_requirements === 1 && (
+              {request.requirements_json.identity_verification && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">实名认证</span>
               )}
-              {request.requirements_json.basic_information === 1 && (
+              {request.requirements_json.basic_information && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">修改基本信息</span>
+              )}
+              {request.requirements_json.post_douyin && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">发布抖音</span>
+              )}
+              {request.requirements_json.post_ad && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">发布广告</span>
               )}
             </div>
           </div>
 
           {/* 登录方式 */}
           <div className="py-2 px-3 border-t border-gray-100">
-            <h3 className="text-lg font-medium text-gray-800 mb-1 pl-2">登录方式</h3>
+            <h3 className="text-lg font-medium text-gray-800 mb-1 pl-2">登录方式:</h3>
             <div className="flex flex-wrap gap-2">
-              {request.requirements_json.scan_code_login === 1 && (
+              {request.requirements_json.scan_code && (
                 <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">扫码登录</span>
               )}
-              {request.requirements_json.phone_message === 1 && (
+              {request.requirements_json.phone_message && (
                 <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">短信登录</span>
               )}
-              {request.requirements_json.requested_all === 1 && (
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">按照承租方要求</span>
+              {request.requirements_json.account_password && (
+                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">账号密码</span>
+              )}
+              {request.requirements_json.other_require && (
+                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">按租赁方要求</span>
               )}
             </div>
           </div>
@@ -216,12 +219,12 @@ const RentalRequestDetailPage: React.FC = () => {
 
           {/* 按钮区域 */}
           <div className="p-3 bg-gray-50 flex justify-end space-x-2">
-            {isClient && (
-              <BtnCustomerServiceButton 
-                CustomerServiceId={'kefu'}
-                className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white border border-gray-300 rounded-lg"
-              />
-            )}
+            <button
+              onClick={handleContact}
+              className=" py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white border border-gray-300 rounded-lg"
+            >
+              联系客服
+            </button>
             <button
               onClick={handleRentNow}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-md active:scale-95 transition-all flex items-center"
