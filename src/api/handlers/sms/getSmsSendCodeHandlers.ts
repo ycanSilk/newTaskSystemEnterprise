@@ -26,6 +26,7 @@ export async function handleGetSmsSendCode(request: Request): Promise<NextRespon
     // 返回标准化的响应
     return NextResponse.json(response.data, { status: response.status });
   } catch (error) {
+    // 处理错误
     const apiError = handleApiError(error);
     const errorResponse = createErrorResponse(apiError);
     return NextResponse.json(errorResponse, { status: apiError.status });
