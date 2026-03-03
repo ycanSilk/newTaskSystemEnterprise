@@ -120,7 +120,6 @@ export default function CreateTask() {
       {/* 维护提示模态框 - 使用统一的AlertModal组件 */}
       <AlertModal
         isOpen={isModalOpen}
-        icon="🔧"
         title="功能暂未开放"
         message="该功能暂未开放，无法使用"
         onClose={closeModal}
