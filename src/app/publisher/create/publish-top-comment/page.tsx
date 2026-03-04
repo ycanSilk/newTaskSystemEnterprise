@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import AiCommentGenerator from '@/components/aiCommentBtn/AiCommentGenerator';
 
 import {
   PublishTaskFormData,
@@ -32,9 +33,6 @@ export default function PublishTaskPage() {
   // 从URL参数获取模板ID和价格
   const templateId = parseInt(getSearchParam('template_id') || '0');
   const taskPrice = parseFloat(getSearchParam('price').trim() || '4');
-    // 生成相关
-  const [maxLength, setMaxLength] = useState(10);
-  const [generated, setGenerated] = useState('');
 
   // 表单状态
   const [formData, setFormData] = useState<PublishTaskFormData>({
@@ -173,125 +171,7 @@ export default function PublishTaskPage() {
     });
   };
   
-  // AI生成评论功能
-  const handleAIGenerateComments = async () => {
-    try {
-      setIsPublishing(true);
-      
-      const response = await fetch('/api/deepseek/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxLength }), // 只发送 maxLength
-      });
 
-      
-      const result = await response.json();
-      console.log('DeepSeek API 响应:', result);
-      if (!response.ok) throw new Error(result.error || '生成失败');
-
-      setFormData(prevData => ({
-        ...prevData,
-        comments: prevData.comments.map(comment => ({
-          ...comment,
-          content: result.comment || ''
-        }))
-      }));
-      showAlert('生成成功', '评论内容已通过AI生成！', '✨');
-    } catch (error) {
-      console.error('AI生成评论失败:', error);
-      showAlert('生成失败', '网络错误，请稍后重试', 'error');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  // AI生成评论评论功能
-  const handleAIPolishComments = async () => {
-    try {
-      const commentCount = formData.comments.length;
-      
-      // 获取第一个评论的内容作为提示词
-      let firstComment = formData.comments[0]?.content || '';
-      
-      // 如果评论为空，从comment.json文件中随机获取一个评论
-      if (!firstComment) {
-        try {
-          const response = await fetch('/file/comment.json');
-          const comments = await response.json();
-          if (Array.isArray(comments) && comments.length > 0) {
-            const randomIndex = Math.floor(Math.random() * comments.length);
-            firstComment = comments[randomIndex];
-          } else {
-            showAlert('提示', '评论库加载失败，请先输入评论内容', '⚠️');
-            return;
-          }
-        } catch (error) {
-          console.error('加载评论库失败:', error);
-          showAlert('提示', '评论库加载失败，请先输入评论内容', '⚠️');
-          return;
-        }
-      }
-      
-      setIsPublishing(true);
-      console.log('生成提示词:', firstComment);
-      
-      // 为每个评论生成不同的内容
-      const generatedComments: string[] = [];
-      
-      for (let i = 0; i < commentCount; i++) {
-        const response = await fetch('/api/deepseek/polish', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            draft: firstComment, 
-            variation: i + 1 // 添加变化参数，确保生成不同的评论
-          }),
-        });
-        
-        const result = await response.json();
-        console.log(`DeepSeek API 响应 ${i + 1}:`, result);
-        if (!response.ok) throw new Error(result.error || '生成失败');
-        
-        // 确保评论不重复
-        let comment = result.polished || '';
-        while (generatedComments.includes(comment)) {
-          // 如果重复，重新生成
-          const retryResponse = await fetch('/api/deepseek/polish', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              draft: firstComment, 
-              variation: i + 1 + Math.random() // 添加随机值确保不同
-            }),
-          });
-          const retryResult = await retryResponse.json();
-          comment = retryResult.polished || '';
-        }
-        
-        generatedComments.push(comment);
-      }
-      
-      // 更新所有评论输入框
-      setFormData(prevData => ({
-        ...prevData,
-        comments: prevData.comments.map((comment, index) => ({
-          ...comment,
-          content: generatedComments[index] || ''
-        }))
-      }));
-      
-      showAlert('成功', `已为${commentCount}条评论生成内容！`, '✨');
-    } catch (error) {
-      console.error('AI生成评论评论失败:', error);
-      showAlert('生成失败', '网络错误，请稍后重试', 'error');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
 
   // 处理图片变化 - 使用useCallback避免无限循环
   const handleImagesChange = useCallback((commentIndex: number, images: File[], urls: string[]) => {
@@ -496,7 +376,7 @@ export default function PublishTaskPage() {
 
         {/* 视频链接 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700">
             视频链接 <span className="text-red-500">*</span>
           </label>
           <Input
@@ -509,7 +389,7 @@ export default function PublishTaskPage() {
 
         {/* 截止时间 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700">
             任务截止时间
           </label>
           <select 
@@ -526,22 +406,25 @@ export default function PublishTaskPage() {
 
         {/* 评论内容 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm overflow-y-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            评论内容
-          </label>
-          
-          {/* AI优化评论功能按钮 */}
-          <div className="mb-2 flex justify-center space-x-4">
-            <Button 
-              onClick={() => handleAIPolishComments()}
-              className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex-1 "
-            >
-              AI生成评论
-            </Button>
-          </div>
+          {/* 固定昵称和AI生成评论 */}
+          <AiCommentGenerator
+            onCommentsGenerated={(comments) => {
+              setFormData(prevData => ({
+                ...prevData,
+                comments: prevData.comments.map((comment, index) => ({
+                  ...comment,
+                  content: comments[index] || ''
+                }))
+              }));
+              showAlert('成功', `已为${comments.length}条评论生成内容！`, '✨');
+            }}
+            isLoading={isPublishing}
+            onLoadingChange={setIsPublishing}
+            commentCount={formData.quantity}
+          />
           {/* 任务数量 */}
-        <div className="bg-white rounded-md shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white">
+          <label className="block text-sm font-medium text-gray-700">
             任务数量 <span className="text-red-500">*</span>
           </label>
           <div className="flex-1">
@@ -559,15 +442,15 @@ export default function PublishTaskPage() {
         </div>
           {/* 动态渲染评论输入框 */}
           {formData.comments.map((comment, index) => (
-            <div key={index} className="mb-2 py-2 border-b border-gray-200 last:border-b-0">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div key={index} className="py-2 border-b border-gray-200 last:border-b-0">
+              <label className="block text-sm font-medium text-gray-700">
                 推荐评论 {index + 1}
               </label>
               <div className="flex space-x-3">
                 <textarea
                   className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows={3}
-                  placeholder={`请输入推荐评论内容`}
+                  placeholder={index === 0 ? "请手动输入你要的评论，多条评论可以进行AI润色" : "请输入推荐评论内容"}
                   value={comment.content}
                   onChange={(e) => {
                     const newComments = [...formData.comments];

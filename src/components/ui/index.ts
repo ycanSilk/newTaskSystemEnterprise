@@ -10,6 +10,7 @@ export { RadioGroup } from './RadioGroup';
 export { Loading, FullScreenLoading, PageLoading } from './Loading';
 export { useToast, ToastProvider, Toaster } from './Toast';
 export { default as AlertModal } from './AlertModal';
+export { default as Modal } from './Modal';
 export { ToggleSwitch } from './ToggleSwitch';
 export { Label } from './Label';
 export { NumberInput } from './NumberInput';

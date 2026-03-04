@@ -417,7 +417,8 @@ export default function PublishTaskPage() {
       
       // 计算截止时间（时间戳）
       const deadlineMinutes = parseInt(formData.deadline);
-      const deadlineTimestamp = currentTime + (deadlineMinutes * 60);
+      const currentTimestamp = Math.floor(Date.now() / 1000); // 使用实时的当前时间
+      const deadlineTimestamp = currentTimestamp + (deadlineMinutes * 60);
       
       // 构建recommend_marks数组
       const recommendMarks: RecommendMark[] = [];
@@ -702,9 +703,6 @@ export default function PublishTaskPage() {
 
         {/* @用户标记 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            @用户标记
-          </label>
           <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
           <div className="space-y-3">
             <Input

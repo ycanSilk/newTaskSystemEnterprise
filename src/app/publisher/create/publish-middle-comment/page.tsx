@@ -1,10 +1,12 @@
 'use client';
 
-import { Button, Input, AlertModal } from '@/components/ui';
+import { Button, Input, AlertModal, Modal } from '@/components/ui';
+
 import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import MiddleCommentGenerator from '@/components/aiCommentBtn/MiddleCommentGenerator';
 import {
   PublishTaskFormData,
   PublishSingleTaskRequest,
@@ -73,6 +75,9 @@ export default function PublishTaskPage() {
   
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
+  
+  // MiddleCommentGenerator模态框状态
+  const [showMiddleCommentGenerator, setShowMiddleCommentGenerator] = useState(false);
   
   // 显示通用提示框
   const showAlert = (
@@ -355,6 +360,28 @@ export default function PublishTaskPage() {
     });
   }, [setFormData, setCommentImages, setCommentImageUrls]);
   
+  // 处理MiddleCommentGenerator生成的评论
+  const handleCommentsGenerated = (comments: string[]) => {
+    setFormData(prevData => {
+      let newComments = [...prevData.comments];
+      
+      // 更新评论内容
+      comments.forEach((comment, index) => {
+        if (index < newComments.length) {
+          newComments[index].content = comment;
+        }
+      });
+      
+      return {
+        ...prevData,
+        comments: newComments
+      };
+    });
+    
+    setShowMiddleCommentGenerator(false);
+    showAlert('成功', `已为${comments.length}条评论生成内容！`, '✨');
+  };
+  
   // 发布任务
   const handlePublish = async () => {
     // 防止重复提交
@@ -521,7 +548,7 @@ export default function PublishTaskPage() {
           {/* AI优化评论功能按钮 */}
           <div className="mb-4">
             <Button 
-              onClick={handleAIOptimizeComments}
+              onClick={() => setShowMiddleCommentGenerator(true)}
               disabled={isPublishing}
               className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -589,9 +616,6 @@ export default function PublishTaskPage() {
 
         {/* @用户标记 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            @用户标记
-          </label>
           <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
           <div className="space-y-3">
             <Input
@@ -669,6 +693,22 @@ export default function PublishTaskPage() {
         }}
         onClose={() => setShowAlertModal(false)}
       />
+      
+      {/* MiddleCommentGenerator模态框 */}
+      <Modal
+        isOpen={showMiddleCommentGenerator}
+        onClose={() => setShowMiddleCommentGenerator(false)}
+        title="AI生成评论"
+        className="w-full max-w-md"
+      >
+        <MiddleCommentGenerator
+          onCommentsGenerated={handleCommentsGenerated}
+          isLoading={isPublishing}
+          onLoadingChange={setIsPublishing}
+          commentCount={formData.quantity}
+          atUser={mentions.length > 0 ? mentions[0] : undefined}
+        />
+      </Modal>
       
 
     </div>

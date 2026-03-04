@@ -66,8 +66,16 @@ const RentalRequestsPage = () => {
       setLoading(true);
       
       try {
-        const response = await fetch('/api/rental/requestRental/getRequestRentalMarketList');
+        const response = await fetch('/api/rental/requestRental/getRequestRentalMarketList', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         const data: GetRequestRentalMarketListResponse = await response.json();
+        
+        console.log('请求求租市场数据成功:', data);
         
         if (data.code === 0) {
           if (!data.data || !data.data.list) {

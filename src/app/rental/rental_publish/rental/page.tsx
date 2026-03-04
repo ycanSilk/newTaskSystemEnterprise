@@ -446,7 +446,7 @@ export default function DouyinAccountRentalPage() {
       <div className="max-w-5xl mx-auto px-4 py-2 mt-3">
         <div className="bg-blue-50 border border-blue-200 p-2">
               <div className="text-blue-700 text-sm mb-1">{formData.platformType === 'douyin' ? '填写抖音账号租赁的详细信息，保信息真实有效，账号无异常,及时响应' : '填写QQ账号租赁的详细信息，保信息真实有效，账号无异常,及时响应'}</div>
-              <div className="text-red-700 text-sm mb-1">{formData.platformType === 'douyin' ? '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归账号信息。原主需要自行解除账号风控。' : '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归账号信息。原主需要自行解除账号风控。'}</div>
+              <div className="text-red-700 text-sm mb-1">{formData.platformType === 'douyin' ? '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归原主。原主需要自行解除账号风控。' : '风险提醒:账号可能会在租赁期间受到风控，发生后将提前完成租赁并物归原主。原主需要自行解除账号风控。'}</div>
         </div>
       </div>
 

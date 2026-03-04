@@ -31,9 +31,9 @@ export default function PublishSearchKeywordTaskPage() {
   // 表单状态
   const [formData, setFormData] = useState({
     videoUrl: '',
-    deadline: '24',
+    deadline: '30',
     searchKeywords: '',
-    quantity: 1
+    quantity: '1'
   });
 
   // API调用状态
@@ -51,15 +51,17 @@ export default function PublishSearchKeywordTaskPage() {
   const taskPrice = 5;
 
   // 计算任务基础费用（总计费用）
-  const baseCost = taskPrice * formData.quantity;
+  const quantity = parseInt(formData.quantity) || 1;
+  const baseCost = taskPrice * quantity;
   const totalCost = baseCost.toFixed(2);
 
   // 任务数量变化处理 - 允许1-10个任务
-  const handleQuantityChange = (newQuantity: number) => {
-    // 限制数量在1-10之间
-    const quantity = Math.max(1, Math.min(10, newQuantity));
-    
-    setFormData(prevData => ({ ...prevData, quantity }));
+  const handleQuantityChange = (newQuantity: string) => {
+    // 只允许输入数字
+    const cleanValue = newQuantity.replace(/[^0-9]/g, '');
+    // 限制数量不超过10
+    const limitedValue = cleanValue ? Math.min(10, parseInt(cleanValue)).toString() : '';
+    setFormData(prevData => ({ ...prevData, quantity: limitedValue }));
   };
 
   // 显示提示框
@@ -82,13 +84,29 @@ export default function PublishSearchKeywordTaskPage() {
       setIsLoading(true);
       
       // 表单验证
+      // 1. 验证视频链接
       if (!formData.videoUrl) {
         showAlertModal('验证失败', '请输入视频链接', '⚠️');
         return;
       }
       
+      // 2. 验证搜索词内容
       if (!formData.searchKeywords.trim()) {
         showAlertModal('验证失败', '请输入搜索词内容', '⚠️');
+        return;
+      }
+      
+      // 3. 验证任务数量
+      const taskQuantity = parseInt(formData.quantity);
+      if (isNaN(taskQuantity) || taskQuantity < 1) {
+        showAlertModal('验证失败', '请输入有效的任务数量', '⚠️');
+        return;
+      }
+      
+      // 4. 验证截止时间
+      const deadlineMinutes = parseInt(formData.deadline);
+      if (isNaN(deadlineMinutes) || deadlineMinutes < 1) {
+        showAlertModal('验证失败', '请选择有效的截止时间', '⚠️');
         return;
       }
       
@@ -96,8 +114,8 @@ export default function PublishSearchKeywordTaskPage() {
       const requestBody: PublishSingleTaskRequest = {
         template_id: 3,
         video_url: formData.videoUrl,
-        deadline: Math.floor(Date.now() / 1000) + parseInt(formData.deadline) * 60,
-        task_count: formData.quantity,
+        deadline: Math.floor(Date.now() / 1000) + deadlineMinutes * 60,
+        task_count: taskQuantity,
         total_price: baseCost,
         recommend_marks: [
           {
@@ -109,6 +127,7 @@ export default function PublishSearchKeywordTaskPage() {
       };
 
       console.log('发布任务API请求体:', requestBody);
+      console.log('截止时间格式化后输出:', requestBody.deadline);
       
       // 调用API
       const response = await fetch('/api/task/publishSingleTask', {
@@ -141,7 +160,7 @@ export default function PublishSearchKeywordTaskPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <h1 className="text-2xl font-bold pl-5">
-          发布上评评论
+          放大镜
         </h1>
 
         <div className="text-lg pl-5 text-red-500"></div>
@@ -150,10 +169,10 @@ export default function PublishSearchKeywordTaskPage() {
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            视频链接 <span className="text-red-500">*</span>
+            任务发布 <span className="text-red-500">*</span>
           </label>
           <Input
-            placeholder="请输入抖音视频链接"
+            placeholder="发布评论/视频链接。"
             value={formData.videoUrl}
             onChange={(e) => setFormData({...formData, videoUrl: e.target.value})}
             className="w-full"
@@ -170,9 +189,10 @@ export default function PublishSearchKeywordTaskPage() {
             value={formData.deadline}
             onChange={(e) => setFormData({...formData, deadline: e.target.value})}
           >
-            <option value="0.5">30分钟内</option>
-            <option value="12">12小时</option>
-            <option value="24">24小时</option>
+            <option value="10">10分钟内</option>
+            <option value="30">30分钟内</option>
+            <option value="720">12小时内</option>
+            <option value="1440">24小时内</option>
           </select>
         </div>
 
@@ -199,33 +219,15 @@ export default function PublishSearchKeywordTaskPage() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务数量 <span className="text-red-500">*</span>
           </label>
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => handleQuantityChange(formData.quantity - 1)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-colors ${formData.quantity <= 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-              disabled={formData.quantity <= 1}
-            >
-              -
-            </button>
-            <div className="flex-1">
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={formData.quantity}
-                onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <button 
-              onClick={() => handleQuantityChange(formData.quantity + 1)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-colors ${formData.quantity >= 10 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-              disabled={formData.quantity >= 10}
-            >
-              +
-            </button>
+          <div className="flex-1">
+            <Input
+              type="text"
+              value={formData.quantity}
+              onChange={(e) => handleQuantityChange(e.target.value)}
+              className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="请输入任务数量"
+            />
           </div>
-         
         </div>
 
         {/* 费用预览 */}

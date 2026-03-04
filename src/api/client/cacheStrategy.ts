@@ -95,20 +95,10 @@ export const getCacheStrategy = (url: string, method: string): CacheStrategy => 
 
   // 定义不同路径的缓存策略
   const pathStrategies: Record<string, CacheStrategy> = {
-    // 短时间缓存：频繁变化的数据
+    // 只保留用户信息的缓存
     'users/getUserInfo': {
       enabled: true,
       level: 'short',
-    },
-    // 中等缓存：不太频繁变化的数据
-    'system/config': {
-      enabled: true,
-      level: 'medium',
-    },
-    // 长时间缓存：基本不变的数据
-    'system/constants': {
-      enabled: true,
-      level: 'long',
     },
   };
 
@@ -119,10 +109,10 @@ export const getCacheStrategy = (url: string, method: string): CacheStrategy => 
     }
   }
 
-  // 默认策略：启用缓存，使用默认级别
+  // 默认策略：禁用缓存
   return {
-    enabled: true,
-    level: 'default',
+    enabled: false,
+    level: 'none',
   };
 };
 

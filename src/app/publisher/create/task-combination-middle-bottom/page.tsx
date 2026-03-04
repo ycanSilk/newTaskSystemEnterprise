@@ -1,10 +1,12 @@
 'use client';
 
-import { Button, Input, AlertModal } from '@/components/ui';
+import { Button, Input, AlertModal, Modal } from '@/components/ui';
+
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import MiddleCommentGenerator from '@/components/aiCommentBtn/MiddleCommentGenerator';
 import type {
   CommentData,
   FormData,
@@ -86,6 +88,9 @@ export default function PublishTaskPage() {
   
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
+  
+  // MiddleCommentGenerator模态框状态
+  const [showMiddleCommentGenerator, setShowMiddleCommentGenerator] = useState(false);
 
   // 显示通用提示框
   const showAlert = (
@@ -222,6 +227,28 @@ export default function PublishTaskPage() {
         comment: comment.comment?.replace(` @${mention}`, '').replace(`@${mention}`, '') || comment.comment
       }))
     }));
+  };
+  
+  // 处理MiddleCommentGenerator生成的评论
+  const handleMiddleCommentsGenerated = (comments: string[]) => {
+    setFormData((prevData: FormData) => {
+      let newComments = [...prevData.middleComments];
+      
+      // 更新评论内容
+      comments.forEach((comment, index) => {
+        if (index < newComments.length) {
+          newComments[index].comment = comment;
+        }
+      });
+      
+      return {
+        ...prevData,
+        middleComments: newComments
+      };
+    });
+    
+    setShowMiddleCommentGenerator(false);
+    showAlert('生成成功', `已生成 ${comments.length} 条下评评论内容！`, '✨');
   };
 
   // AI优化中评评论功能
@@ -414,7 +441,8 @@ export default function PublishTaskPage() {
       
       // 计算截止时间（时间戳）
       const deadlineMinutes = parseInt(formData.deadline);
-      const deadlineTimestamp = currentTime + (deadlineMinutes * 60);
+      const currentTimestamp = Math.floor(Date.now() / 1000); // 使用实时的当前时间
+      const deadlineTimestamp = currentTimestamp + (deadlineMinutes * 60);
       
       // 构建recommend_marks数组
       const recommendMarks: RecommendMark[] = [];
@@ -636,7 +664,7 @@ export default function PublishTaskPage() {
             {/* AI优化评论功能按钮 */}
             <div className="mb-4">
               <Button 
-                onClick={handleAIMiddleCommentsOptimize}
+                onClick={() => setShowMiddleCommentGenerator(true)}
                 disabled={isPublishing}
                 className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -707,9 +735,6 @@ export default function PublishTaskPage() {
 
         {/* @用户标记 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            @用户标记
-          </label>
           <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
           <div className="space-y-3">
             <Input
@@ -786,6 +811,22 @@ export default function PublishTaskPage() {
         }}
         onClose={() => setShowAlertModal(false)}
       />
+      
+      {/* MiddleCommentGenerator模态框 */}
+      <Modal
+        isOpen={showMiddleCommentGenerator}
+        onClose={() => setShowMiddleCommentGenerator(false)}
+        title="AI生成评论"
+        className="w-full max-w-md"
+      >
+        <MiddleCommentGenerator
+          onCommentsGenerated={handleMiddleCommentsGenerated}
+          isLoading={isPublishing}
+          onLoadingChange={setIsPublishing}
+          commentCount={formData.middleQuantity}
+          atUser={mentions.length > 0 ? mentions[0] : undefined}
+        />
+      </Modal>
       
 
     </div>

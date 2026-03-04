@@ -55,7 +55,10 @@ export default function AccountRentalMarketPage() {
         const response = await fetch('/api/rental/rentOut/getOffersRentalMarketList', {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
 
@@ -64,10 +67,8 @@ export default function AccountRentalMarketPage() {
         }
 
         const result: GetOffersRentalMarketListResponse = await response.json();
-        
-        console.log('请求成功,code码', result.code);
+
         console.log('原始数据', result);
-        // 检查API响应是否成功
         // 检查API响应是否成功
         if (result.code === 0) {
           // 显示全部数据，不移除is_my的筛选
