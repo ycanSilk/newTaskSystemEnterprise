@@ -54,6 +54,8 @@ export default function PublishTaskPage() {
 
   // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
+  // AI评论生成状态
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -349,7 +351,16 @@ export default function PublishTaskPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 relative">
+      {/* AI生成评论时的加载覆盖层 */}
+      {isAIGenerating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-lg font-medium text-gray-800">评论生成中...</p>
+          </div>
+        </div>
+      )}
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
           发布上评评论
@@ -418,9 +429,10 @@ export default function PublishTaskPage() {
               }));
               showAlert('成功', `已为${comments.length}条评论生成内容！`, '✨');
             }}
-            isLoading={isPublishing}
-            onLoadingChange={setIsPublishing}
+            isLoading={isAIGenerating}
+            onLoadingChange={setIsAIGenerating}
             commentCount={formData.quantity}
+            userComments={formData.comments.map(comment => comment.content)}
           />
           {/* 任务数量 */}
         <div className="bg-white">
@@ -502,7 +514,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button 
           onClick={handlePublish}
-          disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing}
+          disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing || isAIGenerating}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md font-bold text-lg disabled:opacity-50"
         >
           发布任务 - ¥{totalCost}

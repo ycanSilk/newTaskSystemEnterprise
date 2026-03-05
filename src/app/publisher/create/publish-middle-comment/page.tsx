@@ -62,6 +62,8 @@ export default function PublishTaskPage() {
   
   // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
+  // AI评论生成状态
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
   
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -549,10 +551,10 @@ export default function PublishTaskPage() {
           <div className="mb-4">
             <Button 
               onClick={() => setShowMiddleCommentGenerator(true)}
-              disabled={isPublishing}
+              disabled={isPublishing || isAIGenerating}
               className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPublishing ? '生成中...' : 'AI生成评论'}
+              {isAIGenerating ? '生成中...' : 'AI生成评论'}
             </Button>
           </div>
           
@@ -589,8 +591,26 @@ export default function PublishTaskPage() {
                     placeholder={`请输入推荐评论内容`}
                     value={comment.content}
                     onChange={(e) => {
+                      const newValue = e.target.value;
                       const newComments = [...formData.comments];
-                      newComments[index] = {...newComments[index], content: e.target.value};
+                      
+                      // 检查是否包含@用户标识
+                      if (newValue.includes('@')) {
+                        // 只有最后一条评论可以包含@用户标识
+                        if (index !== formData.comments.length - 1) {
+                          showAlert('提示', '@用户标识只能出现在最后一条评论中', '⚠️');
+                          return;
+                        }
+                        
+                        // 检查@用户标识是否只出现一次
+                        const atCount = (newValue.match(/@/g) || []).length;
+                        if (atCount > 1) {
+                          showAlert('提示', '每条评论只能包含一个@用户标识', '⚠️');
+                          return;
+                        }
+                      }
+                      
+                      newComments[index] = {...newComments[index], content: newValue};
                       setFormData({...formData, comments: newComments});
                     }}
                     style={{ height: '80px' }}
@@ -673,7 +693,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3 z-40">
         <Button 
               onClick={handlePublish}
-              disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing || formData.comments.some(comment => !comment.content || comment.content.trim() === '')}
+              disabled={!formData.videoUrl.trim() || formData.quantity === undefined || formData.quantity < 1 || isPublishing || isAIGenerating || formData.comments.some(comment => !comment.content || comment.content.trim() === '')}
               className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
             >
               {isPublishing ? '发布中...' : `发布任务 - ¥${totalCost}`}
@@ -703,10 +723,11 @@ export default function PublishTaskPage() {
       >
         <MiddleCommentGenerator
           onCommentsGenerated={handleCommentsGenerated}
-          isLoading={isPublishing}
-          onLoadingChange={setIsPublishing}
+          isLoading={isAIGenerating}
+          onLoadingChange={setIsAIGenerating}
           commentCount={formData.quantity}
           atUser={mentions.length > 0 ? mentions[0] : undefined}
+          userComments={formData.comments.map(comment => comment.content)}
         />
       </Modal>
       

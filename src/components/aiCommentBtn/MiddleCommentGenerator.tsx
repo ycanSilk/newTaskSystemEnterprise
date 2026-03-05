@@ -9,6 +9,7 @@ interface MiddleCommentGeneratorProps {
   onLoadingChange: (loading: boolean) => void;
   commentCount: number;
   atUser?: string;
+  userComments?: string[];
 }
 
 interface CommentRule {
@@ -36,6 +37,7 @@ export default function MiddleCommentGenerator({
   onLoadingChange,
   commentCount,
   atUser,
+  userComments,
 }: MiddleCommentGeneratorProps) {
   const [ruleConfig, setRuleConfig] = useState<CommentRule | null>(null);
   const [commentLibrary, setCommentLibrary] = useState<string[]>([]);
@@ -152,15 +154,27 @@ export default function MiddleCommentGenerator({
       const storageComments: string[] = [];
 
       for (let i = 0; i < commentCount; i++) {
-        // 从词库随机获取提示词
-        const prompt = getRandomPrompt();
+        // 优先使用用户输入的评论，否则从词库随机获取提示词
+        const draftPrompt = userComments?.[i]?.trim() || getRandomPrompt();
+        console.log(`[Middle Comment Generator] 使用的提示词 ${i + 1}:`, draftPrompt);
+        console.log(`[Middle Comment Generator] 用户输入的评论 ${i + 1}:`, userComments?.[i] || '无');
+        
+        // 检查用户输入是否已经包含@用户标识
+        const hasAtUser = draftPrompt.includes('@');
+        
+        // 构建详细的提示词
+        const aiPrompt = `请润色以下评论，使其更加自然、口语化，保持原有的语义和情感。控制字数在7-17字之间，使用口语化表达，模拟真实用户交流语气。${atUser && !hasAtUser ? `如果需要添加@用户标识，请按照规则随机分布在开头40%、中间40%、结尾20%的位置。` : ''}
+
+评论内容：${draftPrompt}`;
+        console.log(`[Middle Comment Generator] 发送给AI的提示词 ${i + 1}:`, aiPrompt);
         
         // 调用AI润色
         const response = await fetch('/api/deepseek/polish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            draft: prompt,
+            draft: draftPrompt,
+            prompt: aiPrompt,
             variation: i + 1
           }),
         });
@@ -173,6 +187,15 @@ export default function MiddleCommentGenerator({
         const result = await response.json();
         let polishedComment = result.polished || '';
 
+        // 如果 API 返回空值，使用默认生成的评论
+        if (!polishedComment) {
+          const startWord = randomPick(ruleConfig.vocabulary.开头语);
+          const middleWord = randomPick(ruleConfig.vocabulary.中间连接词);
+          const feelingWord = randomPick(ruleConfig.vocabulary.结果感受词);
+          const endingWord = randomPick(ruleConfig.vocabulary.结尾语气词);
+          polishedComment = `${startWord}${middleWord}，${feelingWord}，${endingWord}`;
+        }
+
         // 控制字数
         if (polishedComment.length > ruleConfig.maxWords) {
           polishedComment = polishedComment.slice(0, ruleConfig.maxWords - 1) + '…';
@@ -180,10 +203,13 @@ export default function MiddleCommentGenerator({
           polishedComment = polishedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
         }
 
-        // 只有最后一条评论才添加@用户标识
+        // 只有最后一条评论才添加@用户标识，且用户输入中不包含@用户标识
         let storageComment = polishedComment;
-        if (atUser && i === commentCount - 1) {
+        if (atUser && i === commentCount - 1 && !hasAtUser) {
           polishedComment = insertAtUser(polishedComment, atUser);
+          storageComment = formatCommentForStorage(polishedComment, atUser);
+        } else if (atUser && i === commentCount - 1 && hasAtUser) {
+          // 如果用户输入已经包含@用户标识，直接格式化存储
           storageComment = formatCommentForStorage(polishedComment, atUser);
         }
 

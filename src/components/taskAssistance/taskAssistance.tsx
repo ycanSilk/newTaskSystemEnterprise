@@ -24,7 +24,9 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
     '/images/qa3.jpg',
     '/images/qa4.png',
     '/images/qa5.jpg',
-    '/images/qa6.jpg'
+    '/images/qa6.jpg',
+    '/images/qa7.png',
+    '/images/qa8.png',
   ];
 
   // 处理图片点击预览
@@ -233,6 +235,21 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
                     onClick={() => handleImageClick(6)}
                   >
                     <img src={imgPaths[5]} alt="下评单" className="w-full h-full object-cover bg-blue-100" />
+                  </div>
+                </div>
+                <p><strong>5、上传图片：</strong> </p>
+                <div className="flex flex-wrap gap-3.5 mt-3.5 mb-2">
+                  <div 
+                    className="w-36 h-36 bg-blue-50 rounded-md overflow-hidden shadow-sm border-2 border-white transition-all duration-200 cursor-pointer flex items-center justify-center hover:-translate-y-0.5 hover:shadow-md"
+                    onClick={() => handleImageClick(7)}
+                  >
+                    <img src={imgPaths[6]} alt="上传图片" className="w-full h-full object-cover bg-blue-100" />
+                  </div>
+                  <div 
+                    className="w-36 h-36 bg-blue-50 rounded-md overflow-hidden shadow-sm border-2 border-white transition-all duration-200 cursor-pointer flex items-center justify-center hover:-translate-y-0.5 hover:shadow-md"
+                    onClick={() => handleImageClick(8)}
+                  >
+                    <img src={imgPaths[6]} alt="上传图片" className="w-full h-full object-cover bg-blue-100" />
                   </div>
                 </div>
               </div>

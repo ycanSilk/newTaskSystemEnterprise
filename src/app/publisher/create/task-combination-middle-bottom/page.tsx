@@ -91,6 +91,8 @@ export default function PublishTaskPage() {
   
   // MiddleCommentGenerator模态框状态
   const [showMiddleCommentGenerator, setShowMiddleCommentGenerator] = useState(false);
+  // 中评评论的MiddleCommentGenerator模态框状态
+  const [showTopCommentGenerator, setShowTopCommentGenerator] = useState(false);
 
   // 显示通用提示框
   const showAlert = (
@@ -251,170 +253,23 @@ export default function PublishTaskPage() {
     showAlert('生成成功', `已生成 ${comments.length} 条下评评论内容！`, '✨');
   };
 
-  // AI优化中评评论功能
-  const handleAITopCommentOptimize = async () => {
-    try {
-      // 从comment.json文件中随机获取一个评论作为提示词
-      let prompt = '';
-      try {
-        const response = await fetch('/file/comment.json');
-        const comments = await response.json();
-        if (Array.isArray(comments) && comments.length > 0) {
-          const randomIndex = Math.floor(Math.random() * comments.length);
-          prompt = comments[randomIndex];
-        } else {
-          showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
-          return;
-        }
-      } catch (error) {
-        console.error('加载评论库失败:', error);
-        showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
-        return;
+  // 处理中评评论的MiddleCommentGenerator生成的评论
+  const handleTopCommentGenerated = (comments: string[]) => {
+    setFormData((prevData: FormData) => ({
+      ...prevData,
+      topComment: {
+        ...prevData.topComment,
+        comment: comments[0] || ''
       }
-      
-      setIsPublishing(true);
-      
-      // 调用AI生成评论API
-      const response = await fetch('/api/deepseek/polish', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ draft: prompt }),
-      });
-      
-      const result = await response.json();
-      console.log('DeepSeek API 响应:', result);
-      if (!response.ok) throw new Error(result.error || '润色失败');
-      
-      setFormData((prevData: FormData) => ({
-        ...prevData,
-        topComment: {
-          ...prevData.topComment,
-          comment: result.polished || ''
-        }
-      }));
-      
-      showAlert('生成成功', '中评评论内容已通过AI生成！', '✨');
-    } catch (error) {
-      console.error('AI生成评论评论失败:', error);
-      showAlert('润色失败', '网络错误，请稍后重试', 'error');
-    } finally {
-      setIsPublishing(false);
-    }
+    }));
+    
+    setShowTopCommentGenerator(false);
+    showAlert('生成成功', '中评评论内容已通过AI生成！', '✨');
   };
+
+
   
-  // AI优化下评评论功能
-  const handleAIMiddleCommentsOptimize = async () => {
-    try {
-      // 从comment.json文件中随机获取对应数量的评论作为提示词
-      let prompts: string[] = [];
-      try {
-        const response = await fetch('/file/comment.json');
-        const comments = await response.json();
-        if (Array.isArray(comments) && comments.length > 0) {
-          // 随机获取对应数量的评论，确保不重复
-          const shuffled = [...comments].sort(() => 0.5 - Math.random());
-          prompts = shuffled.slice(0, formData.middleQuantity);
-          // 如果评论库数量不足，重复使用
-          while (prompts.length < formData.middleQuantity) {
-            const randomIndex = Math.floor(Math.random() * comments.length);
-            prompts.push(comments[randomIndex]);
-          }
-        } else {
-          showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
-          return;
-        }
-      } catch (error) {
-        console.error('加载评论库失败:', error);
-        showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
-        return;
-      }
-      
-      setIsPublishing(true);
-      
-      // 为每个提示词生成评论
-      const generatedComments: string[] = [];
-      for (let i = 0; i < formData.middleQuantity; i++) {
-        const response = await fetch('/api/deepseek/polish', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            draft: prompts[i], 
-            variation: i + 1 // 添加变化参数，确保生成不同的评论
-          }),
-        });
-        
-        const result = await response.json();
-        console.log(`DeepSeek API 响应 ${i + 1}:`, result);
-        if (!response.ok) throw new Error(result.error || '润色失败');
-        
-        // 确保评论不重复
-        let comment = result.polished || '';
-        while (generatedComments.includes(comment)) {
-          // 如果重复，重新生成
-          const retryResponse = await fetch('/api/deepseek/polish', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              draft: prompts[i], 
-              variation: i + 1 + Math.random() // 添加随机值确保不同
-            }),
-          });
-          const retryResult = await retryResponse.json();
-          comment = retryResult.polished || '';
-        }
-        
-        generatedComments.push(comment);
-      }
-      
-      // 构建新的评论数组
-      const newComments: Array<{ comment: string; image: null; imageUrl: string }> = generatedComments.map(comment => ({
-        comment,
-        image: null,
-        imageUrl: ''
-      }));
-      
-      // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
-      if (mentions.length > 0 && newComments.length > 0) {
-        // 先从所有评论中移除@用户标记
-        const commentsWithMention = newComments.map((comment: CommentData) => ({
-          ...comment,
-          comment: comment.comment.replace(/ @\S+/g, '')
-        }));
-        
-        // 然后将@用户标记添加到最新的最后一条评论
-        const lastIndex = commentsWithMention.length - 1;
-        commentsWithMention[lastIndex] = {
-          ...commentsWithMention[lastIndex],
-          comment: commentsWithMention[lastIndex].comment 
-            ? `${commentsWithMention[lastIndex].comment} @${mentions[0]}` 
-            : `@${mentions[0]}`
-        };
-        
-        setFormData((prevData: FormData) => ({
-          ...prevData,
-          middleComments: commentsWithMention
-        }));
-      } else {
-        setFormData((prevData: FormData) => ({
-          ...prevData,
-          middleComments: newComments
-        }));
-      }
-      
-      showAlert('生成成功', `已生成 ${formData.middleQuantity} 条下评评论内容！`, '✨');
-    } catch (error) {
-      console.error('AI生成评论评论失败:', error);
-      showAlert('润色失败', '网络错误，请稍后重试', 'error');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
+
 
   // 发布任务
   const handlePublish = async () => {
@@ -607,7 +462,7 @@ export default function PublishTaskPage() {
             {/* AI优化评论功能按钮 */}
             <div className="mb-4">
               <Button 
-                onClick={handleAITopCommentOptimize}
+                onClick={() => setShowTopCommentGenerator(true)}
                 disabled={isPublishing}
                 className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -624,10 +479,16 @@ export default function PublishTaskPage() {
                 <textarea
                   className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows={3}
-                  placeholder="请输入中评评论内容"
+                  placeholder="请输入中评评论内容（不能包含@用户标识）"
                   value={formData.topComment.comment}
                   onChange={(e) => {
-                    setFormData({...formData, topComment: {...formData.topComment, comment: e.target.value}});
+                    const newValue = e.target.value;
+                    // 检查是否包含@用户标识
+                    if (newValue.includes('@')) {
+                      showAlert('提示', '中评评论不能包含@用户标识', '⚠️');
+                      return;
+                    }
+                    setFormData({...formData, topComment: {...formData.topComment, comment: newValue}});
                   }}
                   style={{ height: '80px' }}
                 />
@@ -812,7 +673,24 @@ export default function PublishTaskPage() {
         onClose={() => setShowAlertModal(false)}
       />
       
-      {/* MiddleCommentGenerator模态框 */}
+      {/* 中评评论的MiddleCommentGenerator模态框 */}
+      <Modal
+        isOpen={showTopCommentGenerator}
+        onClose={() => setShowTopCommentGenerator(false)}
+        title="AI生成评论"
+        className="w-full max-w-md"
+      >
+        <MiddleCommentGenerator
+          onCommentsGenerated={handleTopCommentGenerated}
+          isLoading={isPublishing}
+          onLoadingChange={setIsPublishing}
+          commentCount={1}
+          atUser={undefined}
+          userComments={[formData.topComment.comment]}
+        />
+      </Modal>
+
+      {/* 下评评论的MiddleCommentGenerator模态框 */}
       <Modal
         isOpen={showMiddleCommentGenerator}
         onClose={() => setShowMiddleCommentGenerator(false)}
@@ -825,6 +703,7 @@ export default function PublishTaskPage() {
           onLoadingChange={setIsPublishing}
           commentCount={formData.middleQuantity}
           atUser={mentions.length > 0 ? mentions[0] : undefined}
+          userComments={formData.middleComments.map(comment => comment.comment)}
         />
       </Modal>
       

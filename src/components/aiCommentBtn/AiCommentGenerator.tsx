@@ -8,6 +8,8 @@ interface AiCommentGeneratorProps {
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
   commentCount: number;
+  prompt?: string;
+  userComments?: string[];
 }
 
 interface CommentRule {
@@ -37,6 +39,8 @@ export default function AiCommentGenerator({
   isLoading,
   onLoadingChange,
   commentCount,
+  prompt,
+  userComments,
 }: AiCommentGeneratorProps) {
   const [nickname, setNickname] = useState('');
   const [ruleConfig, setRuleConfig] = useState<CommentRule | null>(null);
@@ -99,19 +103,19 @@ export default function AiCommentGenerator({
       let atPos: '开头' | '中间' | '结尾' = '开头';
       if (posRand < ruleConfig.atPositionDist.开头) {
         atPos = '开头';
-        comment = `@${nick} ${comment}`;
+        comment = `${nick} ${comment}`;
       } else if (posRand < ruleConfig.atPositionDist.开头 + ruleConfig.atPositionDist.中间) {
         atPos = '中间';
         const parts = comment.split('，');
         if (parts.length >= 2) {
-          parts.splice(1, 0, ` @${nick} `);
+          parts.splice(1, 0, ` ${nick} `);
           comment = parts.join('，');
         } else {
-          comment = `试了@${nick} 的方法，${feelingWord}，${endingWord}`;
+          comment = `试了${nick} 的方法，${feelingWord}，${endingWord}`;
         }
       } else {
         atPos = '结尾';
-        comment = `${comment}@${nick}`;
+        comment = `${comment}${nick}`;
       }
     }
 
@@ -130,13 +134,13 @@ export default function AiCommentGenerator({
       if (nick.trim()) {
         const posRand = Math.random();
         if (posRand < ruleConfig.atPositionDist.开头) {
-          comment = `@${nick} ${bare2}`;
+          comment = `${nick} ${bare2}`;
         } else if (posRand < ruleConfig.atPositionDist.开头 + ruleConfig.atPositionDist.中间) {
           const parts = bare2.split('，');
-          parts.splice(1, 0, ` @${nick} `);
+          parts.splice(1, 0, ` ${nick} `);
           comment = parts.join('，');
         } else {
-          comment = `${bare2}@${nick}`;
+          comment = `${bare2}${nick}`;
         }
       } else {
         comment = bare2;
@@ -154,6 +158,12 @@ export default function AiCommentGenerator({
     return comment;
   };
 
+  // 处理评论存储格式，使用[[]]标记固定昵称
+  const formatCommentForStorage = (comment: string, nick: string): string => {
+    if (!nick) return comment;
+    return comment.replace(new RegExp(`${nick}`, 'g'), `[[${nick}]]`);
+  };
+
   // 生成评论
   const handleGenerateComments = async () => {
     if (!ruleConfig) {
@@ -166,13 +176,26 @@ export default function AiCommentGenerator({
       setError('');
 
       const comments: string[] = [];
+      const storageComments: string[] = [];
+
       for (let i = 0; i < commentCount; i++) {
+        // 使用用户提供的评论或生成草稿评论
+        const draftComment = userComments?.[i]?.trim() || generateSingleComment(nickname);
+        console.log(`[AI Comment Generator] 使用的评论 ${i + 1}:`, draftComment);
+        
+        // 构建详细的提示词
+        const aiPrompt = prompt || `请润色以下评论，使其更加自然、口语化，保持原有的语义和情感。如果包含固定昵称，请确保昵称位置合理且保留。
+
+评论内容：${draftComment}`;
+        console.log(`[AI Comment Generator] 发送给AI的提示词 ${i + 1}:`, aiPrompt);
+        
         // 调用AI润色
         const response = await fetch('/api/deepseek/polish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            draft: generateSingleComment(nickname),
+            draft: draftComment,
+            prompt: aiPrompt,
             variation: i + 1
           }),
         });
@@ -186,24 +209,31 @@ export default function AiCommentGenerator({
         let polishedComment = result.polished || '';
 
         // 确保昵称位置随机且保留
-        if (!polishedComment.includes(`@${nickname}`)) {
+        if (!polishedComment.includes(`${nickname}`)) {
           const posRand = Math.random();
           if (posRand < 0.3) {
-            polishedComment = `@${nickname} ${polishedComment}`;
+            polishedComment = `${nickname} ${polishedComment}`;
           } else if (posRand < 0.7) {
             const parts = polishedComment.split('，');
             if (parts.length >= 2) {
-              parts.splice(1, 0, ` @${nickname} `);
+              parts.splice(1, 0, ` ${nickname} `);
               polishedComment = parts.join('，');
             } else {
-              polishedComment = `${polishedComment} @${nickname}`;
+              polishedComment = `${polishedComment} ${nickname}`;
             }
           } else {
-            polishedComment = `${polishedComment} @${nickname}`;
+            polishedComment = `${polishedComment} ${nickname}`;
           }
         }
 
         comments.push(polishedComment);
+
+        // 为存储准备评论，使用[[]]标记固定昵称
+        const storageComment = formatCommentForStorage(polishedComment, nickname);
+        storageComments.push(storageComment);
+        console.log(`[AI Comment Generator] 格式化后的存储评论 ${i + 1}:`, storageComment);
+        console.log(`[AI Comment Generator] 原始评论 ${i + 1}:`, draftComment);
+        console.log('-------------------------分割线-------------------------')
       }
 
       // 将生成的评论添加到词库
@@ -211,7 +241,7 @@ export default function AiCommentGenerator({
         const addToLibraryResponse = await fetch('/api/task/addCommentToLibrary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ comments }),
+          body: JSON.stringify({ comments: storageComments }),
         });
         
         if (!addToLibraryResponse.ok) {
