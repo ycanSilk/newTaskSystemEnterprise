@@ -28,13 +28,35 @@ export default function PublisherRegisterPage() {
   // 只在客户端生成验证码，避免SSR和客户端渲染不匹配
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setCaptchaCode(generateCaptcha());
+      const initialCaptcha = generateCaptcha();
+      setCaptchaCode(initialCaptcha);
+      
+      // 生成初始的字符变换参数和干扰点位置
+      const charTransforms = [];
+      for (let i = 0; i < initialCaptcha.length; i++) {
+        charTransforms.push({
+          skewX: Math.random() * 15 - 7.5,
+          rotate: Math.random() * 8 - 4
+        });
+      }
+      
+      const dots = [];
+      for (let i = 0; i < 6; i++) {
+        dots.push({
+          cx: Math.random() * 110 + 5,
+          cy: Math.random() * 30 + 5,
+          r: Math.random() * 1.5 + 1
+        });
+      }
+      
+      setCaptchaConfig({ charTransforms, dots });
     }
   }, []);
   
-  // 生成随机验证码
+  // 生成随机验证码（与demo.html一致）
   function generateCaptcha(length = 4) {
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    // 使用与demo.html相同的字符集，排除容易混淆的字符
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     let result = '';
     for (let i = 0; i < length; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -44,9 +66,54 @@ export default function PublisherRegisterPage() {
 
   // 刷新验证码
   const refreshCaptcha = () => {
-    setCaptchaCode(generateCaptcha());
+    const newCaptcha = generateCaptcha();
+    setCaptchaCode(newCaptcha);
+    
+    // 生成固定的字符变换参数和干扰点位置
+    const charTransforms = [];
+    for (let i = 0; i < newCaptcha.length; i++) {
+      charTransforms.push({
+        skewX: Math.random() * 15 - 7.5,
+        rotate: Math.random() * 8 - 4
+      });
+    }
+    
+    const dots = [];
+    for (let i = 0; i < 6; i++) {
+      dots.push({
+        cx: Math.random() * 110 + 5,
+        cy: Math.random() * 30 + 5,
+        r: Math.random() * 1.5 + 1
+      });
+    }
+    
+    setCaptchaConfig({ charTransforms: [...charTransforms], dots: [...dots] });
+    
+    // 只重置captcha字段，不影响其他表单字段
     setFormData(prev => ({ ...prev, captcha: '' }));
   };
+
+  // 定义验证码配置类型
+  interface CharTransform {
+    skewX: number;
+    rotate: number;
+  }
+
+  interface Dot {
+    cx: number;
+    cy: number;
+    r: number;
+  }
+
+  interface CaptchaConfig {
+    charTransforms: CharTransform[];
+    dots: Dot[];
+  }
+
+  const [captchaConfig, setCaptchaConfig] = useState<CaptchaConfig>({
+    charTransforms: [],
+    dots: []
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +279,7 @@ export default function PublisherRegisterPage() {
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 pt-8 md:pt-12 pb-12 md:pb-16">
         <div className="max-w-md mx-auto px-4 text-center">
           <div className="text-white text-2xl md:text-4xl font-bold mb-2 md:mb-3">
-            微任务系统平台
+            巍峨人力
           </div>
         </div>
       </div>
@@ -222,7 +289,7 @@ export default function PublisherRegisterPage() {
         <div className="max-w-md mx-auto px-4">
           {/* 注册卡片 */}
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">注册</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">用户注册</h2>
             {/* 注册表单 */}
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* 账号信息 */}
@@ -315,10 +382,44 @@ export default function PublisherRegisterPage() {
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       />
                       <div 
-                        className="w-24 h-10 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg font-bold text-lg cursor-pointer"
+                        className="w-24 h-10 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg cursor-pointer"
                         onClick={refreshCaptcha}
+                        title="点击刷新"
                       >
-                        {captchaCode}
+                        <svg width="96" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="120" height="40" fill="#f0f0f0"/>
+                          {/* 为每个字符添加不同的歪斜效果，确保不超出图形框 */}
+                          {captchaCode.split('').map((char, index) => {
+                            const transform = captchaConfig.charTransforms[index] || { skewX: 0, rotate: 0 };
+                            return (
+                              <text 
+                                key={index}
+                                x={25 + index * 20}
+                                y="28"
+                                fontFamily="Arial"
+                                fontSize="24"
+                                fill="#333"
+                                transform={`skewX(${transform.skewX || 0}) rotate(${transform.rotate || 0})`}
+                              >
+                                {char}
+                              </text>
+                            );
+                          })}
+                          {/* 增加更多干扰线 */}
+                          <line x1="5" y1="15" x2="115" y2="25" stroke="#999" strokeWidth="1"/>
+                          <line x1="20" y1="5" x2="100" y2="35" stroke="#999" strokeWidth="1"/>
+                          <line x1="0" y1="20" x2="120" y2="20" stroke="#999" strokeWidth="1"/>
+                          {/* 增加更多干扰点 */}
+                          {captchaConfig.dots.map((dot, i) => (
+                            <circle 
+                              key={i}
+                              cx={dot.cx || 0}
+                              cy={dot.cy || 0}
+                              r={dot.r || 0}
+                              fill="#999"
+                            />
+                          ))}
+                        </svg>
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">点击验证码可刷新</p>
@@ -345,7 +446,7 @@ export default function PublisherRegisterPage() {
                 </div>
 
                 {/* 企业负责人 */}
-                <div className="mb-3">
+                <div className="mb-1">
                   <label className="block text-xs md:text-sm font-medium  mb-1">
                     企业负责人 <span className="text-red-500">*</span>
                   </label>
@@ -421,7 +522,7 @@ export default function PublisherRegisterPage() {
 
           {/* 底部信息 */}
           <div className="text-center  mb-8">
-            <p>©2025 微任务系统 版本V1.0</p>
+            <p>@2026 巍峨人力</p>
 
           </div>
         </div>

@@ -204,15 +204,8 @@ class GlobalFetch {
           ...options,
           credentials: 'include', // 确保携带cookie
         });
-
-        if (!response.ok) {
-          throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-        }
-
         const data = await response.json();
-
         // 不缓存响应数据
-
         return data;
       } catch (error) {
         // 处理重试

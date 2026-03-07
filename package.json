@@ -1,7 +1,7 @@
 {
   "name": "douyin-task-system",
   "version": "2.0.0",
-  "description": "抖音评论派单系统 - H5移动端优先",
+  "description": "巍峨人力 - H5移动端优先",
   "private": true,
   "scripts": {
     "dev": "next dev",

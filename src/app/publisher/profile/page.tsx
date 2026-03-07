@@ -199,9 +199,8 @@ export default function PublisherProfilePage() {
 
       {/* 底部提示区域 */}
       <div>
-        <div className="text-center text-gray-500 text-xs">
-          <p>商家中心 v1.0.0</p>
-          <p className="mt-1">© 2025 版权所有</p>
+        <div className="text-center text-gray-500 text-xs">         
+          <p className="mt-1">© 2026 巍峨人力</p>
         </div>
       </div>
     </div>

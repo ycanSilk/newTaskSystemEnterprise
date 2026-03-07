@@ -22,6 +22,12 @@ export interface LoginFormData {
    * 用于前端验证码验证
    */
   captcha: string;
+  
+  /**
+   * 是否同意用户协议
+   * 用于前端验证用户是否同意用户协议和隐私政策
+   */
+  agreeToTerms: boolean;
 }
 
 /**

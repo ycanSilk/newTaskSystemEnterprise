@@ -7,12 +7,12 @@ import { ToastProvider, Toaster } from '@/components/ui/Toast';
 const interFontConfig = {};
 
 export const metadata = {
-  title: '抖音评论派单系统',
-  description: 'H5移动端优先的评论任务平台',
+  title: '巍峨人力',
+  description: 'H5移动端优先的任务平台',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '派单系统',
+    title: '巍峨人力',
   },
   other: {
     'format-detection': 'telephone=no',
@@ -40,8 +40,8 @@ export default function RootLayout({
     <html lang="zh-CN" {...interFontConfig}>
       <head>
         <link rel="apple-touch-icon" href="/images/default.png" />
-        <meta name="apple-mobile-web-app-title" content="派单系统" />
-        <meta name="application-name" content="派单系统" />
+        <meta name="apple-mobile-web-app-title" content="巍峨人力" />
+        <meta name="application-name" content="巍峨人力" />
       </head>
       <body className={cn(
         'min-h-screen bg-gray-50 font-sans antialiased'

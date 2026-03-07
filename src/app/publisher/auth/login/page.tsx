@@ -16,7 +16,8 @@ export default function PublisherLoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({
     account: '',
     password: '',
-    captcha: ''
+    captcha: '',
+    agreeToTerms: false
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,9 +47,10 @@ export default function PublisherLoginPage() {
     }
   }, [isAuthLoading, isAuthenticated, router]);
   
-  // 生成随机验证码
+  // 生成随机验证码（与demo.html一致）
   function generateCaptcha(length = 4) {
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    // 使用与demo.html相同的字符集，排除容易混淆的字符
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     let result = '';
     for (let i = 0; i < length; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -58,15 +60,81 @@ export default function PublisherLoginPage() {
 
   // 刷新验证码
   const refreshCaptcha = () => {
-    setCaptchaCode(generateCaptcha());
+    const newCaptcha = generateCaptcha();
+    setCaptchaCode(newCaptcha);
+    
+    // 生成固定的字符变换参数和干扰点位置
+    const charTransforms = [];
+    for (let i = 0; i < newCaptcha.length; i++) {
+      charTransforms.push({
+        skewX: Math.random() * 15 - 7.5,
+        rotate: Math.random() * 8 - 4
+      });
+    }
+    
+    const dots = [];
+    for (let i = 0; i < 6; i++) {
+      dots.push({
+        cx: Math.random() * 110 + 5,
+        cy: Math.random() * 30 + 5,
+        r: Math.random() * 1.5 + 1
+      });
+    }
+    
+    setCaptchaConfig({ charTransforms: [...charTransforms], dots: [...dots] });
+    
+    // 只重置captcha字段，不影响其他表单字段
     setFormData(prev => ({ ...prev, captcha: '' }));
     // 重置倒计时
     setCountdown(60);
   };
 
+  // 定义验证码配置类型
+  interface CharTransform {
+    skewX: number;
+    rotate: number;
+  }
+
+  interface Dot {
+    cx: number;
+    cy: number;
+    r: number;
+  }
+
+  interface CaptchaConfig {
+    charTransforms: CharTransform[];
+    dots: Dot[];
+  }
+
+  const [captchaConfig, setCaptchaConfig] = useState<CaptchaConfig>({
+    charTransforms: [],
+    dots: []
+  });
+
   // 只在客户端生成验证码，避免SSR和客户端渲染不匹配
   useEffect(() => {
-    setCaptchaCode(generateCaptcha());
+    const initialCaptcha = generateCaptcha();
+    setCaptchaCode(initialCaptcha);
+    
+    // 生成初始的字符变换参数和干扰点位置
+    const charTransforms = [];
+    for (let i = 0; i < initialCaptcha.length; i++) {
+      charTransforms.push({
+        skewX: Math.random() * 15 - 7.5,
+        rotate: Math.random() * 8 - 4
+      });
+    }
+    
+    const dots = [];
+    for (let i = 0; i < 6; i++) {
+      dots.push({
+        cx: Math.random() * 110 + 5,
+        cy: Math.random() * 30 + 5,
+        r: Math.random() * 1.5 + 1
+      });
+    }
+    
+    setCaptchaConfig({ charTransforms, dots });
 
     // 设置1秒倒计时定时器
     const countdownTimer = setInterval(() => {
@@ -87,21 +155,34 @@ export default function PublisherLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    // 账号校验
+    
+    // 1. 用户名校验：必填、字符长度>=4
     if (!formData.account || formData.account.trim() === '') {
       setErrorMessage('请输入账号');
       return;
     }
+    if (formData.account.trim().length < 4) {
+      setErrorMessage('账号长度至少为4个字符');
+      return;
+    }
     
-    // 密码校验
+    // 2. 密码校验：必填、字符长度>=6
     if (!formData.password || formData.password.trim() === '') {
       setErrorMessage('请输入密码');
       return;
     }
+    if (formData.password.length < 6) {
+      setErrorMessage('密码长度至少为6个字符');
+      return;
+    }
     
-    // 验证码非空校验
+    // 3. 图形验证码校验：4位字符
     if (!formData.captcha || formData.captcha.trim() === '') {
       setErrorMessage('请输入验证码');
+      return;
+    }
+    if (formData.captcha.trim().length !== 4) {
+      setErrorMessage('验证码长度必须为4位');
       return;
     }
     
@@ -109,6 +190,12 @@ export default function PublisherLoginPage() {
     if (formData.captcha.toUpperCase() !== captchaCode.toUpperCase()) {
       setErrorMessage('验证码错误');
       refreshCaptcha(); // 验证码错误时刷新
+      return;
+    }
+    
+    // 4. 用户协议校验：必须勾选
+    if (!formData.agreeToTerms) {
+      setErrorMessage('请阅读并同意用户协议和隐私政策');
       return;
     }
     
@@ -137,71 +224,30 @@ export default function PublisherLoginPage() {
       });
 
       if (result.code===0) {
-        console.log('登录成功，跳转到目标页面/publisher/dashboard');
-        // 登录成功后保存用户信息到内存和cookie
         saveUserOnLoginSuccess(result.data, result.data.token);
         // 使用replace代替push，避免浏览器历史记录中留下登录页
         // 确保只执行一次重定向
         router.replace('/publisher/dashboard');
       } else {
-        // 登录失败，显示错误信息
-        console.log('登录失败:', result.message);
-        setErrorMessage(result.message || '登录失败，请检查输入信息');
+        // 登录失败，显示前端通用错误提示
+        setErrorMessage('账号和密码错误');
         refreshCaptcha(); // 验证码错误时刷新
       }
     } catch (error) {
-      // 解析错误信息，显示后端API返回的具体错误
+      // 解析错误信息，显示前端通用错误提示
       if (error instanceof Error) {
-        // 检查是否是API错误响应
-        if (error.message.includes('API Error:')) {
-          try {
-            // 提取API错误信息
-            const errorMatch = error.message.match(/API Error: (.*)/);
-            if (errorMatch && errorMatch[1]) {
-              const apiError = JSON.parse(errorMatch[1]);
-              // 优先使用data.message
-              if (apiError.data && apiError.data.message) {
-                setErrorMessage(apiError.data.message);
-              } else if (apiError.message) {
-                setErrorMessage(apiError.message);
-              } else {
-                setErrorMessage('登录失败，账号或密码错误');
-              }
-            } else {
-              setErrorMessage('登录失败，账号或密码错误');
-            }
-          } catch (parseError) {
-            // 尝试直接解析错误消息，可能是直接的JSON字符串
-            try {
-              const apiError = JSON.parse(error.message);
-              if (apiError.data && apiError.data.message) {
-                setErrorMessage(apiError.data.message);
-              } else if (apiError.message) {
-                setErrorMessage(apiError.message);
-              } else {
-                setErrorMessage('登录失败，账号或密码错误');
-              }
-            } catch (e) {
-              setErrorMessage('登录失败，账号或密码错误');
-            }
-          }
+        // 网络错误处理
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+          setErrorMessage('网络连接失败，请检查网络设置后重试');
+        } else if (error.message.includes('AbortError')) {
+          setErrorMessage('请求超时，请稍后重试');
         } else {
-          // 尝试直接解析错误消息，可能是直接的JSON字符串
-          try {
-            const apiError = JSON.parse(error.message);
-            if (apiError.data && apiError.data.message) {
-              setErrorMessage(apiError.data.message);
-            } else if (apiError.message) {
-              setErrorMessage(apiError.message);
-            } else {
-                setErrorMessage('登录失败，账号或密码错误');
-              }
-          } catch (e) {
-            setErrorMessage('登录失败，账号或密码错误');
-          }
+          // 其他所有错误都显示通用登录失败提示
+          setErrorMessage('账号和密码错误');
         }
       } else {
-        setErrorMessage('登录失败，账号或密码错误');
+        // 未知错误
+        setErrorMessage('登录失败，请稍后重试');
       }
       refreshCaptcha();
     } finally {
@@ -214,7 +260,7 @@ export default function PublisherLoginPage() {
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 pt-12 pb-16">
         <div className="max-w-md mx-auto px-4 text-center">
           <div className="text-white font-bold text-4xl mb-3">
-            任务发布系统
+            巍峨人力
           </div>
         </div>
       </div>
@@ -225,7 +271,7 @@ export default function PublisherLoginPage() {
           {/* 登录卡片 */}
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">登录</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">用户登录</h2>
             </div>
 
             {/* 登录表单 */}
@@ -319,13 +365,61 @@ export default function PublisherLoginPage() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <div 
-                    className="w-24 h-10 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg font-bold text-lg cursor-pointer"
-                    onClick={refreshCaptcha}
-                  >
-                    {captchaCode}
-                  </div>
+                  className="w-24 h-10 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg cursor-pointer"
+                  onClick={refreshCaptcha}
+                  title="点击刷新"
+                >
+                  <svg width="96" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="120" height="40" fill="#f0f0f0"/>
+                    {/* 为每个字符添加不同的歪斜效果，确保不超出图形框 */}
+                    {captchaCode.split('').map((char, index) => {
+                      const transform = captchaConfig.charTransforms[index] || { skewX: 0, rotate: 0 };
+                      return (
+                        <text 
+                          key={index}
+                          x={25 + index * 20}
+                          y="28"
+                          fontFamily="Arial"
+                          fontSize="24"
+                          fill="#333"
+                          transform={`skewX(${transform.skewX || 0}) rotate(${transform.rotate || 0})`}
+                        >
+                          {char}
+                        </text>
+                      );
+                    })}
+                    {/* 增加更多干扰线 */}
+                    <line x1="5" y1="15" x2="115" y2="25" stroke="#999" strokeWidth="1"/>
+                    <line x1="20" y1="5" x2="100" y2="35" stroke="#999" strokeWidth="1"/>
+                    <line x1="0" y1="20" x2="120" y2="20" stroke="#999" strokeWidth="1"/>
+                    {/* 增加更多干扰点 */}
+                    {captchaConfig.dots.map((dot, i) => (
+                      <circle 
+                        key={i}
+                        cx={dot.cx || 0}
+                        cy={dot.cy || 0}
+                        r={dot.r || 0}
+                        fill="#999"
+                      />
+                    ))}
+                  </svg>
+                </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">点击验证码可刷新，验证码还剩 {countdown} 秒自动刷新</p>
+              </div>
+
+              {/* 协议同意 */}
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="agreeToTerms"
+                  checked={formData.agreeToTerms}
+                  onChange={(e) => setFormData({...formData, agreeToTerms: e.target.checked})}
+                  className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="agreeToTerms" className="text-xs text-gray-600 leading-relaxed">
+                  我已阅读并同意 <span className="text-blue-600 underline">《用户协议》</span> 和 <span className="text-blue-600 underline">《隐私政策》</span>
+                </label>
               </div>
 
               {/* 错误信息 */}
@@ -375,7 +469,7 @@ export default function PublisherLoginPage() {
 
           {/* 底部信息 */}
           <div className="text-center mb-8">
-            <p>©2025 微任务系统平台 V1.0</p>
+            <p>©2026 巍峨人力</p>
           </div>
         </div>
       </div>
