@@ -29,8 +29,7 @@ export default function AwaitingReviewTabPage() {
   // 显示复制成功提示
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
-  // 数据缓存和轮询相关
-  const [lastFetchedData, setLastFetchedData] = useState<PendingTask[]>([]);
+  // 轮询相关
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // 模态框状态
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -42,23 +41,28 @@ export default function AwaitingReviewTabPage() {
   // 使用优化工具
   const { globalFetch } = useOptimization();
 
+
 // API调用 - 获取待审核任务列表
-  const fetchPendingTasks = async (disableCache = false) => {
+  const fetchPendingTasks = async () => {
     try {
-      // 使用全局fetch包装器，获得缓存和重试等优化功能
+      // 使用全局fetch包装器，禁用缓存，确保每次都获取最新数据
       const data: PendingTasksListResponse = await globalFetch('/api/task/pendingTasksList', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       }, {
-        // 启用缓存，缓存时间5分钟，但在审核操作后禁用缓存
-        enableCache: !disableCache,
-        expiry: 5 * 60 * 1000,
+        // 禁用缓存，确保每次都从服务器获取最新数据
+        enableCache: false,
         // 启用自动重试
         enableRetry: true,
         retryCount: 3,
         retryDelay: 1000
       });
-      
+      console.log('这是待审核组件的请求结果', data);
       if (data.success && data.data) {
         return data.data.list || [];
       }
@@ -68,34 +72,27 @@ export default function AwaitingReviewTabPage() {
       return [];
     }
   };
-
-  // 检查数据是否有变化
-  const hasDataChanged = (newData: PendingTask[], oldData: PendingTask[]): boolean => {
-    if (newData.length !== oldData.length) return true;
-    
-    // 比较任务ID，检查是否有新增或删除的任务
-    const newTaskIds = new Set(newData.map(order => order.b_task_id));
-    const oldTaskIds = new Set(oldData.map(order => order.b_task_id));
-    
-    if (newTaskIds.size !== oldTaskIds.size) return true;
-    
-    // 检查是否有不同的任务ID
-    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
+  
+  // 显示复制成功提示
+  const showCopySuccess = (message: string) => {
+    setTooltipMessage(message);
+    setShowCopyTooltip(true);
+    setTimeout(() => {
+      setShowCopyTooltip(false);
+    }, 2000);
   };
-
+  
   // 刷新任务列表数据
-  const refreshTasks = async (disableCache = false) => {
+  const refreshTasks = async () => {
     try {
-      const newTasks = await fetchPendingTasks(disableCache);
-      
-      // 与缓存数据对比
-      if (hasDataChanged(newTasks, lastFetchedData)) {
-        setAwaitingReviewOrders(newTasks);
-        setLastFetchedData(newTasks);
-        showCopySuccess('数据已更新');
-      }
+      setLoading(true);
+      const newTasks = await fetchPendingTasks();
+      setAwaitingReviewOrders(newTasks);
+      showCopySuccess('数据已更新');
     } catch (error) {
       console.error('刷新任务列表失败:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,7 +103,6 @@ export default function AwaitingReviewTabPage() {
       try {
         const initialTasks = await fetchPendingTasks();
         setAwaitingReviewOrders(initialTasks);
-        setLastFetchedData(initialTasks);
       } catch (error) {
         console.error('初始化任务列表失败:', error);
       } finally {
@@ -116,29 +112,17 @@ export default function AwaitingReviewTabPage() {
 
     initData();
 
-    // 设置被动轮询，每10分钟刷新一次
-    const pollingInterval = 10 * 60 * 1000; // 10分钟
+    // 设置被动轮询，每1分钟刷新一次
+    const pollingInterval = 1 * 60 * 1000; // 1分钟
     pollingIntervalRef.current = setInterval(() => {
       refreshTasks();
     }, pollingInterval);
-
-    // 监听页面可见性变化，当页面重新可见时刷新数据
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // 当页面重新可见时，主动刷新数据
-        // 这将在切换到这个页面时触发
-        refreshTasks();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // 清理函数
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
   // 图片查看器状态
@@ -187,8 +171,10 @@ export default function AwaitingReviewTabPage() {
       if (data.success) {
         showCopySuccess(data.message || '订单已审核通过');
         setShowApproveModal(false);
-        // 重新获取订单列表，禁用缓存以确保获取最新数据
-        await refreshTasks(true);
+        // 重新获取订单列表，确保获取最新数据
+        await refreshTasks();
+        // 通知父组件更新待审核任务数量
+        window.dispatchEvent(new CustomEvent('updateAwaitingReviewCount'));
       } else {
         throw new Error(data.message || '审核失败');
       }
@@ -230,8 +216,10 @@ export default function AwaitingReviewTabPage() {
       if (data.success) {
         showCopySuccess(data.message || '订单已驳回');
         setShowRejectModal(false);
-        // 重新获取订单列表，禁用缓存以确保获取最新数据
-        await refreshTasks(true);
+        // 重新获取订单列表，确保获取最新数据
+        await refreshTasks();
+        // 通知父组件更新待审核任务数量
+        window.dispatchEvent(new CustomEvent('updateAwaitingReviewCount'));
       } else {
         throw new Error(data.message || '驳回失败');
       }
@@ -304,16 +292,6 @@ export default function AwaitingReviewTabPage() {
     );
   }
 
-
-
-  const showCopySuccess = (message: string) => {
-    setTooltipMessage(message);
-    setShowCopyTooltip(true);
-    setTimeout(() => {
-      setShowCopyTooltip(false);
-    }, 2000);
-  };
-
   // 复制订单号功能
   const handleCopyOrderNumber = (orderNumber: string) => {
     navigator.clipboard.writeText(orderNumber).then(() => {
@@ -384,64 +362,64 @@ export default function AwaitingReviewTabPage() {
             </div>
             <div className="flex flex-wrap gap-2 mb-2">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
-                任务类型：{order.template_title}
-              </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
-                任务阶段：待审核
+                {order.template_title}
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
-                任务状态：待审核
+                待审核
               </span>
             </div>
             {/* 价格和状态信息 */}
-          <div className="text-sm text-black font-medium mb-1">单价：{order.reward_amount}</div>
+        
           <div className="text-sm text-black mb-1">提交时间：{order.submitted_at}</div>           
           {/* 领取用户信息展示 */}
-          <div className="text-black text-sm mb-1 w-full rounded-lg">评论员：{order.c_username || '未知'}</div>
+       
           <div className="text-black text-sm mb-1 w-full rounded-lg">评论类型：{order.template_title}</div>
           <div className="flex items-start justify-between mb-1 text-blue-600">任务的要求评论：{order.recommend_mark?.comment || ''}</div>
           <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频或评论丢失，将以接单员完成任务截图为准给予审核结算</div>
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
             <p className='mb-1  text-sm text-blue-600'>已完成评论链接：</p>
             <div className="flex gap-2 flex-wrap">
-              <OpenVideoButton 
-                videoUrl={order.comment_url}
-                defaultUrl={dyurl}
-                buttonText="复制链接"
-              />
-              
-              {/* 查看提交的图片组件 */}
-              {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
-                <button
-                  className="bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-                  onClick={() => {
-                    // 打开图片查看器
-                    setCurrentImageUrl(order.screenshots[0]);
-                    setShowImageViewer(true);
-                  }}
-                >
-                  查看图片 ({order.screenshots.length})
-                </button>
-              )}
-            </div>
-            <p className='text-sm text-blue-600'>提交的截图：</p>
-            {/* 图片缩略图展示 */}
-            {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
-              <div className="mt-2 flex gap-2 flex-wrap">
-                {order.screenshots.map((imgUrl, index) => (
-                  <img
-                    key={index}
-                    src={imgUrl}
-                    alt={`提交的截图 ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+              <div className="flex-1">
+                <OpenVideoButton 
+                  videoUrl={order.comment_url}
+                  defaultUrl={dyurl}
+                  buttonText="复制链接"
+                />
+                
+                {/* 查看提交的图片组件 */}
+                {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
+                  <button
+                    className="bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center mt-2"
                     onClick={() => {
-                      setCurrentImageUrl(imgUrl);
+                      // 打开图片查看器
+                      setCurrentImageUrl(order.screenshots[0]);
                       setShowImageViewer(true);
                     }}
-                  />
-                ))}
+                  >
+                    查看图片 ({order.screenshots.length})
+                  </button>
+                )}
               </div>
-            )}
+              <div className="flex-1">
+                {/* 图片缩略图展示 */}
+                {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {order.screenshots.map((imgUrl, index) => (
+                      <img
+                        key={index}
+                        src={imgUrl}
+                        alt={`提交的截图 ${index + 1}`}
+                        className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          setCurrentImageUrl(imgUrl);
+                          setShowImageViewer(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 审核备注输入框 */}

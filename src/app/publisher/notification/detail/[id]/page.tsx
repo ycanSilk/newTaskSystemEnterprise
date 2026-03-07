@@ -77,7 +77,7 @@ export default function NotificationDetailPage() {
         {!loading && !error && notification && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-xl font-bold mb-4">标题：{notification.title}</h3>
-            <p className="mb-4">创建时间：{notification.created_at}</p>
+            <p className="mb-4">通知时间:{notification.created_at}</p>
             <div className="mb-4">
               <p className="font-semibold mb-2">通知内容：</p>
               <div className="whitespace-pre-wrap">{notification.content}</div>

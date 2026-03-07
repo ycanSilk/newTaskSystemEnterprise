@@ -251,92 +251,94 @@ export const PublisherHeader: React.FC<PublisherHeaderProps> = ({ user = null })
   };
 
   return (
-    <div className="bg-blue-500 border-b border-[#9bcfffff] px-4 py-3 flex items-center justify-between h-[60px] box-border">
-      <div className="flex items-center flex-1">
-        {isClient && shouldShowBackButton() && (
-          <button 
-            onClick={handleBack}
-            className="p-2 rounded-full transition-colors text-white"
-            aria-label="返回上一页"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
-        <h1 className="text-xl text-white ml-1">
-          {isClient && getCurrentTitle()}
-        </h1>
-      </div>
-      <div className="flex items-center relative" ref={dropdownRef}>
-        {isClient && (
-          <CustomerServiceButton 
-            buttonText="联系客服" 
-            modalTitle="在线客服" 
-            CustomerServiceId={'kefu'} 
-            className="text-white font-bold mr-2 flex items-center gap-1 px-3 py-1 rounded"
-          />
-        )}
-        
-        <div className="mr-2 relative">
-          {/* 通知图标按钮，点击跳转到通知页面 */}
-          <button
-            onClick={() => router.push('/publisher/notification')}
-            className="cursor-pointer hover:bg-blue-600 rounded-full p-1 transition-colors"
-            aria-label="通知"
-          >
-            <BellOutlined className="text-3xl text-white" />
-          </button>
-          {/* 通知数量提示 */}
-          {unreadCount > 0 && (
-            <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </div>
+    <>
+      <div className="bg-blue-500 border-b border-[#9bcfffff] px-4 py-3 flex items-center justify-between h-[60px] box-border">
+        <div className="flex items-center flex-1">
+          {isClient && shouldShowBackButton() && (
+            <button 
+              onClick={handleBack}
+              className="p-2 rounded-full transition-colors text-white"
+              aria-label="返回上一页"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
           )}
+          <h1 className="text-xl text-white ml-1">
+            {isClient && getCurrentTitle()}
+          </h1>
         </div>
-
-        {/* 用户头像和下拉菜单 */}
-        <div className="relative ml-3">
-          <button 
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors duration-200"
-            aria-label="用户菜单"
-          >
-            <img 
-              src={user?.avatar || currentUser?.avatar || '/images/default.png'} 
-              alt="用户头像" 
-              className="w-full h-full rounded-full object-cover"
+        <div className="flex items-center relative" ref={dropdownRef}>
+          {isClient && (
+            <CustomerServiceButton 
+              buttonText="联系客服" 
+              modalTitle="在线客服" 
+              CustomerServiceId={'kefu'} 
+              className="text-white font-bold mr-2 flex items-center gap-1 px-3 py-1 rounded"
             />
-          </button>
-          
-          {/* 下拉菜单 */}
-          {showDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-10 transform transition-all duration-200 origin-top-right animate-fade-in-down">
-              {/* 个人中心按钮 */}
-              <button 
-                onClick={() => {
-                  router.push('/publisher/profile/settings');
-                  setShowDropdown(false);
-                }}
-                className="w-full text-left px-4 py-3 border-b border-gray-100 text-gray-800 font-medium text-sm hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
-              >
-                个人中心
-              </button>
-              
-              {/* 退出登录按钮 */}
-              <button 
-                onClick={() => {
-                  handleLogout();
-                  setShowDropdown(false);
-                }}
-                className="w-full text-left px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors duration-200 text-sm"
-              >
-                退出登录
-              </button>
-            </div>
           )}
+          
+          <div className="mr-2 relative">
+            {/* 通知图标按钮，点击跳转到通知页面 */}
+            <button
+              onClick={() => router.push('/publisher/notification')}
+              className="cursor-pointer hover:bg-blue-600 rounded-full p-1 transition-colors"
+              aria-label="通知"
+            >
+              <BellOutlined className="text-3xl text-white" />
+            </button>
+            {/* 通知数量提示 */}
+            {unreadCount > 0 && (
+              <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </div>
+            )}
+          </div>
+
+          {/* 用户头像和下拉菜单 */}
+          <div className="relative ml-3">
+            <button 
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors duration-200"
+              aria-label="用户菜单"
+            >
+              <img 
+                src={user?.avatar || currentUser?.avatar || '/images/default.png'} 
+                alt="用户头像" 
+                className="w-full h-full rounded-full object-cover"
+              />
+            </button>
+            
+            {/* 下拉菜单 */}
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-10 transform transition-all duration-200 origin-top-right animate-fade-in-down">
+                {/* 个人中心按钮 */}
+                <button 
+                  onClick={() => {
+                    router.push('/publisher/profile/settings');
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 border-b border-gray-100 text-gray-800 font-medium text-sm hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+                >
+                  个人中心
+                </button>
+                
+                {/* 退出登录按钮 */}
+                <button 
+                  onClick={() => {
+                    handleLogout();
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors duration-200 text-sm"
+                >
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };

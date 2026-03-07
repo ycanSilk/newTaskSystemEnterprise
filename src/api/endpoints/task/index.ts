@@ -31,3 +31,14 @@ export const GET_PENDING_TASKS_LIST_ENDPOINT = '/b/v1/tasks/pending.php';
 export const APPROVE_TASK_ENDPOINT = '/b/v1/tasks/review.php';
 
 
+//发布放大镜任务请求端点
+export const PUBLISH_MAGNIFIER_TASK_ENDPOINT = '/b/v1/magnify/create.php';
+
+//获取放大镜任务详情端点
+export const GET_MAGNIFIER_TASK_DETAILS_ENDPOINT = '/b/v1/magnify/detail.php';
+
+//获取放大镜任务列表端点
+export const GET_MAGNIFIER_TASK_LIST_ENDPOINT = '/b/v1/magnify/list.php';
+
+
+

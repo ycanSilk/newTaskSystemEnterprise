@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { PublisherBottomNavigation } from './components/PublisherBottomNavigation';
 import { PublisherHeader } from '@/app/publisher/components/PublisherHeader';
+import AwaitingReviewNotification from './components/AwaitingReviewNotification';
 import { useTokenChecker } from '@/hooks/useTokenChecker';
 
 export default function PublisherLayout({
@@ -41,6 +42,7 @@ export default function PublisherLayout({
 
       {/* 主要内容区域 - 为固定头部留出空间 */}
       <main className="flex-1 pt-[60px] pb-20">
+         <AwaitingReviewNotification />
         <Suspense fallback={<div className="w-full h-64 flex items-center justify-center">Loading...</div>}>
           {children}
         </Suspense>

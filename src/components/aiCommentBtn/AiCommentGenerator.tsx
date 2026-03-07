@@ -85,6 +85,35 @@ export default function AiCommentGenerator({
     return ruleConfig.forbiddenPatterns.some(word => text.includes(word));
   };
 
+  // 处理文本，移除[[@]]格式的字符和×××占位符
+  const processText = (text: string): string => {
+    // 移除[[@...]]格式的字符
+    let processedText = text.replace(/\[\[@[^\]]+\]\]/g, '');
+    // 移除×××占位符
+    processedText = processedText.replace(/×××/g, '');
+    return processedText;
+  };
+
+  // 执行文本替换操作
+  const applyTextReplacements = (text: string): string => {
+    let replacedText = text;
+    // 替换指定关键词
+    const replacements: Record<string, string> = {
+      '跟': '根',
+      '操': '曹',
+      '赢': '营'
+    };
+    
+    // 处理全角和半角字符
+    for (const [orig, repl] of Object.entries(replacements)) {
+      // 创建包含全角和半角的正则表达式
+      const regex = new RegExp(orig, 'g');
+      replacedText = replacedText.replace(regex, repl);
+    }
+    
+    return replacedText;
+  };
+
   // 生成一条评论
   const generateSingleComment = (nick: string): string => {
     if (!ruleConfig) return '';
@@ -155,6 +184,10 @@ export default function AiCommentGenerator({
       comment = comment.replace('，', ` ${randomPick(ruleConfig.vocabulary.感受)}，`);
     }
 
+    // 应用文本处理
+    comment = processText(comment);
+    comment = applyTextReplacements(comment);
+
     return comment;
   };
 
@@ -207,6 +240,10 @@ export default function AiCommentGenerator({
 
         const result = await response.json();
         let polishedComment = result.polished || '';
+
+        // 应用文本处理
+        polishedComment = processText(polishedComment);
+        polishedComment = applyTextReplacements(polishedComment);
 
         // 确保昵称位置随机且保留
         if (!polishedComment.includes(`${nickname}`)) {

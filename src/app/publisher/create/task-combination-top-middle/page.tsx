@@ -28,7 +28,9 @@ export default function PublishTaskPage() {
   // 从URL参数获取模板ID和阶段价格
   const templateId = parseInt(getSearchParam('template_id').trim() || '0');
   const stage1Price = parseFloat(getSearchParam('stage1Price').trim() || '0');
+  const stage1Count = parseInt(getSearchParam('stage1Count').trim() || '1'); // 默认为1
   const stage2Price = parseFloat(getSearchParam('stage2Price').trim() || '0');
+  const stage2Count = parseInt(getSearchParam('stage2Count').trim() || '3'); // 默认为3
 
   // @用户相关状态 - 只用于中评
   const [mentionInput, setMentionInput] = useState('');
@@ -45,30 +47,18 @@ export default function PublishTaskPage() {
       imageUrl: ''
     },
     
-    // 中评评论模块 - 默认3条
-    middleQuantity: 3,
-    middleComments: [
-      {
-        comment: '',
-        image: null,
-        imageUrl: ''
-      },
-      {
-        comment: '',
-        image: null,
-        imageUrl: ''
-      },
-      {
-        comment: '',
-        image: null,
-        imageUrl: ''
-      }
-    ],
+    // 中评评论模块 - 使用URL传递的数量
+    middleQuantity: stage2Count,
+    middleComments: Array.from({ length: stage2Count }, () => ({
+      comment: '',
+      image: null,
+      imageUrl: ''
+    })),
     deadline: '30' // 存储分钟数
   });
   
   // 中评任务数量输入状态
-  const [middleQuantityInput, setMiddleQuantityInput] = useState(formData.middleQuantity.toString());
+  const [middleQuantityInput, setMiddleQuantityInput] = useState(stage2Count.toString());
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
@@ -149,14 +139,14 @@ export default function PublishTaskPage() {
         newComments.splice(quantity);
       }
       
+      // 先从所有评论中移除@用户标记
+      newComments = newComments.map((comment: CommentData) => ({
+        ...comment,
+        comment: comment.comment.replace(/ @\S+/g, '').replace(/@\S+/g, '')
+      }));
+      
       // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
       if (mentions.length > 0 && quantity > 0) {
-        // 先从所有评论中移除@用户标记
-        newComments = newComments.map((comment: CommentData) => ({
-          ...comment,
-          comment: comment.comment.replace(/ @\S+/g, '')
-        }));
-        
         // 然后将@用户标记添加到最新的最后一条评论
         const lastIndex = newComments.length - 1;
         newComments[lastIndex] = {
@@ -307,7 +297,6 @@ export default function PublishTaskPage() {
     
     try {
       // 计算总价格
-      const stage1Count = 1; // 上评固定为1条
       const stage2Count = formData.middleQuantity;
       const totalPrice = (stage1Price * stage1Count) + (stage2Price * stage2Count);
       
@@ -404,11 +393,10 @@ export default function PublishTaskPage() {
   };
 
   // 使用URL参数中的阶段价格计算总费用，默认值为4和2
-  const stage1Count = 1; // 上评固定为1条
-  const totalCost = ((stage1Price || 4) * stage1Count + formData.middleQuantity * (stage2Price || 2)).toFixed(2);
+  const totalCost = ((stage1Price || 3) * stage1Count + formData.middleQuantity * (stage2Price || 2)).toFixed(2);
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="px-4 py-3 space-y-4">
+      <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
           发布上中评评论
         </h1>
@@ -418,7 +406,7 @@ export default function PublishTaskPage() {
             onClick={() => setShowTaskAssistance(true)}
             className="transition-colors flex items-center text-blue-600"
           >
-            任务接单帮助
+            派单禁止项
           </button>
         </div>
          {/* 任务帮助模态框 */}
@@ -433,7 +421,7 @@ export default function PublishTaskPage() {
             3.违反国家禁止的言论
         </div>
         {/* 视频链接 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             视频链接 <span className="text-red-500">*</span>
           </label>
@@ -446,7 +434,7 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 截止时间 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务截止时间
           </label>
@@ -463,7 +451,7 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 上评评论模块 - 新增 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               上评评论
             </label>
@@ -520,7 +508,7 @@ export default function PublishTaskPage() {
           </div>
 
           {/* 中评评论模块 - 修改自原评论区域 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl px-4 py-2 shadow-sm overflow-y-auto">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               中评评论
             </label>
@@ -538,7 +526,7 @@ export default function PublishTaskPage() {
             </div>
             
             {/* 任务数量 */}
-            <div className="mb-6">
+            <div className="mb-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 中评任务数量 <span className="text-red-500">*</span>
               </label>
@@ -555,7 +543,42 @@ export default function PublishTaskPage() {
                 上评任务固定1条，中评任务单价为¥{(stage2Price || 0).toFixed(1)}
               </div>
             </div>
-            
+            {/* @用户标记 */}
+        <div className="bg-white shadow-sm">
+          <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
+          <div className="space-y-3">
+            <Input
+              placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
+              value={mentionInput}
+              onChange={(e) => setMentionInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
+              className="w-full"
+              disabled={mentions.length >= 1}
+            />
+            <Button 
+              onClick={handleAddMention}
+              className={`w-full py-2 rounded-lg transition-colors ${mentions.length >= 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+              disabled={mentions.length >= 1}
+            >
+              {mentions.length >= 1 ? '已添加用户标记' : '添加用户标记'}
+            </Button>
+          </div>
+          {mentions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {mentions.map((mention, index) => (
+                <div key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
+                  <span>@{mention}</span>
+                  <button 
+                    onClick={() => removeMention(mention)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
             {/* 动态生成中评评论输入框 */}
             {formData.middleComments.map((comment: CommentData, index: number) => {
               return (
@@ -598,47 +621,12 @@ export default function PublishTaskPage() {
             })}
           </div>
 
-        {/* @用户标记 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
-          <div className="space-y-3">
-            <Input
-              placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
-              value={mentionInput}
-              onChange={(e) => setMentionInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
-              className="w-full"
-              disabled={mentions.length >= 1}
-            />
-            <Button 
-              onClick={handleAddMention}
-              className={`w-full py-2 rounded-lg transition-colors ${mentions.length >= 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-              disabled={mentions.length >= 1}
-            >
-              {mentions.length >= 1 ? '已添加用户标记' : '添加用户标记'}
-            </Button>
-          </div>
-          {mentions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {mentions.map((mention, index) => (
-                <div key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
-                  <span>@{mention}</span>
-                  <button 
-                    onClick={() => removeMention(mention)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        
 
 
 
         {/* 费用预览 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
             <div className="flex justify-between">
                 <span className="font-medium text-gray-900">总计费用</span>
                 <span className="font-bold text-lg text-orange-500">¥{totalCost}</span>

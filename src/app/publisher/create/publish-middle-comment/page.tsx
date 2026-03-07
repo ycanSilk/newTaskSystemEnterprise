@@ -24,41 +24,30 @@ export default function PublishTaskPage() {
   
   // 从URL参数获取模板ID和价格
   const templateId = parseInt(getSearchParam('template_id') || '0');
-  const taskPrice = parseFloat(getSearchParam('price').trim() || '2');
+  const taskPrice = parseFloat(getSearchParam('stage1Price') || getSearchParam('price').trim() || '2');
+  const taskQuantity = parseInt(getSearchParam('stage1Count') || '3'); // 默认为3
   
   const [mentionInput, setMentionInput] = useState('');
   const [mentions, setMentions] = useState<string[]>([]);
   
   // 保存每个评论的图片上传状态
-  const [commentImages, setCommentImages] = useState<File[][]>([]);
-  const [commentImageUrls, setCommentImageUrls] = useState<string[][]>([]);
+  const [commentImages, setCommentImages] = useState<File[][]>(Array.from({ length: taskQuantity }, () => []));
+  const [commentImageUrls, setCommentImageUrls] = useState<string[][]>(Array.from({ length: taskQuantity }, () => []));
   
   // 表单状态
   const [formData, setFormData] = useState<PublishTaskFormData>({
     videoUrl: '', // 默认视频链接
-    quantity: 3, // 默认任务数量设为3
+    quantity: taskQuantity, // 使用URL传递的任务数量
     deadline: '30', // 默认截止时间设为30分钟
-    comments: [
-      {
-        content: '',
-        image: null,
-        imageUrl: ''
-      },
-      {
-        content: '',
-        image: null,
-        imageUrl: ''
-      },
-      {
-        content: '',
-        image: null,
-        imageUrl: ''
-      }
-    ]
+    comments: Array.from({ length: taskQuantity }, () => ({
+      content: '',
+      image: null,
+      imageUrl: ''
+    }))
   });
   
   // 任务数量输入状态
-  const [quantityInput, setQuantityInput] = useState(formData.quantity.toString());
+  const [quantityInput, setQuantityInput] = useState(taskQuantity.toString());
   
   // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
@@ -134,14 +123,14 @@ export default function PublishTaskPage() {
         newComments = newComments.slice(0, quantity);
       }
       
+      // 先从所有评论中移除@用户标记
+      newComments = newComments.map(comment => ({
+        ...comment,
+        content: comment.content.replace(/ @\S+/g, '').replace(/@\S+/g, '').trim()
+      }));
+      
       // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
       if (mentions.length > 0 && quantity > 0) {
-        // 先从所有评论中移除@用户标记
-        newComments = newComments.map(comment => ({
-          ...comment,
-          content: comment.content.replace(/ @\S+/g, '').trim()
-        }));
-        
         // 将@用户标记添加到最新的最后一条评论
         const lastIndex = newComments.length - 1;
         newComments[lastIndex] = {
@@ -370,7 +359,23 @@ export default function PublishTaskPage() {
       // 更新评论内容
       comments.forEach((comment, index) => {
         if (index < newComments.length) {
-          newComments[index].content = comment;
+          let processedComment = comment;
+          if (index < comments.length - 1) {
+            // 非最后一条评论，移除所有@用户标识
+            processedComment = comment.replace(/@\S+/g, '').trim();
+          } else if (mentions.length > 0) {
+            // 最后一条评论，确保只包含一个@用户标识
+            const atMatches = processedComment.match(/@\S+/g);
+            if (atMatches && atMatches.length > 1) {
+              // 如果有多个@标识，只保留第一个
+              const firstAt = atMatches[0];
+              processedComment = processedComment.replace(/@\S+/g, '').trim() + ` ${firstAt}`;
+            } else if (!atMatches) {
+              // 如果没有@标识，添加一个
+              processedComment = processedComment.trim() + ` @${mentions[0]}`;
+            }
+          }
+          newComments[index].content = processedComment;
         }
       });
       
@@ -487,7 +492,7 @@ export default function PublishTaskPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="px-4 py-3 space-y-4">
+      <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
           发布中评评论
         </h1>
@@ -497,7 +502,7 @@ export default function PublishTaskPage() {
             onClick={() => setShowTaskAssistance(true)}
             className="transition-colors flex items-center text-blue-600"
           >
-            任务接单帮助
+            派单禁止项
           </button>
         </div>
          {/* 任务帮助模态框 */}
@@ -512,7 +517,7 @@ export default function PublishTaskPage() {
             3.上评没有本@名字的“上评名字或词汇”
         </div>
         {/* 视频链接 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             视频链接 <span className="text-red-500">*</span>
           </label>
@@ -525,7 +530,7 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 截止时间 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务截止时间
           </label>
@@ -542,7 +547,7 @@ export default function PublishTaskPage() {
         </div>
 
         {/* 派单示例模块 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm overflow-y-auto">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             评论内容
           </label>
@@ -559,7 +564,7 @@ export default function PublishTaskPage() {
           </div>
           
           {/* 任务数量 */}
-          <div className="mb-6">
+          <div className="mb-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               任务数量 <span className="text-red-500">*</span>
             </label>
@@ -576,7 +581,42 @@ export default function PublishTaskPage() {
               中评任务单价为¥{taskPrice}
             </div>
           </div>
-          
+          {/* @用户标记 */}
+        <div className="bg-white shadow-sm">
+          <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
+          <div className="space-y-3">
+            <Input
+              placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
+              value={mentionInput}
+              onChange={(e) => setMentionInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
+              className="w-full"
+              disabled={mentions.length >= 1}
+            />
+            <Button 
+              onClick={handleAddMention}
+              className={`w-full py-2 rounded-lg transition-colors ${mentions.length >= 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+              disabled={mentions.length >= 1}
+            >
+              {mentions.length >= 1 ? '已添加用户标记' : '添加用户标记'}
+            </Button>
+          </div>
+          {mentions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {mentions.map((mention, index) => (
+                <div key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
+                  <span>@{mention}</span>
+                  <button 
+                    onClick={() => removeMention(mention)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
           {/* 动态生成评论输入框 */}
           {formData.comments.map((comment, index) => {
             return (
@@ -634,45 +674,10 @@ export default function PublishTaskPage() {
           })}
         </div>
 
-        {/* @用户标记 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
-          <div className="space-y-3">
-            <Input
-              placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
-              value={mentionInput}
-              onChange={(e) => setMentionInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
-              className="w-full"
-              disabled={mentions.length >= 1}
-            />
-            <Button 
-              onClick={handleAddMention}
-              className={`w-full py-2 rounded-lg transition-colors ${mentions.length >= 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-              disabled={mentions.length >= 1}
-            >
-              {mentions.length >= 1 ? '已添加用户标记' : '添加用户标记'}
-            </Button>
-          </div>
-          {mentions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {mentions.map((mention, index) => (
-                <div key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
-                  <span>@{mention}</span>
-                  <button 
-                    onClick={() => removeMention(mention)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        
 
         {/* 费用预览 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">

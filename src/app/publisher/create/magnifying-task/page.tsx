@@ -4,19 +4,8 @@ import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 定义API请求参数类型
-interface PublishSingleTaskRequest {
-  template_id: number;
-  video_url: string;
-  deadline: number;
-  task_count: number;
-  total_price: number;
-  recommend_marks: Array<{
-    comment: string;
-    image_url: string;
-    keyword: string;
-  }>;
-}
+// 导入放大镜任务发布的类型定义
+import type { CreateMagnifierTaskRequest, CreateMagnifierTaskApiResponse } from '@/api/types/task/createMagnifierTaskTypes';
 
 // 定义API响应类型
 interface PublishSingleTaskResponse {
@@ -33,7 +22,8 @@ export default function PublishSearchKeywordTaskPage() {
     videoUrl: '',
     deadline: '30',
     searchKeywords: '',
-    quantity: '1'
+    quantity: '1',
+    unitPrice: '5'
   });
 
   // API调用状态
@@ -47,12 +37,10 @@ export default function PublishSearchKeywordTaskPage() {
     onButtonClick: () => {}
   });
 
-  // 任务单价
-  const taskPrice = 5;
-
   // 计算任务基础费用（总计费用）
   const quantity = parseInt(formData.quantity) || 1;
-  const baseCost = taskPrice * quantity;
+  const unitPrice = parseInt(formData.unitPrice) || 0;
+  const baseCost = quantity * unitPrice;
   const totalCost = baseCost.toFixed(2);
 
   // 任务数量变化处理 - 允许1-10个任务
@@ -83,45 +71,53 @@ export default function PublishSearchKeywordTaskPage() {
     try {
       setIsLoading(true);
       
-      // 表单验证
-      // 1. 验证视频链接
+      // 表单验证 - 按要求顺序进行校验
+      // 1. 验证视频地址
       if (!formData.videoUrl) {
         showAlertModal('验证失败', '请输入视频链接', '⚠️');
         return;
       }
       
-      // 2. 验证搜索词内容
-      if (!formData.searchKeywords.trim()) {
-        showAlertModal('验证失败', '请输入搜索词内容', '⚠️');
-        return;
-      }
-      
-      // 3. 验证任务数量
-      const taskQuantity = parseInt(formData.quantity);
-      if (isNaN(taskQuantity) || taskQuantity < 1) {
-        showAlertModal('验证失败', '请输入有效的任务数量', '⚠️');
-        return;
-      }
-      
-      // 4. 验证截止时间
+      // 2. 验证任务截止时间
       const deadlineMinutes = parseInt(formData.deadline);
       if (isNaN(deadlineMinutes) || deadlineMinutes < 1) {
         showAlertModal('验证失败', '请选择有效的截止时间', '⚠️');
         return;
       }
       
+      // 3. 验证指定搜索词内容
+      if (!formData.searchKeywords.trim()) {
+        showAlertModal('验证失败', '请输入搜索词内容', '⚠️');
+        return;
+      }
+      
+      // 4. 验证任务数量
+      const taskQuantity = parseInt(formData.quantity);
+      if (isNaN(taskQuantity) || taskQuantity < 1) {
+        showAlertModal('验证失败', '请输入有效的任务数量', '⚠️');
+        return;
+      }
+      
+      // 5. 验证任务单价
+      const taskUnitPrice = parseInt(formData.unitPrice);
+      if (isNaN(taskUnitPrice) || taskUnitPrice < 1) {
+        showAlertModal('验证失败', '请输入有效的任务单价', '⚠️');
+        return;
+      }
+      
       // 构建请求体
-      const requestBody: PublishSingleTaskRequest = {
-        template_id: 3,
+      const requestBody: CreateMagnifierTaskRequest = {
         video_url: formData.videoUrl,
         deadline: Math.floor(Date.now() / 1000) + deadlineMinutes * 60,
         task_count: taskQuantity,
+        unit_price: taskUnitPrice,
         total_price: baseCost,
+        title: '放大镜搜索词',
         recommend_marks: [
           {
-            comment: '',
-            image_url: '',
-            keyword: formData.searchKeywords
+            comment: formData.searchKeywords,
+            at_user: '',
+            image_url: ''
           }
         ]
       };
@@ -129,8 +125,8 @@ export default function PublishSearchKeywordTaskPage() {
       console.log('发布任务API请求体:', requestBody);
       console.log('截止时间格式化后输出:', requestBody.deadline);
       
-      // 调用API
-      const response = await fetch('/api/task/publishSingleTask', {
+      // 调用API - 使用新的放大镜任务发布端点
+      const response = await fetch('/api/task/createMagnifierTask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,7 +134,7 @@ export default function PublishSearchKeywordTaskPage() {
         body: JSON.stringify(requestBody),
       });
 
-      const result: PublishSingleTaskResponse = await response.json();
+      const result: CreateMagnifierTaskApiResponse = await response.json();
       console.log('发布任务API响应结果:', result);
       
       // 显示API响应结果
@@ -230,6 +226,26 @@ export default function PublishSearchKeywordTaskPage() {
           </div>
         </div>
 
+        {/* 任务单价 */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            任务单价（元） <span className="text-red-500">*</span>
+          </label>
+          <div className="flex-1">
+            <Input
+              type="text"
+              value={formData.unitPrice}
+              onChange={(e) => {
+                // 只允许输入数字
+                const cleanValue = e.target.value.replace(/[^0-9]/g, '');
+                setFormData(prevData => ({ ...prevData, unitPrice: cleanValue }));
+              }}
+              className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="请输入任务单价"
+            />
+          </div>
+        </div>
+
         {/* 费用预览 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
@@ -252,7 +268,7 @@ export default function PublishSearchKeywordTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button 
           onClick={handlePublish}
-          disabled={!formData.videoUrl || !formData.searchKeywords.trim() || isLoading}
+          disabled={!formData.videoUrl || !formData.searchKeywords.trim() || !formData.quantity || !formData.unitPrice || isLoading}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
           {isLoading ? '发布中...' : `发布任务 - ¥${totalCost}`}

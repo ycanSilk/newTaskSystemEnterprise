@@ -44,8 +44,8 @@ export default function ActiveTabPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
-  const [lastFetchedData, setLastFetchedData] = useState<Task[]>([]);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasFetchedRef = useRef(false);
   // 使用优化工具
   const { globalFetch } = useOptimization();
 
@@ -77,31 +77,12 @@ export default function ActiveTabPage() {
     }
   };
 
-  // 检查数据是否有变化
-  const hasDataChanged = (newData: Task[], oldData: Task[]): boolean => {
-    if (newData.length !== oldData.length) return true;
-    
-    // 比较任务ID，检查是否有新增或删除的任务
-    const newTaskIds = new Set(newData.map(task => task.task_id));
-    const oldTaskIds = new Set(oldData.map(task => task.task_id));
-    
-    if (newTaskIds.size !== oldTaskIds.size) return true;
-    
-    // 检查是否有不同的任务ID
-    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
-  };
-
   // 刷新任务列表数据
   const refreshTasks = async () => {
     try {
       const newTasks = await fetchTasks();
-      
-      // 与缓存数据对比
-      if (hasDataChanged(newTasks, lastFetchedData)) {
-        setTasks(newTasks);
-        setLastFetchedData(newTasks);
-        showCopySuccess('数据已更新');
-      }
+      setTasks(newTasks);
+      showCopySuccess('数据已更新');
     } catch (error) {
       console.error('刷新任务列表失败:', error);
     }
@@ -113,9 +94,7 @@ export default function ActiveTabPage() {
     const initData = async () => {
       setLoading(true);
       try {
-        const initialTasks = await fetchTasks();
-        setTasks(initialTasks);
-        setLastFetchedData(initialTasks);
+        await refreshTasks();
       } catch (error) {
         console.error('初始化任务列表失败:', error);
       } finally {
@@ -123,7 +102,11 @@ export default function ActiveTabPage() {
       }
     };
 
-    initData();
+    // 只在首次渲染时执行初始化
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      initData();
+    }
 
     // 设置被动轮询，每10分钟刷新一次
     const pollingInterval = 10 * 60 * 1000; // 10分钟
@@ -304,7 +287,7 @@ export default function ActiveTabPage() {
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 mb-2">
+        <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
             {task.status_text}
           </span>
@@ -328,9 +311,6 @@ export default function ActiveTabPage() {
         </div>
         <div className="  w-full rounded-lg">
           任务要求：{task.template_title}
-        </div>
-        <div className="">
-          任务描速：{task.template_title}
         </div>
         <div className=" bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
           <p className='  text-sm text-blue-600'>任务视频链接：</p>
@@ -392,7 +372,7 @@ export default function ActiveTabPage() {
 
   // 渲染任务列表
   return (
-    <div className="mx-4 mt-6 space-y-4">
+    <div className="mx-4 mt-6">
       {/* 复制成功提示 */}
       {showCopyTooltip && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50">

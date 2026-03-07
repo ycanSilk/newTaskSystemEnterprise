@@ -132,7 +132,6 @@ class GlobalFetch {
     // 合并配置
     const mergedConfig = { ...DEFAULT_CONFIG, ...config };
     const { 
-      expiry, 
       enableDeduplication, 
       enableDebounce, 
       debounceTime,
@@ -141,20 +140,11 @@ class GlobalFetch {
       retryDelay
     } = mergedConfig;
     
-    // 只缓存静态文件数据，判断是否为静态文件
-    const isStaticFile = /\.(js|css|png|jpg|jpeg|gif|svg|ico|json)$/i.test(url);
-    const enableCache = isStaticFile;
+    // 禁用所有缓存
+    const enableCache = false;
 
     // 生成缓存键
     const cacheKey = this.generateCacheKey(url, options);
-
-    // 检查缓存（仅静态文件）
-    if (enableCache) {
-      const cachedData = this.getFromCache<T>(cacheKey);
-      if (cachedData) {
-        return cachedData;
-      }
-    }
 
     // 检查是否有正在进行的相同请求
     if (enableDeduplication && this.pendingRequests.has(cacheKey)) {
@@ -205,7 +195,7 @@ class GlobalFetch {
     cacheKey?: string,
     config?: Required<GlobalFetchConfig>
   ): Promise<T> {
-    const { enableCache, enableDeduplication, enableRetry, retryCount, retryDelay, expiry } = config || DEFAULT_CONFIG;
+    const { enableDeduplication, enableRetry, retryCount, retryDelay } = config || DEFAULT_CONFIG;
 
     // 创建请求函数
     const requestFn = async (attempt: number = 0): Promise<T> => {
@@ -221,10 +211,7 @@ class GlobalFetch {
 
         const data = await response.json();
 
-        // 缓存响应数据
-        if (enableCache && cacheKey) {
-          this.setCache(cacheKey, data, expiry);
-        }
+        // 不缓存响应数据
 
         return data;
       } catch (error) {

@@ -102,36 +102,62 @@ export default function CreateTask() {
     const params = new URLSearchParams();
     
     // 根据任务类型设置URL和参数
-    if (taskType === 1) {
-      // 上评任务 - 跳转到上评任务发布页面
-      url = `/publisher/create/publish-top-comment`;
-      params.set('template_id', task.id.toString());
-      params.set('price', task.price.toString());
-    } else if (taskType === 2) {
-      url = `/publisher/create/publish-middle-comment`;
-      params.set('template_id', task.id.toString());
-      params.set('price', task.price.toString());
-    } else if (taskType === 4) {
-      url = `/publisher/create/task-combination-top-middle`;
-      // 组合任务，传递两个阶段的价格
-      params.set('template_id', task.id.toString());
-      params.set('price', task.price.toString());
-      if (task.stage1) params.set('stage1Price', task.stage1.price.toString());
-      if (task.stage2) params.set('stage2Price', task.stage2.price.toString());
-    } else if (taskType === 5) {
-      url = `/publisher/create/task-combination-middle-bottom`;
-      // 组合任务，传递两个阶段的价格
-      params.set('template_id', task.id.toString());
-      params.set('price', task.price.toString());
-      if (task.stage1) params.set('stage1Price', task.stage1.price.toString());
-      if (task.stage2) params.set('stage2Price', task.stage2.price.toString());
-    } else if (taskType === 3) {
-      url = `/publisher/create/search-keyword-task`;
-      params.set('template_id', task.id.toString());
-      params.set('price', task.price.toString());
-    } else {
-      showNotDevelopedAlert();
-      return;
+    switch (taskType) {
+      case 1:
+        // 上评任务 - 跳转到上评任务发布页面
+        url = `/publisher/create/publish-top-comment`;
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        if (task.stage1) {
+          params.set('stage1Price', task.stage1.price.toString());
+          params.set('stage1Count', task.stage1.default_count.toString());
+        }
+        break;
+      case 2:
+        url = `/publisher/create/publish-middle-comment`;
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        if (task.stage1) {
+          params.set('stage1Price', task.stage1.price.toString());
+          params.set('stage1Count', task.stage1.default_count.toString());
+        }
+        break;
+      case 4:
+        url = `/publisher/create/task-combination-top-middle`;
+        // 组合任务，传递两个阶段的价格和数量
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        if (task.stage1) {
+          params.set('stage1Price', task.stage1.price.toString());
+          params.set('stage1Count', task.stage1.default_count.toString());
+        }
+        if (task.stage2) {
+          params.set('stage2Price', task.stage2.price.toString());
+          params.set('stage2Count', task.stage2.default_count.toString());
+        }
+        break;
+      case 5:
+        url = `/publisher/create/task-combination-middle-bottom`;
+        // 组合任务，传递两个阶段的价格和数量
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        if (task.stage1) {
+          params.set('stage1Price', task.stage1.price.toString());
+          params.set('stage1Count', task.stage1.default_count.toString());
+        }
+        if (task.stage2) {
+          params.set('stage2Price', task.stage2.price.toString());
+          params.set('stage2Count', task.stage2.default_count.toString());
+        }
+        break;
+      case 3:
+        url = `/publisher/create/magnifying-task`;
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        break;
+      default:
+        showNotDevelopedAlert();
+        return;
     }
     
     // 跳转到发布页面，带上价格参数

@@ -92,6 +92,35 @@ export default function MiddleCommentGenerator({
     return ruleConfig.forbiddenPatterns.some(word => text.includes(word));
   };
 
+  // 处理文本，移除[[@]]格式的字符和×××占位符
+  const processText = (text: string): string => {
+    // 移除[[@...]]格式的字符
+    let processedText = text.replace(/\[\[@[^\]]+\]\]/g, '');
+    // 移除×××占位符
+    processedText = processedText.replace(/×××/g, '');
+    return processedText;
+  };
+
+  // 执行文本替换操作
+  const applyTextReplacements = (text: string): string => {
+    let replacedText = text;
+    // 替换指定关键词
+    const replacements: Record<string, string> = {
+      '跟': '根',
+      '操': '曹',
+      '赢': '营'
+    };
+    
+    // 处理全角和半角字符
+    for (const [orig, repl] of Object.entries(replacements)) {
+      // 创建包含全角和半角的正则表达式
+      const regex = new RegExp(orig, 'g');
+      replacedText = replacedText.replace(regex, repl);
+    }
+    
+    return replacedText;
+  };
+
   // 从词库随机获取提示词，移除[[]]标记
   const getRandomPrompt = (): string => {
     if (commentLibrary.length === 0) {
@@ -101,6 +130,9 @@ export default function MiddleCommentGenerator({
     let prompt = randomPick(commentLibrary);
     // 移除[[]]标记
     prompt = prompt.replace(/\[\[@(.*?)\]\]/g, '@$1');
+    // 应用文本处理
+    prompt = processText(prompt);
+    prompt = applyTextReplacements(prompt);
     return prompt;
   };
 
@@ -202,6 +234,10 @@ export default function MiddleCommentGenerator({
         } else if (polishedComment.length < ruleConfig.minWords) {
           polishedComment = polishedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
         }
+
+        // 应用文本处理
+        polishedComment = processText(polishedComment);
+        polishedComment = applyTextReplacements(polishedComment);
 
         // 只有最后一条评论才添加@用户标识，且用户输入中不包含@用户标识
         let storageComment = polishedComment;

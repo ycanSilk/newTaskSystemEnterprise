@@ -32,25 +32,24 @@ export default function PublishTaskPage() {
   
   // 从URL参数获取模板ID和价格
   const templateId = parseInt(getSearchParam('template_id') || '0');
-  const taskPrice = parseFloat(getSearchParam('price').trim() || '4');
+  const taskPrice = parseFloat(getSearchParam('stage1Price') || getSearchParam('price').trim() || '4');
+  const taskQuantity = parseInt(getSearchParam('stage1Count') || '1'); // 默认为1
 
   // 表单状态
   const [formData, setFormData] = useState<PublishTaskFormData>({
     videoUrl: '', // 默认视频链接
-    quantity: 1, // 默认任务数量设为1
-    comments: [
-      {
-        content: '',
-        image: null,
-        imageUrl: ''
-      }
-    ],
+    quantity: taskQuantity, // 使用URL传递的任务数量
+    comments: Array.from({ length: taskQuantity }, () => ({
+      content: '',
+      image: null,
+      imageUrl: ''
+    })),
     deadline: '30' // 默认截止时间设为30分钟
   });
   
   // 保存每个评论的图片上传状态
-  const [commentImages, setCommentImages] = useState<File[][]>([]);
-  const [commentImageUrls, setCommentImageUrls] = useState<string[][]>([]);
+  const [commentImages, setCommentImages] = useState<File[][]>(Array.from({ length: taskQuantity }, () => []));
+  const [commentImageUrls, setCommentImageUrls] = useState<string[][]>(Array.from({ length: taskQuantity }, () => []));
 
   // 发布状态
   const [isPublishing, setIsPublishing] = useState(false);
@@ -86,7 +85,7 @@ export default function PublishTaskPage() {
   };
 
   // 任务数量变化处理 - 允许1-10个任务
-  const [quantityInput, setQuantityInput] = useState(formData.quantity.toString());
+  const [quantityInput, setQuantityInput] = useState(taskQuantity.toString());
   
   const handleQuantityChange = (newQuantityStr: string) => {
     // 只允许输入数字
@@ -370,7 +369,7 @@ export default function PublishTaskPage() {
             onClick={() => setShowTaskAssistance(true)}
             className="transition-colors flex items-center text-blue-600"
           >
-            任务接单帮助
+            派单禁止项
           </button>
         </div>
          {/* 任务帮助模态框 */}
