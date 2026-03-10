@@ -10,12 +10,15 @@ interface TaskAssistanceProps {
 export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanceProps) {
   const [previewImage, setPreviewImage] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [canClose, setCanClose] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const videoPreviewRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // 图片路径映射
   const imgPaths = [
@@ -44,6 +47,21 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
   const handlePreviewBackgroundClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === previewRef.current) {
       setShowPreview(false);
+    }
+  };
+
+  // 关闭视频预览
+  const handleCloseVideoPreview = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    setShowVideoPreview(false);
+  };
+
+  // 点击背景关闭视频预览
+  const handleVideoPreviewBackgroundClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === videoPreviewRef.current) {
+      setShowVideoPreview(false);
     }
   };
 
@@ -77,6 +95,8 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
       if (e.key === 'Escape') {
         if (showPreview) {
           setShowPreview(false);
+        } else if (showVideoPreview) {
+          setShowVideoPreview(false);
         } else if (onClose && canClose && hasReadTerms) {
           onClose();
         }
@@ -85,7 +105,41 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showPreview, onClose, canClose, hasReadTerms]);
+  }, [showPreview, showVideoPreview, onClose, canClose, hasReadTerms]);
+
+  // 视频预览模态框打开后自动播放视频
+  useEffect(() => {
+    if (showVideoPreview && videoRef.current) {
+      const timer = setTimeout(() => {
+        // 检查视频是否已经加载完成
+        if (videoRef.current) {
+          if (videoRef.current.readyState >= 1) {
+            videoRef.current.play().catch(err => {
+              console.error('自动播放失败:', err);
+            });
+          } else {
+            // 如果视频还未加载完成，监听loadedmetadata事件
+            const handleLoadedMetadata = () => {
+              if (videoRef.current) {
+                videoRef.current.play().catch(err => {
+                  console.error('自动播放失败:', err);
+                });
+              }
+            };
+
+            videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+            return () => {
+              if (videoRef.current) {
+                videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              }
+            };
+          }
+        }
+      }, 2000); // 2秒延时
+
+      return () => clearTimeout(timer);
+    }
+  }, [showVideoPreview]);
 
   if (!isOpen) return null;
 
@@ -208,6 +262,17 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
                     onClick={() => handleImageClick(3)}
                   >
                     <img src={imgPaths[2]} alt="@用户" className="w-full h-full object-cover bg-blue-100" />
+                  </div>
+                  <div 
+                    className="w-36 h-36 bg-blue-50 rounded-md overflow-hidden shadow-sm border-2 border-white transition-all duration-200 cursor-pointer flex items-center justify-center hover:-translate-y-0.5 hover:shadow-md relative"
+                    onClick={() => setShowVideoPreview(true)}
+                  >
+                    <img src="/images/Cover.png" alt="任务指导视频" className="w-full h-full object-cover bg-blue-100" />
+                    <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-white text-xl">▶</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <p><strong>2、上评单做法：</strong></p>
@@ -341,6 +406,33 @@ export default function TaskAssistance({ isOpen = true, onClose }: TaskAssistanc
             <img 
               src={previewImage} 
               alt="预览大图" 
+              className="w-full h-auto max-h-[70vh] object-contain rounded-lg bg-blue-50"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 视频预览模态框 */}
+      {showVideoPreview && (
+        <div 
+          ref={videoPreviewRef}
+          className="fixed top-0 left-0 w-full h-full bg-blue-100/80 backdrop-blur-md flex items-center justify-center z-50 p-2"
+          onClick={handleVideoPreviewBackgroundClick}
+        >
+          <div className="max-w-[800px] max-h-[85vh] bg-white/70 backdrop-blur-md rounded-md p-1 shadow-lg border border-white/70 relative">
+            <button 
+              className="absolute top-2 right-4 bg-white/80 border-none text-2xl w-8 h-8 rounded-full flex items-center justify-center cursor-pointer text-blue-700 backdrop-blur-sm border border-white z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCloseVideoPreview();
+              }}
+            >
+              ✕
+            </button>
+            <video 
+              ref={videoRef}
+              src="/videos/TaskGuidance.mp4" 
+              controls 
               className="w-full h-auto max-h-[70vh] object-contain rounded-lg bg-blue-50"
             />
           </div>

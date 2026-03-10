@@ -9,8 +9,8 @@ import { handleCheckToken } from '../../../../api/handlers/auth/checkTokenHandle
  * 调用handleCheckToken函数，处理用户的检查Token请求
  * @returns Next.js响应对象，包含检查Token结果
  */
-export async function GET(): Promise<NextResponse> {
-  return handleCheckToken();
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  return handleCheckToken(req);
 }
 
 /**

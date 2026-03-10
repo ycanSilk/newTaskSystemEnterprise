@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import SuccessModal from '../../../../components/button/authButton/SuccessModal';
 // 导入注册页面类型定义
 import { RegisterFormData, RegisterApiRequest, RegisterApiResponse } from '../../../types/auth/registerTypes';
+// 导入协议模态框
+import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
+import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
+import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
 
 export default function PublisherRegisterPage() {
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -24,7 +28,10 @@ export default function PublisherRegisterPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  
+  // 协议模态框状态
+  const [showUserAgreement, setShowUserAgreement] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showPlatformServiceNotice, setShowPlatformServiceNotice] = useState(false);
   // 只在客户端生成验证码，避免SSR和客户端渲染不匹配
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -470,7 +477,29 @@ export default function PublisherRegisterPage() {
                   className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="agreeToTerms" className="text-xs text-gray-600 leading-relaxed">
-                  我已阅读并同意 <span className="text-blue-600 underline">《用户协议》</span> 和 <span className="text-blue-600 underline">《隐私政策》</span>
+                  我已阅读并同意 
+                  <button 
+                    type="button" 
+                    onClick={() => setShowUserAgreement(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《用户协议》
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPrivacyPolicy(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《隐私政策》
+                  </button>
+                  和
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPlatformServiceNotice(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《平台服务通知》
+                  </button>
                 </label>
               </div>
 
@@ -536,6 +565,20 @@ export default function PublisherRegisterPage() {
         message={successMessage || '您的账号已成功注册，现在可以登录了！'}
         buttonText="确认并登录"
         redirectUrl="/publisher/auth/login"
+      />
+
+      {/* 协议模态框 */}
+      <UserAgreementModal 
+        isOpen={showUserAgreement}
+        onClose={() => setShowUserAgreement(false)}
+      />
+      <PrivacyPolicyModal 
+        isOpen={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+      />
+      <PlatformServiceNoticeModal 
+        isOpen={showPlatformServiceNotice}
+        onClose={() => setShowPlatformServiceNotice(false)}
       />
     </div>
   );

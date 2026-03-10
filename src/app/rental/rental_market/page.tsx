@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { EyeOutlined, CloseOutlined } from '@ant-design/icons';
 import { GetOffersRentalMarketListResponse, RentalAccountInfo } from '@/app/types/rental/rentOut/getOffersRentalMarketListTypes';
+import DisclaimerModal from '@/app/rental/components/DisclaimerModal';
 
 export default function AccountRentalMarketPage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function AccountRentalMarketPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   // 筛选模态框状态
   const [showFilterModal, setShowFilterModal] = useState(false);
+  // 免责声明模态框状态
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   // 筛选选项状态
   const [filterOptions, setFilterOptions] = useState({
     platformType: {
@@ -525,18 +528,16 @@ export default function AccountRentalMarketPage() {
           </div>
           )}
         {/* 提示信息 */}
-        <div className="px-4">
-          <div className="bg-blue-50 rounded-xl p-4">
+        <div className="mt-3">
             <div className="flex items-start space-x-3">
-              <span className="text-2xl">💡</span>
               <div>
-                <h3 className="font-medium text-blue-900 ">账号租赁提示</h3>
+               <h3 className="font-medium text-blue-900 text-lg ">平台免责声明: </h3>
                 <p className="text-blue-700 text-sm leading-relaxed">
-                  请根据您的需求筛选合适的账号进行租赁。租赁前请仔细查看账号详情和租赁条款，确保账号符合您的推广需求。如有疑问，可联系客服咨询。
+                  租赁双方需严格遵守中华人民共和国法律法规进行正常租赁活动，严禁将账号用于任何违法乱纪、欺诈、赌博、洗钱等非法行为。 平台仅提供信息发布与担保交易技术支持，不参与实际账号使用，不对租赁期间产生的任何违规封禁、纠纷或损失承担直接责任。 使用本平台即视为完全同意本条款。
                 </p>
+                <p className="text-blue-500 cursor-pointer text-center hover:underline" onClick={() => setShowDisclaimerModal(true)}>请阅读账号租凭免责声明详情</p>
               </div>
             </div>
-          </div>
         </div>
 
         {/* 图片预览模态框 */}
@@ -766,6 +767,12 @@ export default function AccountRentalMarketPage() {
             </div>
           </div>
         )}
+        
+        {/* 免责声明模态框 */}
+        <DisclaimerModal 
+          isOpen={showDisclaimerModal}
+          onClose={() => setShowDisclaimerModal(false)}
+        />
       </div>
     </div>
   );

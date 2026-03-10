@@ -10,6 +10,13 @@ import { useUser } from '@/hooks/useUser';
 import { saveUserOnLoginSuccess } from '@/store/userStore';
 // 导入优化工具
 import { useOptimization } from '@/components/optimization/OptimizationProvider';
+// 导入设备信息管理工具
+import { getDeviceInfo } from '@/utils/device';
+// 导入协议模态框
+import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
+import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
+import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
+
 
 export default function PublisherLoginPage() {
   
@@ -24,12 +31,33 @@ export default function PublisherLoginPage() {
   const [captchaCode, setCaptchaCode] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [showPassword, setShowPassword] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<{ device_id: string; device_name: string } | null>(null);
+  const [deviceLoading, setDeviceLoading] = useState(true);
+  // 协议模态框状态
+  const [showUserAgreement, setShowUserAgreement] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+    const [showPlatformServiceNotice, setShowPlatformServiceNotice] = useState(false);
   const router = useRouter();
   
   // 使用useUser钩子检查登录状态
   const { isAuthenticated, isLoading: isAuthLoading } = useUser();
   // 使用优化工具
   const { globalFetch, savePageState } = useOptimization();
+  
+  // 初始化设备信息
+  useEffect(() => {
+    async function initDeviceInfo() {
+      try {
+        const info = await getDeviceInfo();
+        setDeviceInfo(info);
+      } catch (error) {
+        console.error('获取设备信息失败:', error);
+      } finally {
+        setDeviceLoading(false);
+      }
+    }
+    initDeviceInfo();
+  }, []);
   
 
   
@@ -156,7 +184,17 @@ export default function PublisherLoginPage() {
     e.preventDefault();
     setErrorMessage('');
     
-    // 1. 用户名校验：必填、字符长度>=4
+    // 1. 设备信息校验
+    if (deviceLoading) {
+      setErrorMessage('设备信息获取中，请稍候...');
+      return;
+    }
+    if (!deviceInfo) {
+      setErrorMessage('设备信息获取失败，请刷新页面重试');
+      return;
+    }
+    
+    // 2. 用户名校验：必填、字符长度>=4
     if (!formData.account || formData.account.trim() === '') {
       setErrorMessage('请输入账号');
       return;
@@ -166,7 +204,7 @@ export default function PublisherLoginPage() {
       return;
     }
     
-    // 2. 密码校验：必填、字符长度>=6
+    // 3. 密码校验：必填、字符长度>=6
     if (!formData.password || formData.password.trim() === '') {
       setErrorMessage('请输入密码');
       return;
@@ -176,7 +214,7 @@ export default function PublisherLoginPage() {
       return;
     }
     
-    // 3. 图形验证码校验：4位字符
+    // 4. 图形验证码校验：4位字符
     if (!formData.captcha || formData.captcha.trim() === '') {
       setErrorMessage('请输入验证码');
       return;
@@ -193,7 +231,7 @@ export default function PublisherLoginPage() {
       return;
     }
     
-    // 4. 用户协议校验：必须勾选
+    // 5. 用户协议校验：必须勾选
     if (!formData.agreeToTerms) {
       setErrorMessage('请阅读并同意用户协议和隐私政策');
       return;
@@ -210,7 +248,9 @@ export default function PublisherLoginPage() {
         },
         body: JSON.stringify({
           account: formData.account.trim(),
-          password: formData.password.trim()
+          password: formData.password.trim(),
+          device_id: deviceInfo.device_id,
+          device_name: deviceInfo.device_name
         })
       }, {
         // 登录请求不使用缓存
@@ -225,6 +265,7 @@ export default function PublisherLoginPage() {
 
       if (result.code===0) {
         saveUserOnLoginSuccess(result.data, result.data.token);
+
         // 使用replace代替push，避免浏览器历史记录中留下登录页
         // 确保只执行一次重定向
         router.replace('/publisher/dashboard');
@@ -418,7 +459,29 @@ export default function PublisherLoginPage() {
                   className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="agreeToTerms" className="text-xs text-gray-600 leading-relaxed">
-                  我已阅读并同意 <span className="text-blue-600 underline">《用户协议》</span> 和 <span className="text-blue-600 underline">《隐私政策》</span>
+                  我已阅读并同意 
+                  <button 
+                    type="button" 
+                    onClick={() => setShowUserAgreement(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《用户协议》
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPrivacyPolicy(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《隐私政策》
+                  </button>
+                  和
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPlatformServiceNotice(true)}
+                    className="text-blue-600  hover:text-blue-800"
+                  >
+                    《平台服务通知》
+                  </button>
                 </label>
               </div>
 
@@ -473,6 +536,20 @@ export default function PublisherLoginPage() {
           </div>
         </div>
       </div>
+
+      {/* 协议模态框 */}
+      <UserAgreementModal 
+        isOpen={showUserAgreement}
+        onClose={() => setShowUserAgreement(false)}
+      />
+      <PrivacyPolicyModal 
+        isOpen={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+      />
+       <PlatformServiceNoticeModal 
+              isOpen={showPlatformServiceNotice}
+              onClose={() => setShowPlatformServiceNotice(false)}
+            />
     </div>
   );
 }

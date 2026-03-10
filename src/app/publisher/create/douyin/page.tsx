@@ -2,7 +2,7 @@
 
 import { Card, Button, Input, Badge, AlertModal } from '@/components/ui';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // 导入类型定义
 import { TaskTemplate, GetTaskTemplatesResponse } from '@/app/types/task/getTaskTemplatesTypes';
 
@@ -49,6 +49,9 @@ export default function CreateTask() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
+  // 用于跟踪useEffect是否已经执行过
+  const hasFetched = useRef(false);
+  
   // 提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -76,6 +79,7 @@ export default function CreateTask() {
         
         // 调用API获取任务模板
         const response = await fetch('/api/task/getTaskTemplates');
+        console.log('获取任务模板响应:', response);
         const data: GetTaskTemplatesResponse = await response.json();
         
         if (data.success && data.data) {
@@ -91,7 +95,11 @@ export default function CreateTask() {
       }
     };
     
-    fetchTaskTemplates();
+    // 避免在React 18开发模式下重复执行
+    if (!hasFetched.current) {
+      fetchTaskTemplates();
+      hasFetched.current = true;
+    }
   }, []);
 
   const handleTaskClick = (task: TaskTemplate) => {

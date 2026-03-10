@@ -110,6 +110,36 @@ export const responseErrorInterceptor = async (error: any): Promise<never> => {
     data: error.response?.data,   // 响应数据（如果有）
   });
   
+  // 检查是否为token无效或过期的错误
+  const isTokenError = error.response?.data?.code === 401 || 
+                     error.response?.data?.code === 4011 ||
+                     error.response?.data?.code === 4012 ||
+                     error.response?.data?.message === 'Token已过期' ||
+                     error.response?.data?.message === '未提供认证Token' ||
+                     error.response?.data?.message === 'Token 格式无效' ||
+                     error.response?.data?.message === '账号已在其他设备登录，请重新登录' ||
+                     error.response?.data?.message === '设备未授权，请重新登录' ||
+                     error.response?.data?.message === 'Token 已过期';
+
+  
+  // 如果是token错误，并且在浏览器环境中，重定向到登录页面
+  if (isTokenError && typeof window !== 'undefined') {
+    // 清除本地存储的用户信息
+    try {
+      localStorage.removeItem('publisher-user-storage');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // 清除cookie
+      document.cookie = 'PublishTask_token=; path=/; max-age=0';
+      document.cookie = 'device_id=; path=/; max-age=0';
+    } catch (error) {
+      console.error('清除用户信息失败:', error);
+    }
+    
+    // 重定向到登录页面
+    window.location.href = '/publisher/auth/login';
+  }
+  
   // 统一错误处理
   // 调用handleApiError函数，将原始错误对象转换为标准化的ApiError对象
   const apiError = handleApiError(error);

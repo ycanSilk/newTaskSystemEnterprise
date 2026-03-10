@@ -228,11 +228,38 @@ export default function MiddleCommentGenerator({
           polishedComment = `${startWord}${middleWord}，${feelingWord}，${endingWord}`;
         }
 
-        // 控制字数
-        if (polishedComment.length > ruleConfig.maxWords) {
-          polishedComment = polishedComment.slice(0, ruleConfig.maxWords - 1) + '…';
-        } else if (polishedComment.length < ruleConfig.minWords) {
-          polishedComment = polishedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
+        // 控制字数 - 对于包含@用户标识的最后一条评论，限制实际内容在5字以内
+        if (atUser && i === commentCount - 1) {
+          // 提取实际评论内容（排除@用户标识）
+          const commentWithoutAt = polishedComment.replace(new RegExp(`@${atUser}`, 'g'), '').trim();
+          if (commentWithoutAt.length > 5) {
+            // 截取前5个字符
+            const trimmedContent = commentWithoutAt.slice(0, 5);
+            // 重新组合评论（保持@用户标识的位置）
+            if (polishedComment.startsWith(`@${atUser}`)) {
+              // @用户标识在开头
+              polishedComment = `@${atUser} ${trimmedContent}`;
+            } else if (polishedComment.endsWith(`@${atUser}`)) {
+              // @用户标识在结尾
+              polishedComment = `${trimmedContent} @${atUser}`;
+            } else {
+              // @用户标识在中间
+              const parts = polishedComment.split(new RegExp(`@${atUser}`));
+              if (parts.length === 2) {
+                polishedComment = `${parts[0].trim()} @${atUser} ${trimmedContent}`;
+              } else {
+                //  fallback 情况
+                polishedComment = `${trimmedContent} @${atUser}`;
+              }
+            }
+          }
+        } else {
+          // 普通评论的字数控制
+          if (polishedComment.length > ruleConfig.maxWords) {
+            polishedComment = polishedComment.slice(0, ruleConfig.maxWords - 1) + '…';
+          } else if (polishedComment.length < ruleConfig.minWords) {
+            polishedComment = polishedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
+          }
         }
 
         // 应用文本处理

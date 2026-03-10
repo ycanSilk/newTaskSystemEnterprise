@@ -18,6 +18,18 @@ export interface LoginRequest {
    * 用户登录时使用的密码，需要加密后传输
    */
   password: string;
+  
+  /**
+   * 设备ID
+   * 设备的唯一标识，由FingerprintJS生成
+   */
+  device_id: string;
+  
+  /**
+   * 设备名称
+   * 设备的描述信息，通常是用户代理字符串
+   */
+  device_name: string;
 }
 
 /**

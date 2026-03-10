@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
+    "@fingerprintjs/fingerprintjs": "^5.1.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@types/react": "^18.2.45",

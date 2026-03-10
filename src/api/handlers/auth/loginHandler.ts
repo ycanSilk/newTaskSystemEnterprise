@@ -27,6 +27,14 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
     // 将请求体转换为LoginRequest类型，确保数据格式正确
     const requestData: LoginRequest = await req.json();
     
+    // 确保包含设备信息
+    if (!requestData.device_id || !requestData.device_name) {
+      return NextResponse.json(
+        { success: false, code: 400, message: '设备信息缺失' },
+        { status: 400 }
+      );
+    }
+    
     // 调用API客户端发送POST请求到登录端点
     // 使用LOGIN_ENDPOINT常量作为URL，requestData作为请求体
     // 类型参数LoginResponse表示期望的响应数据类型
@@ -53,7 +61,14 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
       // 设置Cookie，使用API配置中的token Cookie名称
       // 过期时间设置为7天（7 * 24 * 60 * 60秒）
       setSecureHttpOnlyCookie(req, successResponse, apiConfig.auth.tokenCookieName, token, 7 * 24 * 60 * 60);
+      
+      // 保存设备ID到Cookie
+      if (requestData.device_id) {
+        setSecureHttpOnlyCookie(req, successResponse, 'device_id', requestData.device_id, 7 * 24 * 60 * 60);
+      }
+      
       console.log('Token set in cookie:', token);
+      console.log('Device ID set in cookie:', requestData.device_id);
       console.log('Cookie name:', apiConfig.auth.tokenCookieName);
       console.log('token保存情况:', token);
     }

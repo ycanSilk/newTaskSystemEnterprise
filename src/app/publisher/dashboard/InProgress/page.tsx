@@ -72,6 +72,26 @@ export default function ActiveTabPage() {
       }
       return [];
     } catch (error) {
+      if (error instanceof Error && error.message.includes('401')) {
+        // 如果是401错误，重定向到登录页
+        router.push('/publisher/auth/login');
+        return [];
+      }
+      if (error instanceof Error && error.message.includes('500')) {
+        // 如果是500错误，重定向到登录页
+        router.push('/publisher/auth/login');
+        return [];
+      }
+      if (error instanceof Error && error.message.includes('403')) {
+        // 如果是403错误，重定向到登录页
+        router.push('/publisher/auth/login');
+        return [];
+      }
+      if (error instanceof Error && error.message.includes('4011')) {
+        // 如果是4011错误，重定向到登录页
+        router.push('/publisher/auth/login');
+        return [];
+      }
       console.error('获取任务列表失败:', error);
       return [];
     }

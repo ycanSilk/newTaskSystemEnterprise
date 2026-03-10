@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { OptimizationProvider } from '@/components/optimization/OptimizationProvider';
 import { ToastProvider, Toaster } from '@/components/ui/Toast';
 
+
 // 直接使用系统字体，避免字体加载失败的问题
 const interFontConfig = {};
 

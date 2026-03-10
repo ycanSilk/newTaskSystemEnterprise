@@ -88,6 +88,14 @@ export const saveUserOnLoginSuccess = (userData: any, token: string) => {
   // 保存token到cookie
   document.cookie = `PublishTask_token=${token}; path=/; max-age=86400; SameSite=Lax`;
   
+  // 同时保存token到localStorage，以便useTokenChecker能够获取到
+  try {
+    localStorage.setItem('token', token);
+    console.log('登录成功后保存token到localStorage:', token);
+  } catch (error) {
+    console.error('保存token到localStorage失败:', error);
+  }
+  
   setUser(user);
   console.log('登录成功后保存用户信息到内存:', user);
   console.log('登录成功后保存token到cookie:', token);

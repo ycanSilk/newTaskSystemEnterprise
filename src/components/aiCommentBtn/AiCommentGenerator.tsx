@@ -177,11 +177,38 @@ export default function AiCommentGenerator({
       comment = applyHomophone(comment);
     }
 
-    // 字数控制
-    if (comment.length > ruleConfig.maxWords) {
-      comment = comment.slice(0, ruleConfig.maxWords - 1) + '…';
-    } else if (comment.length < ruleConfig.minWords) {
-      comment = comment.replace('，', ` ${randomPick(ruleConfig.vocabulary.感受)}，`);
+    // 字数控制 - 对于包含固定昵称的评论，限制实际内容在5字以内
+    if (nick.trim()) {
+      // 提取实际评论内容（排除固定昵称）
+      const commentWithoutNick = comment.replace(new RegExp(`${nick}`, 'g'), '').trim();
+      if (commentWithoutNick.length > 5) {
+        // 截取前5个字符
+        const trimmedContent = commentWithoutNick.slice(0, 5);
+        // 重新组合评论（保持昵称的位置）
+        if (comment.startsWith(`${nick}`)) {
+          // 昵称在开头
+          comment = `${nick} ${trimmedContent}`;
+        } else if (comment.endsWith(`${nick}`)) {
+          // 昵称在结尾
+          comment = `${trimmedContent} ${nick}`;
+        } else {
+          // 昵称在中间
+          const parts = comment.split(new RegExp(`${nick}`));
+          if (parts.length === 2) {
+            comment = `${parts[0].trim()} ${nick} ${trimmedContent}`;
+          } else {
+            // fallback 情况
+            comment = `${trimmedContent} ${nick}`;
+          }
+        }
+      }
+    } else {
+      // 普通评论的字数控制
+      if (comment.length > ruleConfig.maxWords) {
+        comment = comment.slice(0, ruleConfig.maxWords - 1) + '…';
+      } else if (comment.length < ruleConfig.minWords) {
+        comment = comment.replace('，', ` ${randomPick(ruleConfig.vocabulary.感受)}，`);
+      }
     }
 
     // 应用文本处理

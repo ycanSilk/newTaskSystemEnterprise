@@ -32,31 +32,18 @@ export default function AwaitingReviewNotification() {
     pollingInterval: 60000, // 固定60秒检测间隔   
   };
 
-  // 格式化时间函数
-  const formatTime = () => {
-    const now = new Date();
-    return now.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  };
+
 
   // 检测用户交互
   useEffect(() => {
     const handleUserInteraction = () => {
-      if (!userInteractedRef.current) {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 用户首次交互，获取音频播放权限`);
+      if (!userInteractedRef.current) {       
         userInteractedRef.current = true;
         // 预加载音频以获得播放权限
         const audio = new Audio('/videos/preview.mp3');
         audio.muted = true;
         audio.play().catch(() => {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 预加载音频失败（正常现象）`);
+          // 预加载音频失败（正常现象）
         });
       }
     };
@@ -73,7 +60,6 @@ export default function AwaitingReviewNotification() {
   // 播放提示音
   const playNotificationSound = () => {
     if (isPlayingSoundRef.current) {
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 音频正在播放中，跳过本次播放`);
       return;
     }
     
@@ -82,26 +68,25 @@ export default function AwaitingReviewNotification() {
       audio.volume = 1;
       isPlayingSoundRef.current = true;
       
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 开始播放提示音`);
       
       audio.play().then(() => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 提示音播放成功`);
+       
       }).catch(error => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 播放提示音失败:`, error);
+       
         isPlayingSoundRef.current = false;
       });
       
       audio.addEventListener('ended', () => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 提示音播放结束`);
+       
         isPlayingSoundRef.current = false;
       });
       
       audio.addEventListener('error', () => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 提示音播放出错`);
+       
         isPlayingSoundRef.current = false;
       });
     } catch (error) {
-      console.error(`[${formatTime()}] [AwaitingReviewNotification] 播放提示音失败:`, error);
+     
       isPlayingSoundRef.current = false;
     }
   };
@@ -109,15 +94,13 @@ export default function AwaitingReviewNotification() {
   // 尝试获取音频播放权限
   const tryGetAudioPermission = () => {
     if (!userInteractedRef.current) {
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 尝试获取音频播放权限`);
       // 创建一个不可见的音频元素并尝试播放，以获取音频播放权限
       const audio = new Audio('/videos/preview.mp3');
       audio.muted = true;
       audio.play().then(() => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 获取到音频播放权限`);
         userInteractedRef.current = true;
       }).catch(() => {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 获取音频播放权限失败（需要用户交互）`);
+        // 获取音频播放权限失败（需要用户交互）
       });
     }
   };
@@ -125,7 +108,6 @@ export default function AwaitingReviewNotification() {
   // 获取待审核任务数量
   const fetchAwaitingReviewCount = async () => {
 
-    console.log(`[${formatTime()}] [AwaitingReviewNotification] 开始检测待审核任务`);
     
     // 尝试获取音频播放权限
     tryGetAudioPermission();
@@ -133,7 +115,6 @@ export default function AwaitingReviewNotification() {
     isRefreshingRef.current = true;
     
     try {
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 发送API请求获取待审核任务列表`);
       const data: PendingTasksListResponse = await globalFetch('/api/task/pendingTasksList', {
         method: 'GET',
         credentials: 'include',
@@ -144,39 +125,28 @@ export default function AwaitingReviewNotification() {
         }
       });
       
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] API请求完成，开始处理响应数据`);
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 原始响应数据:`, data);
-      
       if (data.success && data.data) {
         const taskList = data.data.list || [];
         const newCount = taskList.length;
         
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 检测到待审核任务数量: ${newCount}`);
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 待审核任务列表:`, taskList);
         
         if (newCount > 0) {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 有待审核任务，设置提示状态为true`);
           setHasNewAwaitingReviewTasks(true);
           
           // 只要有待审核任务就播放提示音
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 有待审核任务，准备播放提示音`);
           playNotificationSound();
         } else {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 没有待审核任务，重置提示状态`);
           setHasNewAwaitingReviewTasks(false);
         }
         
         // 更新上次检测到的任务数量
         lastTaskCountRef.current = newCount;
         
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] 更新待审核任务数量为: ${newCount}`);
         setAwaitingReviewCount(newCount);
       } else {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] API响应失败或无数据`);
         
         // 检查是否是Token失效
         if (data.code === 401) {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] Token已失效，重定向到登录页面`);
           // 重定向到登录页面
           router.push('/publisher/auth/login');
         }
@@ -186,11 +156,9 @@ export default function AwaitingReviewNotification() {
         lastTaskCountRef.current = 0;
       }
     } catch (error: any) {
-      console.error(`[${formatTime()}] [AwaitingReviewNotification] 获取待审核任务数量失败:`, error);
       
       // 检查是否是Token失效
       if (error.response?.data?.code === 401 || error.code === 401) {
-        console.log(`[${formatTime()}] [AwaitingReviewNotification] Token已失效，重定向到登录页面`);
         // 重定向到登录页面
         router.push('/publisher/auth/login');
       }
@@ -200,7 +168,6 @@ export default function AwaitingReviewNotification() {
       lastTaskCountRef.current = 0;
     } finally {
       isRefreshingRef.current = false;
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 检测完成`);
     }
   };
 
@@ -227,17 +194,6 @@ export default function AwaitingReviewNotification() {
       // 只有当不在刷新状态时才更新倒计时
       if (!isRefreshingRef.current) {
         countdownRef.current--;
-        
-        // 每5秒输出一次倒计时日志
-        if (countdownRef.current % 5 === 0 && countdownRef.current > 0) {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 下次检测倒计时: ${countdownRef.current}秒`);
-        }
-        
-        // 当倒计时为0时，触发检测
-        if (countdownRef.current <= 0) {
-          console.log(`[${formatTime()}] [AwaitingReviewNotification] 倒计时结束，触发检测`);
-          handleCountdownComplete();
-        }
       }
     }, 1000);
   };
@@ -247,7 +203,6 @@ export default function AwaitingReviewNotification() {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 暂停倒计时，当前剩余: ${countdownRef.current}秒`);
     }
   };
 
@@ -255,7 +210,6 @@ export default function AwaitingReviewNotification() {
   const resumeCountdown = () => {
     if (!countdownIntervalRef.current) {
       startCountdown();
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 恢复倒计时`);
     }
   };
 
@@ -273,8 +227,6 @@ export default function AwaitingReviewNotification() {
 
   // 初始化和设置轮询
   useEffect(() => {
-    console.log(`[${formatTime()}] [AwaitingReviewNotification] 组件初始化，开始首次检测`);
-    
     // 重置刷新标志
     isRefreshingRef.current = false;
     
@@ -286,7 +238,6 @@ export default function AwaitingReviewNotification() {
 
     // 清理函数
     return () => {
-      console.log(`[${formatTime()}] [AwaitingReviewNotification] 组件卸载，清理资源`);
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
