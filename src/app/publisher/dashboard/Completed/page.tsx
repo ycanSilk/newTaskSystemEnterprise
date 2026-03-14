@@ -12,8 +12,7 @@ import { Task,
   GetTasksListResponse } from '../../../types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
-// 导入优化工具
-import { useOptimization } from '@/components/optimization/OptimizationProvider';
+
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
@@ -28,8 +27,6 @@ export default function CompletedTabPage() {
   // 数据缓存和轮询相关
   const [lastFetchedData, setLastFetchedData] = useState<Task[]>([]);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // 使用优化工具
-  const { globalFetch } = useOptimization();
 
   // 处理搜索
   const handleSearch = () => {
@@ -44,18 +41,18 @@ export default function CompletedTabPage() {
   // API调用 - 获取已完成任务列表
   const fetchCompletedTasks = async () => {
     try {
-      // 使用全局fetch包装器，获得缓存和重试等优化功能
-      const result: GetTasksListResponse = await globalFetch('/api/task/getTasksList?status=2', {
-        method: 'GET'
-      }, {
-        // 启用缓存，缓存时间5分钟
-        enableCache: true,
-        expiry: 5 * 60 * 1000,
-        // 启用自动重试
-        enableRetry: true,
-        retryCount: 3,
-        retryDelay: 1000
+      // 直接使用fetch
+      const response = await fetch('/api/task/getTasksList?status=2', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
+      
+      const result: GetTasksListResponse = await response.json();
       
       if (result.code === 0) {
         return result.data.tasks || [];

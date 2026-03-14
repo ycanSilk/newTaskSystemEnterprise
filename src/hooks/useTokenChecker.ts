@@ -40,7 +40,6 @@ export const useTokenChecker = () => {
 
       // 检查响应状态
       if (!response.ok) {
-        console.log('token无效，重定向到登录页面');
         redirectToLogin();
         return;
       }
@@ -48,14 +47,10 @@ export const useTokenChecker = () => {
       // 解析响应数据
       const data = await response.json();
       if (!data.success) {
-        console.log('token无效，响应数据:', data);
         redirectToLogin();
         return;
       }
-      console.log('响应数据:', data);
-      console.log('token有效');
     } catch (error) {
-      console.error('检查token有效性时出错:', error);
       // 出错时也重定向到登录页面
       redirectToLogin();
     } finally {
@@ -68,11 +63,9 @@ export const useTokenChecker = () => {
     // 检查是否在冷却时间内
     const currentTime = Date.now();
     if (currentTime - lastRedirectTime < redirectCooldown) {
-      console.log('重定向冷却中，跳过本次重定向');
       return;
     }
     // 重定向到登录页面
-    console.log('执行重定向到登录页面');
     setLastRedirectTime(currentTime);
     router.push(`/publisher/auth/login`);
   };

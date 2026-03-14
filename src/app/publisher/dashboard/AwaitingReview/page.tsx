@@ -14,7 +14,7 @@ import { Task,
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
 // 导入优化工具
-import { useOptimization } from '@/components/optimization/OptimizationProvider';
+
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
@@ -38,15 +38,85 @@ export default function AwaitingReviewTabPage() {
   const [currentOrderId, setCurrentOrderId] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [currentOrder, setCurrentOrder] = useState<PendingTask | null>(null);
-  // 使用优化工具
-  const { globalFetch } = useOptimization();
+  // 音频播放状态
+  const isPlayingSoundRef = useRef<boolean>(false);
+  // 用户是否已交互
+  const userInteractedRef = useRef<boolean>(false);
+  // 上次检测到的任务数量
+  const lastTaskCountRef = useRef<number>(0);
 
+  // 检测用户交互
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (!userInteractedRef.current) {
+        userInteractedRef.current = true;
+        // 预加载音频以获得播放权限
+        const audio = new Audio('/videos/preview.mp3');
+        audio.muted = true;
+        audio.play().catch(() => {
+          // 预加载音频失败（正常现象）
+        });
+      }
+    };
+
+    // 添加多种交互事件监听器
+    const events = ['click', 'touchstart', 'keydown', 'scroll'];
+    events.forEach(event => window.addEventListener(event, handleUserInteraction, { once: true }));
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, handleUserInteraction));
+    };
+  }, []);
+
+  // 播放提示音
+  const playNotificationSound = () => {
+    if (isPlayingSoundRef.current) {
+      return;
+    }
+    
+    try {
+      const audio = new Audio('/videos/preview.mp3');
+      audio.volume = 1;
+      isPlayingSoundRef.current = true;
+      
+      audio.play().then(() => {
+        // 播放成功
+      }).catch(error => {
+        // 播放失败
+        isPlayingSoundRef.current = false;
+      });
+      
+      audio.addEventListener('ended', () => {
+        isPlayingSoundRef.current = false;
+      });
+      
+      audio.addEventListener('error', () => {
+        isPlayingSoundRef.current = false;
+      });
+    } catch (error) {
+      isPlayingSoundRef.current = false;
+    }
+  };
+
+  // 尝试获取音频播放权限
+  const tryGetAudioPermission = () => {
+    if (!userInteractedRef.current) {
+      // 创建一个不可见的音频元素并尝试播放，以获取音频播放权限
+      const audio = new Audio('/videos/preview.mp3');
+      audio.muted = true;
+      audio.play().then(() => {
+        userInteractedRef.current = true;
+      }).catch(() => {
+        // 获取音频播放权限失败（需要用户交互）
+      });
+    }
+  };
 
 // API调用 - 获取待审核任务列表
   const fetchPendingTasks = async () => {
     try {
-      // 使用全局fetch包装器，禁用缓存，确保每次都获取最新数据
-      const data: PendingTasksListResponse = await globalFetch('/api/task/pendingTasksList', {
+      // 直接使用fetch，禁用缓存，确保每次都获取最新数据
+      const response = await fetch('/api/task/pendingTasksList', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -54,15 +124,10 @@ export default function AwaitingReviewTabPage() {
           'Pragma': 'no-cache',
           'Expires': '0'
         }
-      }, {
-        // 禁用缓存，确保每次都从服务器获取最新数据
-        enableCache: false,
-        // 启用自动重试
-        enableRetry: true,
-        retryCount: 3,
-        retryDelay: 1000
       });
-      console.log('请求结果', data);
+      
+      const data: PendingTasksListResponse = await response.json();
+      
       if (data.success && data.data) {
         return data.data.list || [];
       }
@@ -107,6 +172,19 @@ export default function AwaitingReviewTabPage() {
     try {
       setLoading(true);
       const newTasks = await fetchPendingTasks();
+      const newCount = newTasks.length;
+      
+      // 尝试获取音频播放权限
+      tryGetAudioPermission();
+      
+      // 如果有新的待审核任务，播放提示音
+      if (newCount > 0 && newCount > lastTaskCountRef.current) {
+        playNotificationSound();
+      }
+      
+      // 更新上次检测到的任务数量
+      lastTaskCountRef.current = newCount;
+      
       setAwaitingReviewOrders(newTasks);
       showCopySuccess('数据已更新');
     } catch (error) {
@@ -122,6 +200,9 @@ export default function AwaitingReviewTabPage() {
       setLoading(true);
       try {
         const initialTasks = await fetchPendingTasks();
+        const initialCount = initialTasks.length;
+        // 更新上次检测到的任务数量
+        lastTaskCountRef.current = initialCount;
         setAwaitingReviewOrders(initialTasks);
       } catch (error) {
         console.error('初始化任务列表失败:', error);

@@ -1,6 +1,5 @@
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { OptimizationProvider } from '@/components/optimization/OptimizationProvider';
 import { ToastProvider, Toaster } from '@/components/ui/Toast';
 
 
@@ -47,12 +46,10 @@ export default function RootLayout({
       <body className={cn(
         'min-h-screen bg-gray-50 font-sans antialiased'
       )}>
-        <OptimizationProvider>
-          <ToastProvider>
-            {children}
-            <Toaster />
-          </ToastProvider>
-        </OptimizationProvider>
+        <ToastProvider>
+          {children}
+          <Toaster />
+        </ToastProvider>
       </body>
     </html>
   )

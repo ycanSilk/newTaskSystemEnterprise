@@ -13,8 +13,7 @@ import { Task,
   GetTasksListResponse } from '@/app/types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
-// 导入优化工具
-import { useOptimization } from '@/components/optimization/OptimizationProvider';
+
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
@@ -46,8 +45,6 @@ export default function ActiveTabPage() {
   const [tooltipMessage, setTooltipMessage] = useState('');
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasFetchedRef = useRef(false);
-  // 使用优化工具
-  const { globalFetch } = useOptimization();
 
   // 处理搜索
   const handleSearch = () => {

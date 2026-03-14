@@ -8,8 +8,6 @@ import { AxiosRequestConfig } from 'axios';
 import { cookies } from 'next/headers';
 // 导入API配置，使用里面的默认请求头和token配置
 import { apiConfig } from '../config';
-// 导入缓存策略相关函数和类型
-import { getCacheStrategy, getCacheExpiryTime } from '../cacheStrategy';
 
 /**
  * 请求拦截器函数
@@ -66,22 +64,7 @@ export const requestInterceptor = async (config: AxiosRequestConfig): Promise<Ax
     console.error('Error getting token from cookie:', error);
   }
   
-  // 处理缓存策略
-  if (config.url) {
-    const method = (config.method || 'GET').toUpperCase();
-    const cacheStrategy = getCacheStrategy(config.url, method);
-    
-    if (method === 'GET') {
-      // 对于GET请求，添加缓存控制头
-      if (cacheStrategy.enabled) {
-        config.headers['X-Cache-Level'] = cacheStrategy.level;
-        config.headers['X-Cache-Expiry'] = getCacheExpiryTime(cacheStrategy.level).toString();
-      }
-    } else {
-      // 对于写操作，添加缓存失效头
-      config.headers['X-Cache-Invalidate'] = 'true';
-    }
-  }
+
   
   // 添加请求ID，用于日志追踪
   // 如果请求头中没有X-Request-Id，就生成一个

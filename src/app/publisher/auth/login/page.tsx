@@ -8,8 +8,7 @@ import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes'
 import { useUser } from '@/hooks/useUser';
 // 导入登录成功后保存用户信息的函数
 import { saveUserOnLoginSuccess } from '@/store/userStore';
-// 导入优化工具
-import { useOptimization } from '@/components/optimization/OptimizationProvider';
+
 // 导入设备信息管理工具
 import { getDeviceInfo } from '@/utils/device';
 // 导入协议模态框
@@ -41,8 +40,7 @@ export default function PublisherLoginPage() {
 
   // 使用useUser钩子检查登录状态
   const { isAuthenticated, isLoading: isAuthLoading } = useUser();
-  // 使用优化工具
-  const { globalFetch, savePageState } = useOptimization();
+
 
   // 初始化设备信息
   useEffect(() => {
@@ -240,8 +238,8 @@ export default function PublisherLoginPage() {
     setIsLoading(true);
 
     try {
-      // 使用全局fetch包装器，获得缓存和重试等优化功能
-      const result: LoginApiResponse = await globalFetch('/api/auth/login', {
+      // 直接使用fetch
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -252,17 +250,10 @@ export default function PublisherLoginPage() {
           device_id: deviceInfo.device_id,
           device_name: deviceInfo.device_name
         })
-      }, {
-        // 登录请求不使用缓存
-        enableCache: false,
-        // 启用自动重试
-        enableRetry: true,
-        // 重试3次
-        retryCount: 3,
-        // 重试延迟1秒
-        retryDelay: 1000
       });
-
+      
+      const result: LoginApiResponse = await response.json();
+      
       if (result.code === 0) {
         saveUserOnLoginSuccess(result.data, result.data.token);
 

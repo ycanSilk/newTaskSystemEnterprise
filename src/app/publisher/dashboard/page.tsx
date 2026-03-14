@@ -3,8 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-// 导入优化工具
-import { useOptimization } from '@/components/optimization/OptimizationProvider';
+
 // 懒加载四个对应状态的页面组件
 const ActiveTabPage = dynamic(() => import('./InProgress/page'), {
   loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
@@ -65,8 +64,7 @@ export default function PublisherDashboardPage() {
   // 滚动位置缓存
   const scrollPositionRef = useRef<number>(0);
   
-  // 使用优化工具
-  const { globalFetch, addRefreshTask, removeRefreshTask } = useOptimization();
+
 
   // 确保页面加载时默认显示tab=InProgress参数
   useEffect(() => {
