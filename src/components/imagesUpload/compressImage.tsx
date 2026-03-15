@@ -47,7 +47,7 @@ export const compressImage = async (file: File, maxSize: number = 80 * 1024): Pr
         let compressedDataUrl: string;
 
         const compressStep = () => {
-          compressedDataUrl = canvas.toDataURL('image/webp', quality);
+          compressedDataUrl = canvas.toDataURL('image/png', quality);
           // 计算数据URL对应的字节大小
           const byteString = atob(compressedDataUrl.split(',')[1]);
           const byteArray = new Uint8Array(byteString.length);
@@ -62,8 +62,8 @@ export const compressImage = async (file: File, maxSize: number = 80 * 1024): Pr
             compressStep();
           } else {
             // 转换为File对象
-            const blob = new Blob([byteArray], { type: 'image/webp' });
-            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.png'), { type: 'image/png' });
             resolve(compressedFile);
           }
         };

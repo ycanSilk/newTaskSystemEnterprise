@@ -5,6 +5,15 @@
     "commentCount": 5,
     "minWords": 15,
     "maxWords": 30,
+    "lastCommentMaxWords": 10,
+    "Industry":[
+      "无行业",
+      "竞技足球行业",
+      "游戏行业",
+      "副业行业",
+      "信息咨询行业",
+      "宣传类行业"
+  ],
     "atPositionDist": {
       "开头": 0.3,
       "中间": 0.4,

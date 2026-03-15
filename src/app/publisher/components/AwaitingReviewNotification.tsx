@@ -187,8 +187,8 @@ export default function AwaitingReviewNotification() {
 
   // 处理查看待审核任务
   const handleViewAwaitingReview = () => {
-    // 使用 router.push 实现无感导航，避免页面重载
-    router.push('/publisher/dashboard?tab=AwaitingReview');
+    // 使用window.location.href实现页面重新加载
+    window.location.href = '/publisher/dashboard?tab=AwaitingReview';
   };
 
   // 倒计时引用

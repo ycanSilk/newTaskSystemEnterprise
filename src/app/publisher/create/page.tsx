@@ -121,7 +121,7 @@ export default function CreateTask() {
       <AlertModal
         isOpen={isModalOpen}
         title="功能暂未开放"
-        message="该功能暂未开放，无法使用"
+        message=""
         onClose={closeModal}
       />
     </div>

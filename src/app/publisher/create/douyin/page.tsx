@@ -64,7 +64,7 @@ export default function CreateTask() {
   const showNotDevelopedAlert = () => {
     setAlertConfig({
       title: '暂未开发',
-      message: '该功能暂未开发',
+      message: '该功能暂未开放',
       icon: '🔧'
     });
     setShowAlertModal(true);

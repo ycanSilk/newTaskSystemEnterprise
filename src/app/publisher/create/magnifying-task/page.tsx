@@ -161,9 +161,9 @@ export default function PublishSearchKeywordTaskPage() {
 
         <div className="text-lg pl-5 text-red-500"></div>
 
-      <div className="px-4 py-3 space-y-4">
+      <div className="px-4 py-3 space-y-2">
         {/* 视频链接 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务发布 <span className="text-red-500">*</span>
           </label>
@@ -176,7 +176,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 截止时间 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务截止时间
           </label>
@@ -193,7 +193,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 搜索词内容 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm overflow-y-auto">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             指定搜索词内容 <span className="text-red-500">*</span>
           </label>
@@ -211,7 +211,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 任务数量 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务数量 <span className="text-red-500">*</span>
           </label>
@@ -227,7 +227,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 任务单价 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务单价（元） <span className="text-red-500">*</span>
           </label>
@@ -247,7 +247,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 费用预览 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">

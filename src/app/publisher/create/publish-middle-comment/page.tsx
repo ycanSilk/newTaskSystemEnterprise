@@ -2,7 +2,7 @@
 
 import { Button, Input, AlertModal, Modal } from '@/components/ui';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
@@ -53,6 +53,44 @@ export default function PublishTaskPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   // AI评论生成状态
   const [isAIGenerating, setIsAIGenerating] = useState(false);
+  // 行业选择状态
+  const [selectedIndustry, setSelectedIndustry] = useState('无行业');
+  // 行业选项列表
+  const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
+  // 会话ID
+  const [sessionId, setSessionId] = useState('');
+  
+  // 只在浏览器环境中初始化会话ID
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('comment_session_id');
+      if (stored) {
+        setSessionId(stored);
+      } else {
+        const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('comment_session_id', newId);
+        setSessionId(newId);
+      }
+    }
+  }, []);
+
+  // 加载行业选项
+  useEffect(() => {
+    const loadIndustries = async () => {
+      try {
+        const response = await fetch('/rules/middle_comment.json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rules?.Industry) {
+            setIndustryOptions(data.rules.Industry);
+          }
+        }
+      } catch (error) {
+        console.error('加载行业选项失败:', error);
+      }
+    };
+    loadIndustries();
+  }, []);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -553,7 +591,7 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷，不需要输入@符号</span>
             <div className="space-y-3">
               <Input
                 placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
@@ -628,7 +666,7 @@ export default function PublishTaskPage() {
                   <textarea
                     className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     rows={3}
-                    placeholder={`请输入推荐评论内容`}
+                    placeholder={`第一条评论请输入你推荐的话术、默认最后一条评论带@功能`}
                     value={comment.content}
                     onChange={(e) => {
                       const newValue = e.target.value;
@@ -726,13 +764,35 @@ export default function PublishTaskPage() {
         title="AI生成评论"
         className="w-full max-w-md"
       >
+        {/* 行业筛选下拉菜单 */}
+        <div className="bg-white rounded-md  shadow-sm ">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            行业选择
+          </label>
+          <select
+            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={selectedIndustry}
+            onChange={(e) => setSelectedIndustry(e.target.value)}
+          >
+            {industryOptions.map((industry, index) => (
+              <option key={index} value={industry}>{industry}</option>
+            ))}
+          </select>
+        </div>
+        
         <MiddleCommentGenerator
           onCommentsGenerated={handleCommentsGenerated}
+          onProgressUpdate={(current, total) => {
+            // 可选：显示进度
+            console.log(`生成进度: ${current}/${total}`);
+          }}
           isLoading={isAIGenerating}
           onLoadingChange={setIsAIGenerating}
           commentCount={formData.quantity}
           atUser={mentions.length > 0 ? mentions[0] : undefined}
           userComments={formData.comments.map(comment => comment.content)}
+          industry={selectedIndustry}
+          sessionId={sessionId}
         />
       </Modal>
 

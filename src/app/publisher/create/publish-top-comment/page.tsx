@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Input, AlertModal } from '@/components/ui';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
@@ -55,6 +55,44 @@ export default function PublishTaskPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   // AI评论生成状态
   const [isAIGenerating, setIsAIGenerating] = useState(false);
+  // 行业选择状态
+  const [selectedIndustry, setSelectedIndustry] = useState('无行业');
+  // 行业选项列表
+  const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
+  // 会话ID
+  const [sessionId, setSessionId] = useState('');
+  
+  // 只在浏览器环境中初始化会话ID
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('comment_session_id');
+      if (stored) {
+        setSessionId(stored);
+      } else {
+        const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('comment_session_id', newId);
+        setSessionId(newId);
+      }
+    }
+  }, []);
+
+  // 加载行业选项
+  useEffect(() => {
+    const loadIndustries = async () => {
+      try {
+        const response = await fetch('/rules/middle_comment.json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rules?.Industry) {
+            setIndustryOptions(data.rules.Industry);
+          }
+        }
+      } catch (error) {
+        console.error('加载行业选项失败:', error);
+      }
+    };
+    loadIndustries();
+  }, []);
 
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -416,6 +454,22 @@ export default function PublishTaskPage() {
 
         {/* 评论内容 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm overflow-y-auto">
+          {/* 行业筛选下拉菜单 */}
+          <div className="bg-white rounded-md shadow-sm ">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              行业选择
+            </label>
+            <select
+              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={selectedIndustry}
+              onChange={(e) => setSelectedIndustry(e.target.value)}
+            >
+              {industryOptions.map((industry, index) => (
+                <option key={index} value={industry}>{industry}</option>
+              ))}
+            </select>
+          </div>
+          
           {/* 固定昵称和AI生成评论 */}
           <AiCommentGenerator
             onCommentsGenerated={(comments) => {
@@ -428,10 +482,16 @@ export default function PublishTaskPage() {
               }));
               showAlert('成功', `已为${comments.length}条评论生成内容！`, '✨');
             }}
+            onProgressUpdate={(current, total) => {
+              // 可选：显示进度
+              console.log(`评论生成进度: ${current}/${total}`);
+            }}
             isLoading={isAIGenerating}
             onLoadingChange={setIsAIGenerating}
             commentCount={formData.quantity}
             userComments={formData.comments.map(comment => comment.content)}
+            industry={selectedIndustry}
+            sessionId={sessionId}
           />
           {/* 任务数量 */}
         <div className="bg-white">

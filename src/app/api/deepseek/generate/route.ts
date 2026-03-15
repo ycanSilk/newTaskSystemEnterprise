@@ -8,36 +8,45 @@ async function callDeepSeek(prompt: string): Promise<string> {
   const baseURL = config.baseURL;
   const model = config.model;
 
+  const requestBody = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content:
+          '你是一个擅长创作短小精悍、生动有趣的抖音评论的助手。请确保每次生成的内容主题多样化，每次生成的评论不能重复，不能与之前生成的评论相同，生成评论符合要求的行业的评论。',
+      },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 1, // 提高随机性，让每次生成更丰富
+    max_tokens: 500,
+  };
+  
+  console.log('DeepSeek API 请求URL:', `${baseURL}/chat/completions`);
+  console.log('DeepSeek API 请求体:', requestBody);
+  console.log('DeepSeek API 提示词:', prompt);
+  
   const response = await fetch(`${baseURL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content:
-            '你是一个擅长创作短小精悍、生动有趣的抖音评论的助手。请确保每次生成的内容主题多样化，避免重复使用同一主题（例如不要总是生成龙年相关内容）。',
-        },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.9, // 提高随机性，让每次生成更丰富
-      max_tokens: 100,
-    }),
+    body: JSON.stringify(requestBody),
   });
+  
+  console.log('DeepSeek API 响应状态:', response.status);
+  console.log('DeepSeek API 响应头:', response.headers);
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`DeepSeek API 调用失败: ${error}`);
+    console.log('DeepSeek API 错误响应:', error);
+    throw new Error(`网络超时，请刷新页面重新生成评论，错误信息：${error}`);
   }
-  console.log('DeepSeek API 请求URL:', `${baseURL}/chat/completions`);
-  console.log('DeepSeek API 请求:', prompt);
-  console.log('DeepSeek API 响应:', response);
+  
   const data = await response.json();
-  console.log('DeepSeek API 响应:', data.choices[0].message.content);
+  console.log('DeepSeek API 响应数据:', data);
+  console.log('DeepSeek API 生成内容:', data.choices[0].message.content);
   return data.choices[0].message.content;
 }
 

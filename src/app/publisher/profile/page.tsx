@@ -6,7 +6,8 @@ import { ShopOutlined, WalletOutlined, EditOutlined, OrderedListOutlined, BarCha
 import { message } from 'antd';
 // 导入Zustand用户状态存储
 import { useUserStore } from '@/store/userStore';
-// 导入用户信息类型定义
+// 导入客服按钮组件
+import { CustomerServiceButton } from '@/components/button/CustomerServiceButton';
 
 
 interface BalanceData {
@@ -126,10 +127,17 @@ export default function PublisherProfilePage() {
   ];
 
   // 处理菜单项点击
-  const handleMenuItemClick = (path: string) => {
+  const handleMenuItemClick = (id: string, path: string) => {
+    if (id === 'customer-service') {
+      // 打开客服聊天窗口
+      const fullChatUrl = `https://kefu.kktaskpaas.com/chatIndex?kefu_id=kefu`;
+      window.open(fullChatUrl, '_blank', 'width=800,height=600,top=100,left=100');
+      return;
+    }
+    
     if (path === '#cooperation') {
       // 显示提示框
-      message.info('该功能暂未开放');
+      message.info('请联系客服，加入合作代理');
       return;
     }
     router.push(path as any);
@@ -168,7 +176,7 @@ export default function PublisherProfilePage() {
             {menuItems.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleMenuItemClick(item.path)}
+                onClick={() => handleMenuItemClick(item.id, item.path)}
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                 style={{
                   // 增大移动端触摸区域
