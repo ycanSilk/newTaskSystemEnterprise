@@ -70,11 +70,12 @@ class CommentCacheManager {
   // 清理过期会话
   private cleanExpiredSessions() {
     const now = Date.now();
-    for (const [key, session] of this.sessions.entries()) {
+    // 使用Array.from()避免MapIterator迭代问题
+    Array.from(this.sessions.entries()).forEach(([key, session]) => {
       if (now - session.lastAccess > this.SESSION_TTL) {
         this.sessions.delete(key);
       }
-    }
+    });
   }
 }
 

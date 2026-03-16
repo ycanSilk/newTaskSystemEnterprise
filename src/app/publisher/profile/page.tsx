@@ -87,15 +87,15 @@ export default function PublisherProfilePage() {
       icon: <OrderedListOutlined className="text-xl" />,
       color: 'bg-green-100',
       path: '/publisher/orders'
-    },
-    {
-      id: 'data-stats',
-      title: '数据总览',
-      icon: <BarChartOutlined className="text-xl" />,
-      color: 'bg-blue-100',
-      path: '/publisher/profile/data-stats'
-    },
+    }    
     */
+   {
+      id: 'statistic',
+      title: '数据统计',
+      icon: <BarChartOutlined className="text-xl" />,
+      color: 'bg-pink-100',
+      path: '/publisher/statistic'
+    },
     {
       id: 'notifications',
       title: '通知提醒',

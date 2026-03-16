@@ -251,9 +251,14 @@ export default function PublisherLoginPage() {
           device_name: deviceInfo.device_name
         })
       });
-      
-      const result: LoginApiResponse = await response.json();
-      
+      console.log('登录请求:',  JSON.stringify({
+          account: formData.account.trim(),
+          password: formData.password.trim(),
+          device_id: deviceInfo.device_id,
+          device_name: deviceInfo.device_name
+        }));
+      const result = await response.json();
+      console.log('登录响应:', result);
       if (result.code === 0) {
         saveUserOnLoginSuccess(result.data, result.data.token);
 

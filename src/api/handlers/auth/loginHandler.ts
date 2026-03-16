@@ -25,7 +25,9 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
   try {
     // 解析请求体，获取客户端发送的登录数据
     // 将请求体转换为LoginRequest类型，确保数据格式正确
+    console.log('登录请求原始数据:', req.body);
     const requestData: LoginRequest = await req.json();
+    console.log('登录请求解析后数据:', requestData);
     
     // 确保包含设备信息
     if (!requestData.device_id || !requestData.device_name) {
