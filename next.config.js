@@ -21,7 +21,7 @@ const nextConfig = {
   // 统一开发环境和生产环境的API代理配置
   async rewrites() {
     // 使用统一的API地址，确保环境一致性
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:8000/api';
+    const apiBaseUrl = process.env.API_BASE_URL || 'http://54.179.253.64:28806';
     
     return [
       { source: '/api/auth/me', destination: '/api/auth/me' }, // 不转发到外部服务器
@@ -95,7 +95,7 @@ const nextConfig = {
           // 禁用浏览器默认的内容安全策略
           { 
               key: 'Content-Security-Policy', 
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:8000 https://api.kktaskpaas.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://54.179.253.64:28806 https://api.kktaskpaas.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
         ],
       },
       {

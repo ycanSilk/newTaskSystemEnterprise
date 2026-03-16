@@ -244,6 +244,8 @@ export default function PublisherLoginPage() {
         headers: {
           'Content-Type': 'application/json'
         },
+        // 包含cookie，用于会话保持
+        credentials: 'include',
         body: JSON.stringify({
           account: formData.account.trim(),
           password: formData.password.trim(),
@@ -251,6 +253,9 @@ export default function PublisherLoginPage() {
           device_name: deviceInfo.device_name
         })
       });
+
+
+      
       
       const result: LoginApiResponse = await response.json();
       
