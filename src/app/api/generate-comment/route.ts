@@ -124,6 +124,17 @@ function getStyleHint(index: number, totalComments: number): string {
   return stylePool[index % stylePool.length];
 }
 
+// 清理字符串，确保它是有效的 JSON 字符串
+function cleanString(str: string): string {
+  // 移除不完整的 Unicode 转义序列
+  str = str.replace(/\\u([0-9a-fA-F]{0,3})/g, '');
+  // 移除控制字符
+  str = str.replace(/[\x00-\x1F\x7F]/g, '');
+  // 移除可能导致 JSON 解析错误的字符
+  str = str.replace(/[\ud800-\udfff]/g, ''); // 移除代理对
+  return str;
+}
+
 // 构建提示词
 function buildPrompt(
   draft: string,
@@ -132,7 +143,10 @@ function buildPrompt(
   totalComments: number,
   recentHistory: string[]
 ): string {
-  let prompt = `请润色以下评论，使其更加自然、口语化，保持原有的语义和情感。\n\n`;
+  // 清理草稿内容
+  const cleanedDraft = cleanString(draft);
+  
+  let prompt = `请润色以下评论，使其更加自然、口语化，保持原有的语义和情感，生成的评论要和原评论差异在80%以上。\n\n`;
   
   // 添加行业要求
   if (industry && industry !== '无行业') {
@@ -145,8 +159,8 @@ function buildPrompt(
   
   // 添加字数限制要求
   // 检查是否包含@用户标识或固定昵称
-  const hasAtUser = draft.includes('@');
-  const hasNickname = draft.includes('[[@') || draft.includes(']]');
+  const hasAtUser = cleanedDraft.includes('@');
+  const hasNickname = cleanedDraft.includes('[[@') || cleanedDraft.includes(']]');
   
   if (hasAtUser || hasNickname) {
     // 带有@用户标识或固定昵称的评论，生成内容（不包含@用户标识和固定昵称）限制在10个文字以内
@@ -160,14 +174,15 @@ function buildPrompt(
   if (recentHistory.length > 0) {
     prompt += `避免与以下已生成的评论风格雷同：\n`;
     recentHistory.forEach((comment, idx) => {
-      prompt += `历史评论${idx + 1}：${comment.substring(0, 30)}...\n`;
+      const cleanedComment = cleanString(comment);
+      prompt += `历史评论${idx + 1}：${cleanedComment.substring(0, 30)}...\n`;
     });
     prompt += `\n`;
   }
   
   // 添加原评论内容
-  prompt += `评论内容：${draft}\n`;
-  prompt += `不要生成包含用户名、人名、姓名、抖音名称相关的评论，直接返回润色后的评论。`;
+  prompt += `评论内容：${cleanedDraft}\n`;
+  prompt += `不要生成包含用户名、人名、姓名、抖音名称相关的评论，直接返回生成的评论。`;
   
   return prompt;
 }
@@ -185,7 +200,7 @@ async function callDeepSeek(
     messages: [
       {
         role: 'system',
-        content: '你是一个擅长润色抖音评论的助手。使评论更有趣、更吸引人，可以适当添加表情符号，但保持原意不变。直接返回润色后的评论，不要包含任何解释。每次生成的评论必须在风格、用词、句式上有明显差异，避免重复。',
+        content: '你是一个擅长润色抖音评论的助手。使评论更有趣、更吸引人，可以适当添加表情符号，但保持原意不变。直接返回生成的评论，不要包含任何解释。每次生成的评论必须在风格、用词、句式上有明显差异，避免重复。',
       },
       { role: 'user', content: prompt },
     ],

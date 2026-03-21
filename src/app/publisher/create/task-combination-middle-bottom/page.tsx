@@ -56,18 +56,15 @@ export default function PublishTaskPage() {
       imageUrl: ''
     },
 
-    // 下评评论模块 - 使用URL传递的数量
-    middleQuantity: stage2Count,
-    middleComments: Array.from({ length: stage2Count }, () => ({
+    // 下评评论模块 - 固定为1条
+    middleQuantity: 1,
+    middleComments: [{
       comment: '',
       image: null,
       imageUrl: ''
-    })),
+    }],
     deadline: '1440' // 存储分钟数，默认24小时
   });
-
-  // 下评任务数量输入状态
-  const [middleQuantityInput, setMiddleQuantityInput] = useState(stage2Count.toString());
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
@@ -146,66 +143,7 @@ export default function PublishTaskPage() {
     setShowAlertModal(true);
   };
 
-  // 处理下评任务数量变化，实现与评论输入框的联动
-  const handleMiddleQuantityChange = (newQuantityStr: string) => {
-    // 只允许输入数字
-    const cleanValue = newQuantityStr.replace(/[^0-9]/g, '');
-    setMiddleQuantityInput(cleanValue);
 
-    // 如果输入为空，保持内部状态为1
-    if (!cleanValue) {
-      setFormData((prevData: FormData) => ({
-        ...prevData,
-        middleQuantity: 1 // 内部状态保持为1，确保其他逻辑正常
-      }));
-      return;
-    }
-
-    const newQuantity = parseInt(cleanValue);
-    const quantity = Math.max(1, newQuantity); // 中评数量至少为1
-
-    setFormData((prevData: FormData) => {
-      let newComments = [...prevData.middleComments];
-
-      // 如果新数量大于现有评论数量，添加新评论
-      while (newComments.length < quantity) {
-        newComments.push({
-          comment: ``,
-          image: null,
-          imageUrl: ''
-        });
-      }
-
-      // 如果新数量小于现有评论数量，移除多余评论
-      if (newComments.length > quantity) {
-        newComments.splice(quantity);
-      }
-
-      // 先从所有评论中移除@用户标记
-      newComments = newComments.map((comment: CommentData) => ({
-        ...comment,
-        comment: comment.comment.replace(/ @\S+/g, '').replace(/@\S+/g, '')
-      }));
-
-      // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
-      if (mentions.length > 0 && quantity > 0) {
-        // 然后将@用户标记添加到最新的最后一条评论
-        const lastIndex = newComments.length - 1;
-        newComments[lastIndex] = {
-          ...newComments[lastIndex],
-          comment: newComments[lastIndex].comment
-            ? `${newComments[lastIndex].comment} @${mentions[0]}`
-            : `@${mentions[0]}`
-        };
-      }
-
-      return {
-        ...prevData,
-        middleQuantity: quantity,
-        middleComments: newComments
-      };
-    });
-  };
 
   // 处理添加@用户标记
   const handleAddMention = () => {
@@ -217,10 +155,10 @@ export default function PublishTaskPage() {
       return;
     }
 
-    // 2. 非法字符校验（只允许字母、数字、下划线、中文和@符号）
-    const validPattern = /^[a-zA-Z0-9_\u4e00-\u9fa5@]+$/;
+    // 2. 非法字符校验（只允许数字）
+    const validPattern = /^[0-9]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('提示', '用户ID或昵称包含非法字符，仅支持字母、数字、下划线和中文', '⚠️');
+      showAlert('提示', '用户ID或昵称只能包含数字', '⚠️');
       return;
     }
 
@@ -229,23 +167,16 @@ export default function PublishTaskPage() {
       setMentions([trimmedMention]); // 只保留一个用户
       setMentionInput('');
 
-      // 将@标记插入到下评评论列表的最后一条
-      if (formData.middleComments.length > 0) {
-        const lastIndex = formData.middleComments.length - 1;
-        setFormData((prevData: FormData) => ({
-          ...prevData,
-          middleComments: prevData.middleComments.map((comment: CommentData, index: number) =>
-            index === lastIndex
-              ? {
-                ...comment,
-                comment: comment.comment
-                  ? `${comment.comment} @${trimmedMention}`
-                  : `@${trimmedMention}`
-              }
-              : comment
-          )
-        }));
-      }
+      // 将@标记插入到下评评论中（固定为第一条）
+      setFormData((prevData: FormData) => ({
+        ...prevData,
+        middleComments: prevData.middleComments.map((comment: CommentData) => ({
+          ...comment,
+          comment: comment.comment
+            ? `${comment.comment} @${trimmedMention}`
+            : `@${trimmedMention}`
+        }))
+      }));
     } else if (mentions.includes(trimmedMention)) {
       showAlert('提示', '该用户昵称ID已添加', '💡');
     }
@@ -260,7 +191,19 @@ export default function PublishTaskPage() {
       ...prevData,
       middleComments: prevData.middleComments.map((comment: CommentData) => ({
         ...comment,
-        comment: comment.comment?.replace(` @${mention}`, '').replace(`@${mention}`, '') || comment.comment
+        comment: comment.comment ? (
+          // 以"@"符号作为标识，获取输入的ID所包含的位数，然后在评论内容中定位"@"符号的起始位置，接着从该起始位置开始，向右偏移等于ID位数的长度，最后将从"@"符号开始到偏移结束的整个区域（包括"@"符号本身）进行删除操作
+          (() => {
+            let content = comment.comment;
+            const atIndex = content.indexOf(`@${mention}`);
+            if (atIndex !== -1) {
+              const start = atIndex;
+              const end = atIndex + 1 + mention.length;
+              content = content.substring(0, start) + content.substring(end);
+            }
+            return content.trim();
+          })()
+        ) : comment.comment
       }))
     }));
   };
@@ -270,28 +213,26 @@ export default function PublishTaskPage() {
     setFormData((prevData: FormData) => {
       let newComments = [...prevData.middleComments];
 
-      // 更新评论内容
-      comments.forEach((comment, index) => {
-        if (index < newComments.length) {
-          let processedComment = comment;
-          if (index < comments.length - 1) {
-            // 非最后一条评论，移除所有@用户标识
-            processedComment = comment.replace(/@\S+/g, '').trim();
-          } else if (mentions.length > 0) {
-            // 最后一条评论，确保只包含一个@用户标识
-            const atMatches = processedComment.match(/@\S+/g);
-            if (atMatches && atMatches.length > 1) {
-              // 如果有多个@标识，只保留第一个
-              const firstAt = atMatches[0];
-              processedComment = processedComment.replace(/@\S+/g, '').trim() + ` ${firstAt}`;
-            } else if (!atMatches) {
-              // 如果没有@标识，添加一个
-              processedComment = processedComment.trim() + ` @${mentions[0]}`;
-            }
+      // 更新评论内容（只处理第一条）
+      if (comments.length > 0) {
+        let processedComment = comments[0];
+        if (mentions.length > 0) {
+          // 确保只包含一个@用户标识
+          const atMatches = processedComment.match(/@\S+/g);
+          if (atMatches && atMatches.length > 1) {
+            // 如果有多个@标识，只保留第一个
+            const firstAt = atMatches[0];
+            processedComment = processedComment.replace(/@\S+/g, '').trim() + ` ${firstAt}`;
+          } else if (!atMatches) {
+            // 如果没有@标识，添加一个
+            processedComment = processedComment.trim() + ` @${mentions[0]}`;
           }
-          newComments[index].comment = processedComment;
+        } else {
+          // 移除所有@用户标识
+          processedComment = processedComment.replace(/@\S+/g, '').trim();
         }
-      });
+        newComments[0].comment = processedComment;
+      }
 
       return {
         ...prevData,
@@ -300,7 +241,7 @@ export default function PublishTaskPage() {
     });
 
     setShowMiddleCommentGenerator(false);
-    showAlert('生成成功', `已生成 ${comments.length} 条下评评论内容！`, '✨');
+    showAlert('生成成功', '已生成1条下评评论内容！', '✨');
   };
 
   // 处理中评评论的MiddleCommentGenerator生成的评论
@@ -473,17 +414,21 @@ export default function PublishTaskPage() {
         </div>
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            视频链接 <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+            <span>视频链接 <span className="text-red-500">*</span></span>
+            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
           <Input
-            placeholder="请输入抖音视频链接"
+            placeholder="请输入抖音视频链接（至少35个字符）"
             value={formData.videoUrl}
             onChange={(e) => {
               setFormData({ ...formData, videoUrl: e.target.value });
             }}
             className="w-full"
           />
+          {formData.videoUrl.length > 0 && formData.videoUrl.length <= 35 && (
+            <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
+          )}
         </div>
 
         {/* 截止时间 */}
@@ -573,12 +518,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷，不需要输入@符号</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，只输入数字，不需要输入@符号。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
+                placeholder="输入用户ID或昵称（仅支持数字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value)}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}
@@ -618,23 +563,8 @@ export default function PublishTaskPage() {
             </Button>
           </div>
 
-          {/* 任务数量 */}
-          <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              下评任务数量 <span className="text-red-500">*</span>
-            </label>
-            <div className="flex-1">
-              <Input
-                type="text"
-                value={middleQuantityInput}
-                onChange={(e) => handleMiddleQuantityChange(e.target.value)}
-                className="w-full text-2xl font-bold text-gray-900 text-center py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="请输入任务数量"
-              />
-            </div>
-            <div className="mt-2 text-sm text-gray-500">
-              中评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
-            </div>
+          <div className="mt-2 text-sm text-gray-500">
+            中评任务固定1条，下评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
           </div>
 
           {/* 动态生成下评评论输入框 */}
@@ -696,7 +626,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button
           onClick={handlePublish}
-          disabled={!formData.videoUrl || formData.middleQuantity === undefined}
+          disabled={!formData.videoUrl || formData.videoUrl.length <= 35 || formData.middleQuantity === undefined}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
           发布任务 - ¥{totalCost}
@@ -793,7 +723,7 @@ export default function PublishTaskPage() {
           }}
           isLoading={isPublishing}
           onLoadingChange={setIsPublishing}
-          commentCount={formData.middleQuantity}
+          commentCount={1}
           atUser={mentions.length > 0 ? mentions[0] : undefined}
           userComments={formData.middleComments.map(comment => comment.comment)}
           industry={selectedMiddleIndustry}
@@ -801,6 +731,11 @@ export default function PublishTaskPage() {
         />
       </Modal>
 
+      {/* 任务帮助模态框 */}
+      <TaskAssistance
+        isOpen={showTaskAssistance}
+        onClose={() => setShowTaskAssistance(false)}
+      />
 
     </div>
   );

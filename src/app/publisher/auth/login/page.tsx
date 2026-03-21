@@ -244,8 +244,6 @@ export default function PublisherLoginPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        // 包含cookie，用于会话保持
-        credentials: 'include',
         body: JSON.stringify({
           account: formData.account.trim(),
           password: formData.password.trim(),
@@ -253,14 +251,17 @@ export default function PublisherLoginPage() {
           device_name: deviceInfo.device_name
         })
       });
-
-
-      
       
       const result: LoginApiResponse = await response.json();
+      console.log('登录响应:', result);
+      console.log('登录响应:', result.message);
       
+      if(result.code === 401){
+        setErrorMessage(result.message);
+        return;
+      }
       if (result.code === 0) {
-        saveUserOnLoginSuccess(result.data, result.data.token);
+        saveUserOnLoginSuccess(result.data, result.data.token, deviceInfo);
 
         // 使用replace代替push，避免浏览器历史记录中留下登录页
         // 确保只执行一次重定向

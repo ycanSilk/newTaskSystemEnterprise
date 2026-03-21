@@ -424,8 +424,9 @@ export default function PublishTaskPage() {
 
         {/* 视频链接 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700">
-            视频链接 <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+            <span>视频链接 <span className="text-red-500">*</span></span>
+            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
           <Input
             placeholder="请输入抖音视频链接"

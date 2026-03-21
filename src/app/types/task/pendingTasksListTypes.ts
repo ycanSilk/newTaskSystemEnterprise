@@ -21,6 +21,8 @@ export interface PendingTask {
   unit_price?: string;
   created_at?: string;
   deadline_text?: string;
+  task_stage:number;
+  task_stage_text:string
 }
 
 // 分页信息类型

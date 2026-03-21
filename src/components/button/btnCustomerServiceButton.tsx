@@ -14,14 +14,14 @@ interface CustomerServiceButtonProps {
 export const BtnCustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
   className = '',
   buttonText = '联系客服',
-  CustomerServiceId = 'kefu',
-  chatUrl = 'https://kefu.kktaskpaas.com/chatIndex?kefu_id=kefu',
+  CustomerServiceId = 'lofty',
+  chatUrl = 'https://kefu.kktaskpaas.xyz/chatIndex?kefu_id=lofty',
   size = 32
 }) => {
   // 打开客服聊天页面
   const openChatWindow = () => {
     // 构建完整的聊天URL
-    const fullChatUrl = `https://kefu.kktaskpaas.com/chatIndex?kefu_id=${CustomerServiceId}`;
+    const fullChatUrl = `https://kefu.kktaskpaas.xyz/chatIndex?kefu_id=${CustomerServiceId}`;
     // 在新窗口中打开客服聊天页面
     window.open(fullChatUrl, '_blank', 'width=800,height=600,top=100,left=100');
   };

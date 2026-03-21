@@ -421,7 +421,7 @@ export default function AwaitingReviewTabPage() {
   };
 
   return (
-    <div className="mx-4 mt-6 space-y-4">
+    <div className="mx-4 mt-6 space-y-2">
       {/* 统一的复制成功提示 - 全局管理 */}
       {showCopyTooltip && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50">
@@ -442,7 +442,6 @@ export default function AwaitingReviewTabPage() {
         onViewAllClick={() => router.push('/publisher/orders')}
       />
       
-      {/* 视频模态框已移除，使用OpenVideoButton组件 */}
 
       {/* 子订单列表 - 内联实现AuditOrderCard功能 */}
       {filteredOrders.map((order, index) => (
@@ -450,7 +449,7 @@ export default function AwaitingReviewTabPage() {
             {/* 订单号 */}
             <div className="flex items-center mb-1 overflow-hidden">
               <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate">
-                订单号：{order.b_task_id}
+                单号：{order.b_task_id}
               </div>
               <div className="relative">
                 <button 
@@ -467,6 +466,12 @@ export default function AwaitingReviewTabPage() {
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
                 待审核
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                阶段：{order.task_stage}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                {order.task_stage_text}
               </span>
             </div>
             {/* 价格和状态信息 */}
@@ -490,7 +495,7 @@ export default function AwaitingReviewTabPage() {
                 {/* 查看提交的图片组件 */}
                 {Array.isArray(order.screenshots) && order.screenshots.length > 0 && (
                   <button
-                    className="bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center mt-2"
+                    className="bg-green-600  text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center mt-2"
                     onClick={() => {
                       // 打开图片查看器
                       setCurrentImageUrl(order.screenshots[0]);
@@ -524,7 +529,7 @@ export default function AwaitingReviewTabPage() {
           </div>
 
           {/* 审核备注输入框 */}
-          <div className="mb-4 border border-blue-500 rounded-lg p-2 bg-blue-50">
+          <div className=" border border-blue-500 rounded-lg p-2 bg-blue-50">
             <label className="block text-sm font-medium text-blue-600 mb-1">审核备注</label>
             <textarea 
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y min-h-[50px]"
@@ -536,7 +541,7 @@ export default function AwaitingReviewTabPage() {
           </div>
 
           {/* 按钮区域 */}
-            <div className="mt-4 flex gap-2 justify-end">
+            <div className="mt-2 flex gap-2 justify-end">
               <button 
                 className="py-2 px-4 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
                 onClick={() => handleOrderReview(order, 'approve')}

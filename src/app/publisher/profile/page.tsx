@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ShopOutlined, WalletOutlined, EditOutlined, OrderedListOutlined, BarChartOutlined, CreditCardOutlined, RightOutlined, BellOutlined, MessageOutlined, UserAddOutlined, DownloadOutlined } from '@ant-design/icons';
+import { ShopOutlined, WalletOutlined,  EditOutlined, OrderedListOutlined, BarChartOutlined, CreditCardOutlined, RightOutlined, BellOutlined, MessageOutlined, UserAddOutlined, DownloadOutlined } from '@ant-design/icons';
 import { message } from 'antd';
 // 导入Zustand用户状态存储
 import { useUserStore } from '@/store/userStore';
@@ -79,16 +79,14 @@ export default function PublisherProfilePage() {
       icon: <CreditCardOutlined className="text-xl" />,
       color: 'bg-purple-100',
       path: '/publisher/profile/paymentsettings'
-    },
-    /*
+    },    
     {
-      id: 'order-management',
-      title: '订单管理',
-      icon: <OrderedListOutlined className="text-xl" />,
+      id: 'quick-task-config',
+      title: '快捷派单配置',
+      icon: <EditOutlined className="text-xl" />,
       color: 'bg-green-100',
-      path: '/publisher/orders'
-    }    
-    */
+      path: '/publisher/profile/quick'
+    },    
    {
       id: 'statistic',
       title: '数据统计',

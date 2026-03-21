@@ -123,12 +123,12 @@ export default function MiddleCommentGenerator({
     return ruleConfig.forbiddenPatterns.some(word => text.includes(word));
   };
 
-  // 处理文本，移除[[@]]格式的字符和×××占位符
+  // 处理文本，移除×××占位符，但保留@用户标识
   const processText = (text: string): string => {
-    // 移除[[@...]]格式的字符
-    let processedText = text.replace(/\[\[@[^\]]+\]\]/g, '');
     // 移除×××占位符
-    processedText = processedText.replace(/×××/g, '');
+    let processedText = text.replace(/×××/g, '');
+    // 移除[[@...]]格式的字符，但保留@用户标识
+    processedText = processedText.replace(/\[\[@([^\]]+)\]\]/g, '@$1');
     return processedText;
   };
 

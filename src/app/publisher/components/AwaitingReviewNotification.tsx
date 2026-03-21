@@ -26,16 +26,17 @@ export default function AwaitingReviewNotification() {
   const lastTaskCountRef = useRef<number>(0);
   // 页面是否已初始化完成
   const isPageInitializedRef = useRef<boolean>(false);
+  // 轮询是否已启动
+  const isPollingStartedRef = useRef<boolean>(false);
+  // 是否为登录页面
+  const isLoginPageRef = useRef<boolean>(false);
 
   // 配置参数
   const config = {
     pollingInterval: 60000, // 固定60秒检测间隔   
   };
 
-  // 调试日志函数
-  const debugLog = (message: string, data?: any) => {
-    console.log(`[AwaitingReviewNotification] ${message}`, data);
-  };
+
 
 
 
@@ -112,9 +113,6 @@ export default function AwaitingReviewNotification() {
 
   // 获取待审核任务数量
   const fetchAwaitingReviewCount = async () => {
-
-    debugLog('开始检测待审核任务');
-    
     // 尝试获取音频播放权限
     tryGetAudioPermission();
     
@@ -133,35 +131,23 @@ export default function AwaitingReviewNotification() {
       
       const data: PendingTasksListResponse = await response.json();
       
-      debugLog('待审核任务列表API 响应', data);
-      
       if (data.success && data.data) {
         const taskList = data.data.list || [];
         const newCount = taskList.length;
-        console.log('当前待审核任务数量', newCount);
         
         if (newCount > 0) {
           setAwaitingReviewCount(newCount);
-          console.log('设置待审核任务数量', newCount);
           setHasNewAwaitingReviewTasks(true);
-          
           
           // 播放提示音
           playNotificationSound();
           
-          console.log('提示音播放成功');
-          
         } else {
-          console.log('无待审核任务');
-          console.log('当前待审核任务数量', newCount);
           setHasNewAwaitingReviewTasks(false);          
         }
       } else {
-        console.log('API 响应失败', { code: data.code, message: data.message });
-        
         // 检查是否是Token失效
         if (data.code === 401) {
-          console.log('Token 失效，重定向到登录页面');
           // 重定向到登录页面
           router.push('/publisher/auth/login');
         } 
@@ -169,11 +155,8 @@ export default function AwaitingReviewNotification() {
         setHasNewAwaitingReviewTasks(false);      
       }
     } catch (error: any) {
-      console.log('API 调用失败', error);
-      
       // 检查是否是Token失效
       if (error.response?.data?.code === 401 || error.code === 401) {
-        console.log('Token 失效，重定向到登录页面');
         // 重定向到登录页面
         router.push('/publisher/auth/login');
       }
@@ -181,7 +164,6 @@ export default function AwaitingReviewNotification() {
       setHasNewAwaitingReviewTasks(false);
     } finally {
       isRefreshingRef.current = false;
-      debugLog('检测完成');
     }
   };
 
@@ -199,7 +181,6 @@ export default function AwaitingReviewNotification() {
   // 开始倒计时
   const startCountdown = () => {
     countdownRef.current = config.pollingInterval / 1000;
-    debugLog('开始轮询倒计时', { interval: countdownRef.current, pollingInterval: config.pollingInterval });
     
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -209,12 +190,7 @@ export default function AwaitingReviewNotification() {
       // 只有当不在刷新状态时才更新倒计时
       if (!isRefreshingRef.current) {
         countdownRef.current--;
-        // 每10秒输出一次倒计时日志
-        if (countdownRef.current % 10 === 0) {
-          debugLog('轮询倒计时剩余时间', { seconds: countdownRef.current });
-        }
         if (countdownRef.current <= 0) {
-          debugLog('倒计时完成，执行检测');
           clearInterval(countdownIntervalRef.current!);
           handleCountdownComplete();
         }
@@ -225,7 +201,6 @@ export default function AwaitingReviewNotification() {
   // 暂停倒计时（保持当前倒计时值）
   const pauseCountdown = () => {
     if (countdownIntervalRef.current) {
-      debugLog('暂停倒计时', { remaining: countdownRef.current });
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
@@ -234,7 +209,6 @@ export default function AwaitingReviewNotification() {
   // 恢复倒计时
   const resumeCountdown = () => {
     if (!countdownIntervalRef.current) {
-      debugLog('恢复倒计时', { remaining: countdownRef.current });
       startCountdown();
     }
   };
@@ -244,34 +218,56 @@ export default function AwaitingReviewNotification() {
     // 暂停倒计时
     pauseCountdown();
     
-    // 执行检测
-    await fetchAwaitingReviewCount();
+    // 重新检测页面状态
+    isLoginPageRef.current = window.location.pathname.includes('/login');
+    const isLoggedIn = isUserLoggedIn();
     
-    // 重新开始倒计时
-    startCountdown();
+    // 检查是否应该继续轮询
+    if (!isLoginPageRef.current && isLoggedIn) {
+      // 执行检测
+      await fetchAwaitingReviewCount();
+      
+      // 重新开始倒计时
+      startCountdown();
+    } else {
+      isPollingStartedRef.current = false;
+    }
+  };
+
+  // 检测用户是否已登录
+  const isUserLoggedIn = () => {
+    // 检查localStorage中是否存在token
+    const token = localStorage.getItem('token');
+    return !!token;
   };
 
   // 初始化和设置轮询
   useEffect(() => {
+    // 检测当前页面是否为登录页面
+    isLoginPageRef.current = window.location.pathname.includes('/login');
+    
     // 重置刷新标志
     isRefreshingRef.current = false;
     
-    debugLog('组件初始化，开始首次检测待审核任务');
+    // 检查是否应该启动轮询
+    const shouldStartPolling = !isLoginPageRef.current && isUserLoggedIn() && !isPollingStartedRef.current;
     
-    // 初始获取待审核任务数量
-    fetchAwaitingReviewCount().then(() => {
-      debugLog('首次检测完成，开始轮询倒计时');
-      // 首次检测完成后开始倒计时
-      startCountdown();
-    });
+    if (shouldStartPolling) {
+      // 初始获取待审核任务数量
+      fetchAwaitingReviewCount().then(() => {
+        // 首次检测完成后开始倒计时
+        isPollingStartedRef.current = true;
+        startCountdown();
+      });
+    }
 
     // 清理函数
     return () => {
-      debugLog('组件卸载，清理轮询定时器');
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
+      isPollingStartedRef.current = false;
     };
   }, []);
 
@@ -284,7 +280,7 @@ export default function AwaitingReviewNotification() {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-yellow-700 font-medium">有新的待审核任务 <span className='text-green-500 font-bold'>({awaitingReviewCount})</span></span>
+            <span className="text-yellow-700 font-medium">有新的待审核任务 <span className='text-red-500 font-bold'>({awaitingReviewCount})</span></span>
           </div>
           <button
             onClick={handleViewAwaitingReview}

@@ -144,9 +144,23 @@ export default function CreateTask() {
           params.set('stage2Count', task.stage2.default_count.toString());
         }
         break;
+      case 6:
+        url = `/publisher/create/quick-task-middle-bottom`;
+        // 快捷派单任务，传递两个阶段的价格和数量
+        params.set('template_id', task.id.toString());
+        params.set('price', task.price.toString());
+        if (task.stage1) {
+          params.set('stage1Price', task.stage1.price.toString());
+          params.set('stage1Count', task.stage1.default_count.toString());
+        }
+        if (task.stage2) {
+          params.set('stage2Price', task.stage2.price.toString());
+          params.set('stage2Count', task.stage2.default_count.toString());
+        }
+        break;
       case 5:
-        url = `/publisher/create/task-combination-middle-bottom`;
-        // 组合任务，传递两个阶段的价格和数量
+        url = `/publisher/create/quick-task-top-middle`;
+        // 快捷派单任务，传递两个阶段的价格和数量
         params.set('template_id', task.id.toString());
         params.set('price', task.price.toString());
         if (task.stage1) {

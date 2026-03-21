@@ -257,7 +257,19 @@ export default function PublishTaskPage() {
       ...prevData,
       middleComments: prevData.middleComments.map((comment: CommentData) => ({
         ...comment,
-        comment: comment.comment?.replace(` @${mention}`, '').replace(`@${mention}`, '') || comment.comment
+        comment: comment.comment ? (
+          // 以"@"符号作为标识，获取输入的ID所包含的位数，然后在评论内容中定位"@"符号的起始位置，接着从该起始位置开始，向右偏移等于ID位数的长度，最后将从"@"符号开始到偏移结束的整个区域（包括"@"符号本身）进行删除操作
+          (() => {
+            let content = comment.comment;
+            const atIndex = content.indexOf(`@${mention}`);
+            if (atIndex !== -1) {
+              const start = atIndex;
+              const end = atIndex + 1 + mention.length;
+              content = content.substring(0, start) + content.substring(end);
+            }
+            return content.trim();
+          })()
+        ) : comment.comment
       }))
     }));
   };
@@ -461,15 +473,19 @@ export default function PublishTaskPage() {
         </div>
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            视频链接 <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+            <span>视频链接 <span className="text-red-500">*</span></span>
+            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
           <Input
-            placeholder="请输入抖音视频链接"
+            placeholder="请输入抖音视频链接（至少35个字符）"
             value={formData.videoUrl}
             onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
             className="w-full"
           />
+          {formData.videoUrl.length > 0 && formData.videoUrl.length <= 35 && (
+            <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
+          )}
         </div>
 
         {/* 截止时间 */}
@@ -575,12 +591,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一名字，如有相同名字请截图发送给评论员识别，否则会造成不便和结算纠纷，不需要输入@符号</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，只输入数字，不需要输入@符号。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（仅支持字母、数字、下划线和中文）"
+                placeholder="输入用户ID或昵称（仅支持数字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value)}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}
@@ -721,7 +737,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button
           onClick={handlePublish}
-          disabled={!formData.videoUrl || formData.middleQuantity === undefined}
+          disabled={!formData.videoUrl || formData.videoUrl.length <= 35 || formData.middleQuantity === undefined}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
           发布任务 - ¥{totalCost}
@@ -748,6 +764,11 @@ export default function PublishTaskPage() {
         onClose={() => setShowAlertModal(false)}
       />
 
+      {/* 任务帮助模态框 */}
+      <TaskAssistance
+        isOpen={showTaskAssistance}
+        onClose={() => setShowTaskAssistance(false)}
+      />
 
     </div>
   );

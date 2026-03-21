@@ -43,13 +43,8 @@ export const useTokenChecker = () => {
         redirectToLogin();
         return;
       }
-
-      // 解析响应数据
-      const data = await response.json();
-      if (!data.success) {
-        redirectToLogin();
-        return;
-      }
+      
+     
     } catch (error) {
       // 出错时也重定向到登录页面
       redirectToLogin();
@@ -65,6 +60,22 @@ export const useTokenChecker = () => {
     if (currentTime - lastRedirectTime < redirectCooldown) {
       return;
     }
+    
+    // 清除浏览器的token和用户信息
+    try {
+      // 清除localStorage中的数据
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('publisher-user-storage');
+      
+      // 清除cookie中的token
+      document.cookie = 'PublishTask_token=; path=/; max-age=0; SameSite=Lax';
+      
+      console.log('Token失效，已清除浏览器中的token和用户信息');
+    } catch (error) {
+      console.error('清除本地存储失败:', error);
+    }
+    
     // 重定向到登录页面
     setLastRedirectTime(currentTime);
     router.push(`/publisher/auth/login`);
@@ -86,7 +97,7 @@ export const useTokenChecker = () => {
         return;
       }
       checkTokenValidity();
-    }, 1 * 60 * 1000); // 60分钟
+    }, 60 * 60 * 1000); // 60分钟
 
     // 组件卸载时清除定时器
     return () => {

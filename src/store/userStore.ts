@@ -67,7 +67,7 @@ export const useUserStore = create<UserState>()(
 );
 
 // 导出登录成功后保存用户信息的辅助函数
-export const saveUserOnLoginSuccess = (userData: any, token: string) => {
+export const saveUserOnLoginSuccess = (userData: any, token: string, deviceInfo?: { device_id: string; device_name: string }) => {
   const { setUser } = useUserStore.getState();
   
   // 从登录响应中提取用户信息
@@ -85,15 +85,38 @@ export const saveUserOnLoginSuccess = (userData: any, token: string) => {
     createdAt: new Date().toISOString()
   };
   
-  // 保存token到cookie
-  document.cookie = `PublishTask_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+  // 计算7天后的时间戳
+  const sevenDaysLater = new Date();
+  sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+  const expiryTime = sevenDaysLater.getTime();
   
-  // 同时保存token到localStorage，以便useTokenChecker能够获取到
+  // 保存token到cookie，设置7天过期
+  document.cookie = `PublishTask_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+  
+  // 同时保存token到localStorage，设置过期时间
   try {
+    // 保存token及其过期时间
     localStorage.setItem('token', token);
+    localStorage.setItem('tokenExpiry', expiryTime.toString());
+    
+    // 保存用户信息及其过期时间
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('userExpiry', expiryTime.toString());
+    
+    // 保存设备信息及其过期时间
+    if (deviceInfo) {
+      localStorage.setItem('deviceInfo', JSON.stringify(deviceInfo));
+      localStorage.setItem('deviceInfoExpiry', expiryTime.toString());
+    }
+    
     console.log('登录成功后保存token到localStorage:', token);
+    console.log('登录成功后保存用户信息到localStorage:', user);
+    if (deviceInfo) {
+      console.log('登录成功后保存设备信息到localStorage:', deviceInfo);
+    }
+    console.log('设置数据过期时间为7天');
   } catch (error) {
-    console.error('保存token到localStorage失败:', error);
+    console.error('保存数据到localStorage失败:', error);
   }
   
   setUser(user);

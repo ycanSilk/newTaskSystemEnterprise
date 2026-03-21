@@ -26,7 +26,7 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
     // 解析请求体，获取客户端发送的登录数据
     // 将请求体转换为LoginRequest类型，确保数据格式正确
     const requestData: LoginRequest = await req.json();
-    console.log('Received login request data:', requestData);
+    
     // 确保包含设备信息
     if (!requestData.device_id || !requestData.device_name) {
       return NextResponse.json(
@@ -35,37 +35,26 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
       );
     }
     
+    // 调用API客户端发送POST请求到登录端点
+    // 使用LOGIN_ENDPOINT常量作为URL，requestData作为请求体
+    // 类型参数LoginResponse表示期望的响应数据类型
+    const response = await apiClient.post<LoginResponse>(LOGIN_ENDPOINT, requestData);
     
-    // 模拟登录成功响应（临时解决方案）
-    const mockResponse = {
-      code: 0,
-      message: '登录成功',
-      data: {
-        token: 'mock-token-' + Date.now(),
-        user_id: 1,
-        username: requestData.account,
-        email: 'test@example.com',
-        phone: '13800138000',
-        organization_name: '测试组织',
-        organization_leader: '测试负责人',
-        wallet_id: 1
-      },
-      timestamp: Date.now()
-    };
-    const token = mockResponse.data.token;
+    // 从响应数据中获取token
+    const token = response.data.data?.token || '';
     
     // 创建标准化的响应对象
     // 当后端返回code: 0时，success为true，否则为false
     const standardResponse = {
-      code: mockResponse.code,
-      message: mockResponse.message,
-      data: mockResponse.data,
-      timestamp: mockResponse.timestamp,
-      success: mockResponse.code === 0
+      code: response.data.code,
+      message: response.data.message,
+      data: response.data.data,
+      timestamp: response.data.timestamp,
+      success: response.data.code === 0
     };
     
     // 创建响应对象
-    const successResponse = NextResponse.json(standardResponse, { status: 200 });
+    const successResponse = NextResponse.json(standardResponse, { status: response.status });
     
     // 如果token存在，将其保存到安全的HttpOnly Cookie中
     if (token) {
