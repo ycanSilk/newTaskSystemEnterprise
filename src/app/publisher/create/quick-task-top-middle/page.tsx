@@ -48,9 +48,16 @@ interface PublishCombineTaskResponse {
   timestamp?: number;
 }
 
+// 视频链接输入项类型
+interface VideoUrlInput {
+  url: string;
+  isValid: boolean;
+}
+
 // 自定义表单数据类型，避免与浏览器FormData冲突
 interface QuickTaskFormData {
   videoUrls: string[];
+  videoUrlInputs: VideoUrlInput[];
   topComment: CommentData;
   middleQuantity: number;
   middleComments: CommentData[];
@@ -139,27 +146,15 @@ export default function PublishTaskPage() {
   });
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
-  // AI按钮冷却时间
-  const [commentCooldown, setCommentCooldown] = useState(0);
-
   // 实时更新当前时间
   useEffect(() => {
     setCurrentTime(Math.floor(Date.now() / 1000));
   }, []);
 
-  // 冷却时间倒计时
-  useEffect(() => {
-    if (commentCooldown > 0) {
-      const timer = setTimeout(() => {
-        setCommentCooldown(prev => Math.max(0, prev - 1));
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [commentCooldown]);
-
   // 表单数据结构
   const [formData, setFormData] = useState<QuickTaskFormData>({
     videoUrls: [] as string[], // 视频链接数组
+    videoUrlInputs: Array(5).fill({ url: '', isValid: false }), // 默认5个视频链接输入表单
 
     // 上评评论模块 - 固定为1条
     topComment: {
@@ -179,35 +174,15 @@ export default function PublishTaskPage() {
       image: null,
       imageUrl: ''
     }],
-    deadline: '1440', // 存储分钟数，默认24小时
+    deadline: '30', // 存储分钟数，默认30分钟
     releasesNumber: '1' // 任务发布次数，默认1次，使用字符串类型
   });
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
-  // 视频链接输入状态
-  const [videoUrlInput, setVideoUrlInput] = useState('');
-  // 行业选择状态
-  const [selectedIndustry, setSelectedIndustry] = useState('无行业');
   // 行业选项列表
   const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
-  // 会话ID
-  const [sessionId, setSessionId] = useState('');
-  
-  // 只在浏览器环境中初始化会话ID
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('comment_session_id');
-      if (stored) {
-        setSessionId(stored);
-      } else {
-        const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('comment_session_id', newId);
-        setSessionId(newId);
-      }
-    }
-  }, []);
 
   // 页面加载时获取配置信息
   useEffect(() => {
@@ -269,10 +244,6 @@ export default function PublishTaskPage() {
 
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
-
-  // 统一的评论生成器模态框状态
-  const [showCommentGenerator, setShowCommentGenerator] = useState(false);
-
   // 显示通用提示框
   const showAlert = (
     title: string,
@@ -292,127 +263,67 @@ export default function PublishTaskPage() {
   };
 
 
+  // 状态管理 - AI评论生成
+  const [showCommentGenerator, setShowCommentGenerator] = useState(false);
+  const [isGeneratingComments, setIsGeneratingComments] = useState(false);
+  
+  // 存储生成的评论
+  const [generatedComments, setGeneratedComments] = useState<string[]>([]);
 
-
-
-  // 处理统一的评论生成器生成的评论
-  const handleCommentGenerated = (comments: string[]) => {
-    setFormData((prevData: QuickTaskFormData) => {
-      let newData = { ...prevData };
-
-      // 处理上评评论（第一条）
-      if (comments.length > 0) {
-        // 过滤掉可能的@用户标识，因为上评评论只需要带name
-        const filteredTopComment = comments[0].replace(/@\S+/g, '').trim();
-        newData.topComment = {
-          ...newData.topComment,
-          comment: filteredTopComment
-        };
-      }
-
-      // 处理中评评论（第二、三条）
-      if (comments.length > 1) {
-        let newMiddleComments = [...newData.middleComments];
-        for (let i = 1; i < Math.min(3, comments.length); i++) {
-          let processedComment = comments[i];
-          // 只移除第一条中评评论的@用户标识，保留第二条中评评论的@用户标识
-          if (i === 1) { // 第一条中评评论（索引为1）
-            processedComment = processedComment.replace(/@\S+/g, '').trim();
+  // 处理评论生成完成
+  const handleCommentGenerated = (comments: string[], success: boolean) => {
+    console.log('评论生成完成:', comments, '成功状态:', success);
+    
+    // 存储生成的评论
+    setGeneratedComments(comments);
+    
+    // 更新评论数据
+    if (comments && comments.length >= 3) {
+      setFormData(prev => ({
+        ...prev,
+        topComment: {
+          ...prev.topComment,
+          comment: comments[0]
+        },
+        middleComments: [
+          {
+            ...prev.middleComments[0],
+            comment: comments[1]
+          },
+          {
+            ...prev.middleComments[1],
+            comment: comments[2]
           }
-          // 第二条中评评论（索引为2）保留@用户标识
-          if (i - 1 < newMiddleComments.length) {
-            newMiddleComments[i - 1].comment = processedComment;
-          }
-        }
-        newData.middleComments = newMiddleComments;
-      }
-
-      return newData;
-    });
-
+        ]
+      }));
+    }
+    
     setShowCommentGenerator(false);
-    showAlert('生成成功', '已生成3条评论内容！', '✨');
+    
+    // 只有评论生成成功后，才继续发布任务
+    if (success === true) {
+      console.log('评论生成成功，等待5秒后继续发布任务');
+      // 增加5秒延时，确保表单数据更新完成
+      setTimeout(() => {
+        console.log('5秒延时结束，继续发布任务');
+        handlePublishAfterCommentGeneration(comments);
+      }, 1000);
+      
+    } else {
+      console.log('评论生成失败，停止发布任务');
+      showAlert('评论生成失败', 'AI生成评论失败，请稍后重试', '⚠️');
+      setIsPublishing(false);
+    }
   };
 
-  // 添加视频链接
-  const handleAddVideoUrl = () => {
-    console.log('开始添加视频链接，输入内容:', videoUrlInput);
-    
-    const trimmedInput = videoUrlInput.trim();
-    if (!trimmedInput) {
-      showAlert('输入错误', '请输入视频链接', '⚠️');
-      return;
-    }
-    
-    // 按中英文分号分割链接
-    const urls = trimmedInput.split(/[;；]+/).map(url => url.trim()).filter(url => url);
-    console.log('分割后的链接:', urls);
-    
-    if (urls.length === 0) {
-      showAlert('输入错误', '请输入有效的视频链接', '⚠️');
-      return;
-    }
-    
-    // 计算可添加的链接数量
-    const remainingSlots = 10 - formData.videoUrls.length;
-    console.log('剩余可添加数量:', remainingSlots);
-    
-    if (remainingSlots <= 0) {
-      showAlert('输入错误', '视频链接数量不能超过10个', '⚠️');
-      return;
-    }
-    
-    // 过滤并验证链接
-    const validUrls = urls.filter(url => {
-      const isValid = url.length > 35 && !formData.videoUrls.includes(url);
-      console.log(`链接验证: ${url} -> ${isValid}`);
-      return isValid;
-    });
-    
-    if (validUrls.length === 0) {
-      showAlert('输入错误', '所有链接已添加或无效', '⚠️');
-      return;
-    }
-    
-    // 限制添加数量
-    const urlsToAdd = validUrls.slice(0, remainingSlots);
-    console.log('最终添加的链接:', urlsToAdd);
-    
-    // 添加链接到列表
-    setFormData(prev => ({
-      ...prev,
-      videoUrls: [...prev.videoUrls, ...urlsToAdd]
-    }));
-    
-    // 清空输入框
-    setVideoUrlInput('');
-    
-    console.log('添加完成，当前链接数量:', formData.videoUrls.length + urlsToAdd.length);
-    showAlert('成功', `已添加 ${urlsToAdd.length} 个视频链接`, '✅');
-  };
-
-  // 删除视频链接
-  const handleRemoveVideoUrl = (index: number) => {
-    console.log('删除视频链接，索引:', index);
-    setFormData(prev => ({
-      ...prev,
-      videoUrls: prev.videoUrls.filter((_, i) => i !== index)
-    }));
-    console.log('删除完成，当前链接数量:', formData.videoUrls.length - 1);
-  };
-
-
-
-
-
-  // 发布任务
-  const handlePublish = async () => {
+  // 发布任务 - 先打开AI生成评论模态框
+  const handlePublish = () => {
     console.log('开始发布任务流程');
     
-    // 表单验证 - 完整验证逻辑
+    // 表单验证 - 视频链接验证
     if (formData.videoUrls.length === 0) {
       console.log('验证失败：视频链接数量为0');
-      showAlert('输入错误', '请输入视频链接', '⚠️');
+      showAlert('输入错误', '请输入有效的视频链接', '⚠️');
       return;
     }
 
@@ -422,65 +333,70 @@ export default function PublishTaskPage() {
       return;
     }
 
-    if (formData.videoUrls.some(url => url.length <= 35)) {
-      console.log('验证失败：存在无效的视频链接');
-      showAlert('输入错误', '所有视频链接长度必须大于35个字符', '⚠️');
-      return;
-    }
+    // 打开AI生成评论模态框
+    console.log('打开AI生成评论模态框');
+    setShowCommentGenerator(true);
+  };
 
-    // 验证任务发布次数
-    const releasesNumber = parseInt(formData.releasesNumber) || 1;
-    if (releasesNumber < 1 || releasesNumber > 10) {
-      console.log('验证失败：任务发布次数无效');
-      showAlert('输入错误', '任务发布次数必须在1-10之间', '⚠️');
-      return;
-    }
-
-    // 验证评论内容
-    if (!formData.topComment.comment || formData.topComment.comment.trim() === '') {
-      console.log('验证失败：上评评论为空');
-      showAlert('输入错误', '上评评论不能为空', '⚠️');
-      return;
-    }
-
-    // 验证上评评论必须包含固定名称
-    if (config.name && !formData.topComment.comment.includes(config.name)) {
-      console.log('验证失败：上评评论必须包含固定名称');
-      showAlert('输入错误', `上评评论必须包含固定名称 "${config.name}"`, '⚠️');
-      return;
-    }
-
-    if (formData.middleComments.length < 2) {
-      console.log('验证失败：中评评论数量不足');
-      showAlert('输入错误', '中评评论数量不足', '⚠️');
-      return;
-    }
-
-    if (!formData.middleComments[0].comment || formData.middleComments[0].comment.trim() === '') {
-      console.log('验证失败：第一条中评评论为空');
-      showAlert('输入错误', '第一条中评评论不能为空', '⚠️');
-      return;
-    }
-
-    if (!formData.middleComments[1].comment || formData.middleComments[1].comment.trim() === '') {
-      console.log('验证失败：第二条中评评论为空');
-      showAlert('输入错误', '第二条中评评论不能为空', '⚠️');
-      return;
-    }
-
-    // 验证第二条中评评论必须包含@抖音ID
-    if (config.douyin_id && !formData.middleComments[1].comment.includes(`@${config.douyin_id}`)) {
-      console.log('验证失败：第二条中评评论必须包含@抖音ID');
-      showAlert('输入错误', `第二条中评评论必须包含 "@${config.douyin_id}"`, '⚠️');
-      return;
-    }
-
-    console.log('验证通过，开始构建请求数据');
+  // 评论生成完成后继续发布任务
+  const handlePublishAfterCommentGeneration = async (comments: string[]) => {
+    console.log('评论生成完成，继续发布任务');
+    console.log('使用生成的评论进行验证:', comments);
     
     // 显示加载状态
     setIsPublishing(true);
 
     try {
+      // 任务发布次数等于有效视频链接数量
+      const releasesNumber = formData.videoUrls.length;
+
+      // 验证评论内容
+      if (!comments[0] || comments[0].trim() === '') {
+        console.log('验证失败：上评评论为空');
+        showAlert('输入错误', '上评评论不能为空', '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      // 验证上评评论必须包含固定名称
+      if (config.name && !comments[0].includes(config.name)) {
+        console.log('验证失败：上评评论必须包含固定名称');
+        showAlert('输入错误', `上评评论必须包含固定名称 "${config.name}"`, '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      if (comments.length < 2) {
+        console.log('验证失败：中评评论数量不足');
+        showAlert('输入错误', '中评评论数量不足', '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      if (!comments[1] || comments[1].trim() === '') {
+        console.log('验证失败：第一条中评评论为空');
+        showAlert('输入错误', '第一条中评评论不能为空', '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      if (!comments[2] || comments[2].trim() === '') {
+        console.log('验证失败：第二条中评评论为空');
+        showAlert('输入错误', '第二条中评评论不能为空', '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      // 验证第二条中评评论必须包含@抖音ID
+      if (config.douyin_id && !comments[2].includes(`@${config.douyin_id}`)) {
+        console.log('验证失败：第二条中评评论必须包含@抖音ID');
+        showAlert('输入错误', `第二条中评评论必须包含 "@${config.douyin_id}"`, '⚠️');
+        setIsPublishing(false);
+        return;
+      }
+
+      console.log('验证通过，开始构建请求数据');
+
       // 计算总价格
       const stage2Count = formData.middleQuantity;
       const singlePrice = (stage1Price * stage1Count) + (stage2Price * stage2Count);
@@ -502,21 +418,20 @@ export default function PublishTaskPage() {
 
       // 添加上评评论（第0条）
       recommendMarks.push({
-        comment: formData.topComment.comment || '',
+        comment: comments[0] || '',
         image_url: formData.topComment.imageUrl || ''
       });
       console.log('添加上评评论');
 
       // 添加中评评论
-      for (let i = 0; i < formData.middleComments.length; i++) {
-        const commentItem = formData.middleComments[i];
+      for (let i = 1; i < Math.min(3, comments.length); i++) {
         const recommendMark: RecommendMark = {
-          comment: commentItem.comment || '',
-          image_url: commentItem.imageUrl || ''
+          comment: comments[i] || '',
+          image_url: formData.middleComments[i-1].imageUrl || ''
         };
 
         // 只在第二条中评评论添加@用户标记（抖音ID）
-        if (i === 1 && config.douyin_id) {
+        if (i === 2 && config.douyin_id) {
           recommendMark.at_user = config.douyin_id;
           console.log('在第二条中评评论添加@用户标记:', config.douyin_id);
         }
@@ -598,7 +513,7 @@ export default function PublishTaskPage() {
 
   // 价格计算
   const singlePrice = (stage1Price * stage1Count) + (stage2Price * formData.middleQuantity);
-  const releasesNumber = parseInt(formData.releasesNumber) || 1;
+  const releasesNumber = formData.videoUrls.length;
   const totalPrice = singlePrice * releasesNumber;
   const totalCost = totalPrice.toFixed(2);
 
@@ -608,7 +523,7 @@ export default function PublishTaskPage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
-          发布中下评评论
+          上中评快捷派单
         </h1>
 
         <div className="ml-5">
@@ -646,64 +561,62 @@ export default function PublishTaskPage() {
             <span>视频链接 <span className="text-red-500">*</span></span>
             <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
-          <div className="space-y-2">
-            {/* 单个视频链接输入 */}
-            <div className="space-y-2">
-              <textarea
-                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-[100px] resize-none"
-                placeholder="请输入抖音视频链接（至少35个字符），多个链接请用分号(;)分隔"
-                value={videoUrlInput}
-                onChange={(e) => setVideoUrlInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault(); // 阻止默认换行行为
-                    handleAddVideoUrl();
-                  }
-                }}
-              />
-              <Button
-                onClick={handleAddVideoUrl}
-                disabled={!videoUrlInput.trim() || formData.videoUrls.length >= 10}
-                className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                添加
-              </Button>
-            </div>
-            
-            {videoUrlInput.length > 0 && videoUrlInput.length <= 35 && (
-              <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
-            )}
-            {formData.videoUrls.length >= 10 && (
-              <p className="text-sm text-red-500 mt-1">视频链接数量不能超过10个</p>
-            )}
-            
-            {/* 已添加的视频链接列表 */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                已添加的视频链接（{formData.videoUrls.length}/10）
-              </label>
-              <div className="h-[100px] overflow-y-auto">
-                {formData.videoUrls.length === 0 ? (
-                  <div className="p-4 border border-gray-200 rounded-lg text-center text-gray-500 h-full flex items-center justify-center">
-                    暂无视频链接，请添加
+          <div className="space-y-4">
+            {/* 5个视频链接输入表单 */}
+            {formData.videoUrlInputs.map((input, index) => {
+              // 验证视频链接
+              const validateVideoUrl = (url: string) => {
+                return url.length > 35 && (url.includes('复制') || url.includes('打开抖音'));
+              };
+              
+              const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const newUrl = e.target.value;
+                const newInputs = [...formData.videoUrlInputs];
+                newInputs[index] = {
+                  url: newUrl,
+                  isValid: validateVideoUrl(newUrl)
+                };
+                setFormData(prev => ({
+                  ...prev,
+                  videoUrlInputs: newInputs,
+                  // 更新有效的视频链接数组
+                  videoUrls: newInputs.filter(input => input.isValid).map(input => input.url)
+                }));
+              };
+              
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">                
+                    {input.url && (
+                      <span className={`text-xs ${input.isValid ? 'text-green-500' : 'text-red-500'}`}>
+                        {input.isValid ? '✓ 有效' : '✗ 无效'}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {formData.videoUrls.map((url, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <span className="text-sm truncate flex-1">{url}</span>
-                        <Button
-                          onClick={() => handleRemoveVideoUrl(index)}
-                          variant="secondary"
-                          className="px-2 py-1 text-xs"
-                        >
-                          删除
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  <input
+                    type="text"
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${input.url && !input.isValid ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="请输入抖音视频链接"
+                    value={input.url}
+                    onChange={handleUrlChange}
+                  />
+                  {input.url && !input.isValid && (
+                    <p className="text-sm text-red-500">
+                      {input.url.length <= 35 ? '视频链接长度必须大于35个字符' : '视频链接必须包含"复制"或"打开抖音"'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* 有效视频链接数量提示 */}
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700">
+                有效视频链接数量：<span className="font-medium">{formData.videoUrls.length}</span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                提示：只有有效的视频链接会被计入任务发布次数
+              </p>
             </div>
           </div>
         </div>
@@ -711,20 +624,14 @@ export default function PublishTaskPage() {
         {/* 任务发布次数 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务发布次数（最多10次）
+            任务发布次数
           </label>
-          <Input
-            type="text"
-            value={formData.releasesNumber}
-            onChange={(e) => {
-              const value = e.target.value;
-              // 允许输入数字或为空
-              if (value === '' || (/^\d+$/.test(value) && parseInt(value) >= 1 && parseInt(value) <= 10)) {
-                setFormData({ ...formData, releasesNumber: value });
-              }
-            }}
-            className="w-full"
-          />
+          <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <p className="text-lg font-medium">{formData.videoUrls.length}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              发布次数根据有效视频链接数量自动计算
+            </p>
+          </div>
         </div>
 
         {/* 截止时间 */}
@@ -746,19 +653,6 @@ export default function PublishTaskPage() {
 
         {/* 上评评论模块 - 固定为1条 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-             {/* 统一的AI生成评论按钮 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <Button
-            onClick={() => {
-              setShowCommentGenerator(true);
-              setCommentCooldown(10); // 设置30秒冷却时间
-            }}
-            disabled={isPublishing || commentCooldown > 0}
-            className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isPublishing ? '生成中...' : commentCooldown > 0 ? `冷却中(${commentCooldown}s)` : 'AI生成评论'}
-          </Button>
-        </div>
           {/* 上评评论输入框 - 固定一条 */}
           <div className="mb-1 py-2 border-b border-gray-900">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -872,7 +766,7 @@ export default function PublishTaskPage() {
           disabled={formData.videoUrls.length === 0}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
-          发布任务 - ¥{totalCost}
+          生成评论并发布 - ¥{totalCost}
         </Button>
         <Button
           onClick={() => router.back()}
@@ -896,52 +790,46 @@ export default function PublishTaskPage() {
         onClose={() => setShowAlertModal(false)}
       />
 
-      {/* 统一的评论生成器模态框 */}
-      <Modal
-        isOpen={showCommentGenerator}
-        onClose={() => setShowCommentGenerator(false)}
-        title="AI生成评论"
-        className="w-full max-w-md"
-      >
-        {/* 行业筛选下拉菜单 */}
-        <div className="bg-white rounded-md  shadow-sm mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            行业选择
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={selectedIndustry}
-            onChange={(e) => setSelectedIndustry(e.target.value)}
-          >
-            {industryOptions.map((industry, index) => (
-              <option key={index} value={industry}>{industry}</option>
-            ))}
-          </select>
-        </div>
-        
-        <AIcoment
-          onCommentsGenerated={handleCommentGenerated}
-          onProgressUpdate={(current, total) => {
-            // 可选：显示进度
-            console.log(`评论生成进度: ${current}/${total}`);
-          }}
-          isLoading={isPublishing}
-          onLoadingChange={setIsPublishing}
-          commentCount={3} // 生成3条评论：1条上评 + 2条中评
-          atUser={config.douyin_id}
-          name={config.name}
-          userComments={[formData.topComment.comment, ...formData.middleComments.map(c => c.comment)]}
-          industry={selectedIndustry}
-          sessionId={sessionId}
-        />
-      </Modal>
-
       {/* 任务帮助模态框 */}
       <TaskAssistance
         isOpen={showTaskAssistance}
         onClose={() => setShowTaskAssistance(false)}
       />
-
-    </div>
+      
+      {/* AI生成评论模态框 */}
+      <Modal
+        isOpen={showCommentGenerator}
+        onClose={() => !isGeneratingComments && setShowCommentGenerator(false)}
+        title="AI生成评论"
+        className="w-full max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            {isGeneratingComments ? (
+              <div className="space-y-2">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="text-gray-700">正在生成评论，请稍候...</p>
+                <p className="text-sm text-gray-500">AI正在为您生成优质评论，大约需要3-5秒</p>
+              </div>
+            ) : (
+              <AIcoment
+                onCommentsGenerated={handleCommentGenerated}
+                onProgressUpdate={(current, total) => {
+                  // 可选：显示进度
+                  console.log(`评论生成进度: ${current}/${total}`);
+                }}
+                isLoading={isGeneratingComments}
+                onLoadingChange={setIsGeneratingComments}
+                commentCount={3} // 生成3条评论：1条上评 + 2条中评
+                atUser={config.douyin_id}
+                name={config.name}
+                userComments={[formData.topComment.comment, ...formData.middleComments.map(c => c.comment)]}
+                sessionId="default"
+              />
+            )}
+          </div>
+        </div>
+      </Modal>
+      </div>
   );
 }

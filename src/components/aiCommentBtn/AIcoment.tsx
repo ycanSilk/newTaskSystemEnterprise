@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui';
 
 interface MiddleCommentGeneratorProps {
-  onCommentsGenerated: (comments: string[]) => void;
+  onCommentsGenerated: (comments: string[], success: boolean) => void;
   onProgressUpdate?: (current: number, total: number) => void;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
@@ -51,8 +51,9 @@ export default function MiddleCommentGenerator({
   const [ruleConfig, setRuleConfig] = useState<CommentRule | null>(null);
   const [commentLibrary, setCommentLibrary] = useState<string[]>([]);
   const [error, setError] = useState('');
-  const [generateMode, setGenerateMode] = useState<'single' | 'batch'>('batch');
   const [retryCount, setRetryCount] = useState(0);
+  // 默认使用批量生成模式（快捷模式）
+  const generateMode = 'batch';
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // 清理函数
@@ -63,6 +64,37 @@ export default function MiddleCommentGenerator({
       }
     };
   }, []);
+
+  // 组件加载时自动生成评论
+  useEffect(() => {
+    // 当规则配置加载完成后，自动开始生成评论
+    if (ruleConfig && !isLoading) {
+      console.log('AIcoment组件加载完成，自动开始生成评论');
+      handleGenerateComments();
+    }
+  }, [ruleConfig, isLoading]);
+
+  // 抖音评论表情列表
+  const douyinEmojis = ['👍', '❤️', '🌟', '🔥', '🤔', '😂', '🎉', '👏', '🤩', '💯', '✨', '🙏', '🤣', '😍', '🤗', '🤫', '🤭', '🤔', '😎', '😱'];
+
+  // 生成随机抖音表情
+  const getRandomEmoji = () => {
+    return douyinEmojis[Math.floor(Math.random() * douyinEmojis.length)];
+  };
+
+  // 行业选项列表
+  const industryOptions = [
+      "竞技足球行业",
+      "游戏行业",
+      "副业行业",
+      "信息咨询行业",
+      "宣传类行业"
+  ];
+
+  // 获取随机行业
+  const getRandomIndustry = () => {
+    return industryOptions[Math.floor(Math.random() * industryOptions.length)];
+  };
 
   // 加载规则配置和评论词库
   useEffect(() => {
@@ -278,6 +310,15 @@ export default function MiddleCommentGenerator({
   ): Promise<string> => {
     const maxRetries = 3;
     let lastError: any;
+    // 使用随机行业
+    const industryOptions = [
+      "竞技足球行业",
+      "游戏行业",
+      "副业行业",
+      "信息咨询行业",
+      "宣传类行业"
+    ];
+    const randomIndustry = industryOptions[Math.floor(Math.random() * industryOptions.length)];
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -287,8 +328,8 @@ export default function MiddleCommentGenerator({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            draft: draft.trim() || `请生成一条关于${industry}的评论`,
-            industry: industry || '无行业',
+            draft: draft.trim() || `请生成一条关于${randomIndustry}的评论`,
+            industry: randomIndustry,
             commentIndex: index,
             totalComments: commentCount,
             sessionId,
@@ -315,7 +356,7 @@ export default function MiddleCommentGenerator({
     }
 
     throw lastError;
-  }, [industry, commentCount, sessionId]);
+  }, [commentCount, sessionId]);
 
   // 批量生成评论（带重试）
   const generateBatchComments = useCallback(async (
@@ -323,6 +364,12 @@ export default function MiddleCommentGenerator({
   ): Promise<string[]> => {
     const maxRetries = 3;
     let lastError: any;
+    // 使用随机行业
+    const industryOptions = [
+      '无行业', '科技', '教育', '医疗', '金融', '旅游', '餐饮', '娱乐', '体育', '艺术',
+      '时尚', '汽车', '房产', '电商', '物流', '制造', '能源', '环保', '农业', '服务业'
+    ];
+    const randomIndustry = industryOptions[Math.floor(Math.random() * industryOptions.length)];
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -332,8 +379,8 @@ export default function MiddleCommentGenerator({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            drafts: drafts.map(d => d.trim() || `请生成一条关于${industry}的评论`),
-            industry: industry || '无行业',
+            drafts: drafts.map(d => d.trim() || `请生成一条关于${randomIndustry}的评论`),
+            industry: randomIndustry,
             sessionId
           }),
         });
@@ -388,41 +435,13 @@ export default function MiddleCommentGenerator({
         return drafts[i]?.trim() || getRandomPrompt();
       });
       
-      if (generateMode === 'batch' && commentCount >= 3) {
-        // 批量模式：一次请求生成所有
-        onProgressUpdate?.(0, commentCount);
-        
-        const batchResults = await generateBatchComments(fullDrafts);
-        results.push(...batchResults);
-        
-        onProgressUpdate?.(commentCount, commentCount);
-      } else {
-        // 单条模式：逐条生成，更可控
-        for (let i = 0; i < commentCount; i++) {
-          onProgressUpdate?.(i, commentCount);
-          
-          try {
-            const comment = await generateSingleComment(
-              fullDrafts[i],
-              i,
-              results // 传递已生成的结果作为历史
-            );
-            results.push(comment);
-          } catch (error) {
-            // 如果单条失败，使用原内容
-            console.error(`第${i + 1}条生成失败，使用原内容`);
-            results.push(fullDrafts[i] || '');
-            
-            // 重试计数
-            setRetryCount(prev => prev + 1);
-          }
-          
-          // 逐条生成时添加小延迟，避免限流
-          if (i < commentCount - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-      }
+      // 始终使用批量模式生成评论
+      onProgressUpdate?.(0, commentCount);
+      
+      const batchResults = await generateBatchComments(fullDrafts);
+      results.push(...batchResults);
+      
+      onProgressUpdate?.(commentCount, commentCount);
       
       // 去重后返回
       const uniqueResults = results.map((r, idx) => {
@@ -494,6 +513,9 @@ export default function MiddleCommentGenerator({
           processedComment = `${processedComment} ${name}`;
         }
       }
+      
+      // 添加抖音表情
+      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     // 中评评论的第二条（第三条评论）：固定带atUser参数
     else if (i === 2 && atUser) {
@@ -514,6 +536,9 @@ export default function MiddleCommentGenerator({
       // 插入@用户标识
       processedComment = insertAtUser(trimmedContent, atUser);
       console.log('[Middle Comment Generator] 处理后的最后一条评论:', processedComment);
+      
+      // 添加抖音表情
+      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     // 其他评论（中评第一条）
     else {
@@ -523,6 +548,9 @@ export default function MiddleCommentGenerator({
       } else if (processedComment.length < ruleConfig.minWords) {
         processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
       }
+      
+      // 添加抖音表情
+      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     
     return processedComment;
@@ -560,7 +588,9 @@ export default function MiddleCommentGenerator({
     }
     
     if (isUnique) {
-      filteredComments.push(randomPrompt);
+      // 添加抖音表情
+      const promptWithEmoji = randomPrompt + ' ' + getRandomEmoji();
+      filteredComments.push(promptWithEmoji);
     }
   }
       
@@ -590,14 +620,21 @@ export default function MiddleCommentGenerator({
         console.error('添加评论到词库失败:', err);
       }
 
-      onCommentsGenerated(filteredComments);
+      // 只有生成足够数量的评论后，才传递成功状态
+      if (filteredComments.length >= commentCount) {
+        console.log('全部评论生成完成，传递成功状态');
+        onCommentsGenerated(filteredComments, true);
+      } else {
+        console.log('评论生成数量不足，传递失败状态');
+        onCommentsGenerated(filteredComments, false);
+      }
     } catch (err: any) {
       console.error('生成评论失败:', err);
       setError(err.message || '生成评论失败');
       
       // 如果失败，使用原内容
       const fallbackComments = userComments || [];
-      onCommentsGenerated(fallbackComments);
+      onCommentsGenerated(fallbackComments, false);
     } finally {
       onLoadingChange(false);
       abortControllerRef.current = null;
@@ -615,38 +652,6 @@ export default function MiddleCommentGenerator({
 
   return (
     <div className="space-y-3">
-      {/* 模式选择 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              checked={generateMode === 'batch'}
-              onChange={() => setGenerateMode('batch')}
-              disabled={isLoading}
-              className="w-4 h-4 text-blue-600"
-            />
-            <span className="text-sm text-gray-700">批量生成（更快）</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              checked={generateMode === 'single'}
-              onChange={() => setGenerateMode('single')}
-              disabled={isLoading}
-              className="w-4 h-4 text-blue-600"
-            />
-            <span className="text-sm text-gray-700">逐条生成（更准）</span>
-          </label>
-        </div>
-        
-        {retryCount > 0 && (
-          <span className="text-xs text-orange-500">
-            已重试{retryCount}次
-          </span>
-        )}
-      </div>
-      
       {/* 生成按钮 */}
       <div className="flex space-x-2">
         <Button
@@ -663,26 +668,9 @@ export default function MiddleCommentGenerator({
               生成中...
             </span>
           ) : (
-            `AI生成${commentCount}条评论`
+            `生成评论`
           )}
         </Button>
-        
-        {isLoading && (
-          <Button
-            onClick={handleCancel}
-            variant="secondary"
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md"
-          >
-            取消
-          </Button>
-        )}
-      </div>
-      
-      {/* 提示信息 */}
-      <div className="text-xs text-gray-500 space-y-1">
-        <p>✨ 批量生成：一次性生成所有评论，速度快但风格变化较少</p>
-        <p>🎯 逐条生成：逐条生成并参考历史，风格更多样，质量更高</p>
-        <p>📝 已生成评论会自动保存到历史，避免重复</p>
       </div>
 
       {error && (
