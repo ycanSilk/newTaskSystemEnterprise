@@ -13,7 +13,8 @@ import { Task,
   ComboInfo } from '../../../types/task/getTasksListTypes';
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
-// 导入优化工具
+// 导入 GlobalWarningModal 组件
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
@@ -26,9 +27,6 @@ export default function AwaitingReviewTabPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('time');
-  // 显示复制成功提示
-  const [showCopyTooltip, setShowCopyTooltip] = useState(false);
-  const [tooltipMessage, setTooltipMessage] = useState('');
   // 轮询相关
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // 模态框状态
@@ -38,12 +36,21 @@ export default function AwaitingReviewTabPage() {
   const [currentOrderId, setCurrentOrderId] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [currentOrder, setCurrentOrder] = useState<PendingTask | null>(null);
+  // GlobalWarningModal 状态
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    message: '',
+    buttonText: '确认',
+    redirectUrl: ''
+  });
   // 音频播放状态
   const isPlayingSoundRef = useRef<boolean>(false);
   // 用户是否已交互
   const userInteractedRef = useRef<boolean>(false);
   // 上次检测到的任务数量
   const lastTaskCountRef = useRef<number>(0);
+  // 刷新任务按钮加载状态
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 检测用户交互
   useEffect(() => {
@@ -160,17 +167,24 @@ export default function AwaitingReviewTabPage() {
   
   // 显示复制成功提示
   const showCopySuccess = (message: string) => {
-    setTooltipMessage(message);
-    setShowCopyTooltip(true);
-    setTimeout(() => {
-      setShowCopyTooltip(false);
-    }, 2000);
+    showAlert(message, '确定');
+  };
+
+  // 显示 GlobalWarningModal
+  const showAlert = (message: string, buttonText?: string, redirectUrl?: string) => {
+    setAlertConfig({
+      message,
+      buttonText: buttonText || '确认',
+      redirectUrl: redirectUrl || ''
+    });
+    setShowAlertModal(true);
   };
   
   // 刷新任务列表数据
   const refreshTasks = async () => {
     try {
       setLoading(true);
+      setIsRefreshing(true);
       const newTasks = await fetchPendingTasks();
       const newCount = newTasks.length;
       
@@ -183,14 +197,13 @@ export default function AwaitingReviewTabPage() {
       }
       
       // 更新上次检测到的任务数量
-      lastTaskCountRef.current = newCount;
-      
+      lastTaskCountRef.current = newCount;      
       setAwaitingReviewOrders(newTasks);
-      showCopySuccess('数据已更新');
     } catch (error) {
       console.error('刷新任务列表失败:', error);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -249,6 +262,7 @@ export default function AwaitingReviewTabPage() {
   // 确认审核通过
   const confirmApprove = async () => {
     if (!currentOrder) return;
+    console.log('开始审核通过流程，当前订单:', currentOrder);
     try {
       // 构建请求参数，使用正确的格式
       const requestData = {
@@ -258,6 +272,8 @@ export default function AwaitingReviewTabPage() {
         reject_reason: verificationNotes[currentOrderId] || '默认审核通过'
       };
       
+      console.log('审核通过请求数据:', requestData);
+      
       const response = await fetch('/api/task/reviewTask', {
         method: 'POST',
         headers: {
@@ -266,22 +282,52 @@ export default function AwaitingReviewTabPage() {
         body: JSON.stringify(requestData),
         credentials: 'include'
       });
+      setShowApproveModal(false);
+     
+      
+      console.log('审核通过API响应状态:', response.status);
       
       const data = await response.json();
       
-      if (data.success) {
-        showCopySuccess(data.message || '订单已审核通过');
-        setShowApproveModal(false);
+      console.log('审核通过API响应数据:', data);
+      
+      if (data.code === 0) {
+        // 先关闭审核模态框
+        
         // 重新获取订单列表，确保获取最新数据
         await refreshTasks();
         // 通知父组件更新待审核任务数量
         window.dispatchEvent(new CustomEvent('updateAwaitingReviewCount'));
+        // 延迟显示成功提示，确保模态框完全关闭
+        setTimeout(() => {
+          showAlert(data.message || '订单已审核通过', '确定');
+        }, 100);
+      } else if (data.code === 1001) {
+        showAlert('审核失败', '确定');
+      } else if (data.code === 4003) {
+        showAlert('审核操作无效', '确定');
+      } else if (data.code === 4004) {
+        showAlert('驳回原因不能为空', '确定');
+      } else if (data.code === 4005) {
+        showAlert('任务记录不存在', '确定');
+      } else if (data.code === 4006) {
+        showAlert('无权审核此任务', '确定');
+      } else if (data.code === 4007) {
+        showAlert('任务状态无效', '确定');
+      } else if (data.code === 4009) {
+        showAlert('任务信息不存在', '确定');
+      }  else if (data.code === 4012) {
+        showAlert('账号异常，请联系客服', '确定');
+      } else if (data.code === 5001) {
+        showAlert('网络超时，请稍后重试', '确定');
+      } else if (data.code === 5002) {
+        showAlert('审核失败', '确定');
       } else {
-        throw new Error(data.message || '审核失败');
+        showAlert( '审核失败', '确定');
       }
     } catch (error) {
       console.error('审核通过失败:', error);
-      showCopySuccess('审核失败，请重试');
+      showAlert('审核失败，请重试', '确定');
     }
   };
 
@@ -290,9 +336,12 @@ export default function AwaitingReviewTabPage() {
     if (!currentOrder) return;
     // 使用模态框中的输入框的值作为驳回理由
     if (!rejectReason.trim()) {
-      alert('请输入驳回理由');
+      showAlert('请输入驳回理由', '确定');
       return;
     }
+    
+    console.log('开始驳回流程，当前订单:', currentOrder);
+    console.log('驳回理由:', rejectReason);
     
     try {
       // 构建请求参数，使用正确的格式
@@ -303,6 +352,8 @@ export default function AwaitingReviewTabPage() {
         reject_reason: rejectReason
       };
       
+      console.log('驳回请求数据:', requestData);
+      
       const response = await fetch('/api/task/reviewTask', {
         method: 'POST',
         headers: {
@@ -312,21 +363,49 @@ export default function AwaitingReviewTabPage() {
         credentials: 'include'
       });
       
+      console.log('驳回API响应状态:', response.status);
+      
       const data = await response.json();
       
-      if (data.success) {
-        showCopySuccess(data.message || '订单已驳回');
+      console.log('驳回API响应数据:', data);
+      
+      if (data.code === 0) {
+        // 先关闭驳回模态框
         setShowRejectModal(false);
         // 重新获取订单列表，确保获取最新数据
         await refreshTasks();
         // 通知父组件更新待审核任务数量
         window.dispatchEvent(new CustomEvent('updateAwaitingReviewCount'));
+        // 延迟显示成功提示，确保模态框完全关闭
+        setTimeout(() => {
+          showAlert(data.message || '订单已驳回', '确定');
+        }, 100);
+      }  else if (data.code === 1001) {
+        showAlert('审核失败', '确定');
+      } else if (data.code === 4003) {
+        showAlert('审核操作无效', '确定');
+      } else if (data.code === 4004) {
+        showAlert('驳回原因不能为空', '确定');
+      } else if (data.code === 4005) {
+        showAlert('任务记录不存在', '确定');
+      } else if (data.code === 4006) {
+        showAlert('无权审核此任务', '确定');
+      } else if (data.code === 4007) {
+        showAlert('任务状态无效', '确定');
+      } else if (data.code === 4009) {
+        showAlert('任务信息不存在', '确定');
+      }  else if (data.code === 4012) {
+        showAlert('账号异常，请联系客服', '确定');
+      } else if (data.code === 5001) {
+        showAlert('网络超时，请稍后重试', '确定');
+      } else if (data.code === 5002) {
+        showAlert('审核失败', '确定');
       } else {
-        throw new Error(data.message || '驳回失败');
+        showAlert( '审核失败', '确定');
       }
     } catch (error) {
       console.error('驳回失败:', error);
-      showCopySuccess('驳回失败，请重试');
+      showAlert('驳回失败，请重试', '确定');
     }
   };
 
@@ -422,29 +501,32 @@ export default function AwaitingReviewTabPage() {
 
   return (
     <div className="mx-4 mt-6 space-y-2">
-      {/* 统一的复制成功提示 - 全局管理 */}
-      {showCopyTooltip && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50">
-          {tooltipMessage}
-        </div>
-      )}
-      
-      {/* 使用标准模板组件 */}
-      <OrderHeaderTemplate
-        title="待审核的订单"
-        totalCount={awaitingReviewOrders.length}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        handleSearch={handleSearch}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        viewAllUrl="/publisher/allsuborders"
-        onViewAllClick={() => router.push('/publisher/orders')}
+      {/* GlobalWarningModal */}
+      <GlobalWarningModal
+        isOpen={showAlertModal}
+        onClose={() => setShowAlertModal(false)}
+        message={alertConfig.message}
+        buttonText={alertConfig.buttonText}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="info"
       />
       
+      <div className="flex items-center justify-between">
+          <h3 className="font-bold text-gray-800">进行中任务</h3>
+          <span className="text-sm text-gray-500">共 {filteredOrders.length || 0} 个任务</span>
+      </div>
+
+      {/* 没有任务时的提示 */}
+      {filteredOrders.length === 0 && (
+        <div className="bg-white p-8 rounded-lg shadow-sm text-center">
+          <div className="text-6xl mb-4">📋</div>
+          <h3 className="text-xl font-medium text-gray-800 mb-2">暂无待审核任务</h3>
+          <p className="text-gray-500">目前没有需要您审核的任务，请稍后再查看</p>
+        </div>
+      )}
 
       {/* 子订单列表 - 内联实现AuditOrderCard功能 */}
-      {filteredOrders.map((order, index) => (
+      {filteredOrders.length > 0 && filteredOrders.map((order, index) => (
           <div key={`pending-${order.b_task_id}-${index}`} className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
             {/* 订单号 */}
             <div className="flex items-center mb-1 overflow-hidden">
@@ -557,8 +639,14 @@ export default function AwaitingReviewTabPage() {
                 驳回订单
               </button>
             </div>
+
+             {/* 刷新任务按钮 */}
+            
         </div>
+        
       ))}
+    
+   
     
     {/* 审核通过确认模态框 */}
     {showApproveModal && (
@@ -637,7 +725,15 @@ export default function AwaitingReviewTabPage() {
           </div>
       </div>
     )}
-    
+    <div className="flex justify-center mt-10">
+              <button 
+                onClick={() => refreshTasks()}
+                className="bg-blue-600 text-white px-10 py-2 rounded-md shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+              
+                <span>刷新任务</span>
+              </button>
+            </div>
     </div>
   );
 }

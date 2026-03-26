@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Input, AlertModal } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -25,6 +26,17 @@ interface PublishSingleTaskResponse {
   data?: any;
 }
 
+// 定义钱包余额响应类型
+interface GetWalletBalanceResponse {
+  code: number;
+  message: string;
+  data?: {
+    wallet: {
+      balance: string;
+    };
+  };
+}
+
 export default function PublishSearchKeywordTaskPage() {
   const router = useRouter();
   
@@ -40,12 +52,12 @@ export default function PublishSearchKeywordTaskPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
-    title: '',
     message: '',
-    icon: '',
     buttonText: '确认',
-    onButtonClick: () => {}
+    redirectUrl: ''
   });
+
+
 
   // 任务单价
   const taskPrice = 5;
@@ -54,6 +66,8 @@ export default function PublishSearchKeywordTaskPage() {
   const quantity = parseInt(formData.quantity) || 1;
   const baseCost = taskPrice * quantity;
   const totalCost = baseCost.toFixed(2);
+
+
 
   // 任务数量变化处理 - 允许1-10个任务
   const handleQuantityChange = (newQuantity: string) => {
@@ -65,18 +79,14 @@ export default function PublishSearchKeywordTaskPage() {
   };
 
   // 显示提示框
-  const showAlertModal = (title: string, message: string, icon: string, buttonText?: string, onButtonClick?: () => void) => {
+  const showAlertModal = (message: string, buttonText?: string, redirectUrl?: string) => {
     setAlertConfig({
-      title,
       message,
-      icon,
       buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => {})
+      redirectUrl: redirectUrl || ''
     });
     setShowAlert(true);
   };
-
-  // 页面加载时不调用API，只在点击发布按钮时调用
 
   // 发布任务
   const handlePublish = async () => {
@@ -86,27 +96,27 @@ export default function PublishSearchKeywordTaskPage() {
       // 表单验证
       // 1. 验证视频链接
       if (!formData.videoUrl) {
-        showAlertModal('验证失败', '请输入视频链接', '⚠️');
+        showAlertModal('请输入视频链接');
         return;
       }
       
       // 2. 验证搜索词内容
       if (!formData.searchKeywords.trim()) {
-        showAlertModal('验证失败', '请输入搜索词内容', '⚠️');
+        showAlertModal('请输入搜索词内容');
         return;
       }
       
       // 3. 验证任务数量
       const taskQuantity = parseInt(formData.quantity);
       if (isNaN(taskQuantity) || taskQuantity < 1) {
-        showAlertModal('验证失败', '请输入有效的任务数量', '⚠️');
+        showAlertModal('请输入有效的任务数量');
         return;
       }
       
       // 4. 验证截止时间
       const deadlineMinutes = parseInt(formData.deadline);
       if (isNaN(deadlineMinutes) || deadlineMinutes < 1) {
-        showAlertModal('验证失败', '请选择有效的截止时间', '⚠️');
+        showAlertModal('请选择有效的截止时间');
         return;
       }
       
@@ -141,17 +151,40 @@ export default function PublishSearchKeywordTaskPage() {
       const result: PublishSingleTaskResponse = await response.json();
       console.log('发布任务API响应结果:', result);
       
-      // 显示API响应结果
       if (result.code === 0) {
-        showAlertModal('发布成功', result.message, '✅', '确定', () => {
-          router.push('/publisher/dashboard');
-        });
-      } else {
-        showAlertModal('发布失败', result.message, '❌');
+        // 发布成功 - 统一跳转到 /publisher/create/douyin
+        showAlertModal(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
+      } else if (result.code === 4001) {
+        showAlertModal('发布失败', '确定', '');
+      } else if (result.code === 4002) {
+        showAlertModal('发布失败', '确定', '');
+      } else if (result.code === 4003) {
+        showAlertModal('视频链接不能为空', '确定', '');
+      } else if(result.code === 4004){
+        showAlertModal('截止时间不能为空', '确定', '');
+      } else if(result.code === 4005){
+        showAlertModal('到期时间不能早于当前时间', '确定', '');
+      } else if(result.code === 4006){
+        showAlertModal('发布失败', '确定', '');
+      } else if(result.code === 4007){
+        showAlertModal('发布失败', '确定', '');
+      } else if(result.code === 4008){
+        showAlertModal('任务数量必须大于 0', '确定', '');
+      } else if(result.code === 4009){
+        showAlertModal('截止时间不能为空', '确定', '');
+      } else if(result.code === 4016){
+        showAlertModal('余额不足', '确定', '/publisher/recharge');
+      } else if(result.code === 5002){
+        showAlertModal('任务发布失败', '确定', '');
+      } else if(result.code === 5001){
+        showAlertModal('网络超时', '确定', '');
+      }else if(result.code === 4014){
+        showAlertModal('评论不能为空', '确定', '');
       }
+      
     } catch (error) {
       console.error('发布任务错误:', error);
-      showAlertModal('网络错误', '发布任务失败，请稍后重试', '⚠️');
+      showAlertModal('发布任务失败，请稍后重试');
     } finally {
       setIsLoading(false);
     }
@@ -266,17 +299,14 @@ export default function PublishSearchKeywordTaskPage() {
         </Button>
       </div>
 
-      {/* 通用提示框组件 */}
-      <AlertModal
+      {/* 通用提示框组件 - 使用 GlobalWarningModal */}
+      <GlobalWarningModal
         isOpen={showAlert}
-        title={alertConfig.title}
+        onClose={() => setShowAlert(false)}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
-        onButtonClick={() => {
-          alertConfig.onButtonClick();
-          setShowAlert(false);
-        }}
-        onClose={() => setShowAlert(false)}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="info"
       />
     </div>
   );

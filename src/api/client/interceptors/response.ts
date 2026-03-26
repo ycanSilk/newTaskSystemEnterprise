@@ -6,6 +6,8 @@
 import { AxiosResponse } from 'axios';
 // 导入错误处理相关的工具函数和类型
 import { ApiError, handleApiError, createErrorResponse } from '../errorHandler';
+// 导入简化的日志管理工具
+import { logger } from '../../../utils/simpleLogger';
 
 /**
  * 响应拦截器函数（处理成功响应）
@@ -15,14 +17,13 @@ import { ApiError, handleApiError, createErrorResponse } from '../errorHandler';
 export const responseInterceptor = (response: AxiosResponse): AxiosResponse => {
 
   
-  // 记录响应日志（仅开发环境）
-  // 在开发环境下，打印响应的详细信息，方便调试
+  // 记录响应日志
   if (process.env.NODE_ENV === 'development') {
-    console.log('API Response:', {
-      url: response.config.url,  // 请求的URL
-      status: response.status,   // 响应状态码
-      data: response.data,       // 响应数据
-    });
+    logger.api(response.config.url || '', `Response: ${response.status} - ${JSON.stringify({
+      url: response.config.url,
+      status: response.status,
+      data: response.data,
+    })}`);
   }
   
   // 标准化响应格式

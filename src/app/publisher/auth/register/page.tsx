@@ -2,13 +2,131 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SuccessModal from '../../../../components/button/authButton/SuccessModal';
-// 导入注册页面类型定义
-import { RegisterFormData, RegisterApiRequest, RegisterApiResponse } from '../../../types/auth/registerTypes';
+import GlobalWarningModal from '../../../../components/button/globalWarning/GlobalWarningModal';
+// 注册页面类型定义
+type RegisterFormData = {
+  username: string;
+  password: string;
+  confirmPassword: string;
+  email: string;
+  phone: string;
+  organization_name: string;
+  organization_leader: string;
+  captcha: string;
+  agreeTerms: boolean;
+};
+
+type RegisterApiRequest = {
+  username: string;
+  password: string;
+  email: string;
+  phone: string;
+  organization_name: string;
+  organization_leader: string;
+};
+
+type RegisterApiResponse = {
+  code: number;
+  message: string;
+  data: any;
+  timestamp: number;
+  success: boolean;
+};
 // 导入协议模态框
 import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
 import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
 import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
+
+// 错误码映射
+const ERROR_CODES: Record<string, string> = {
+  '400': '请求参数错误',
+  '500': '服务器连接失败',
+  '1001': '请求方法错误',
+  '2001': '用户名不能为空',
+  '2002': '邮箱不能为空',
+  '2003': '邮箱格式不正确',
+  '2004': '密码不能为空',
+  '2005': '组织名称不能为空',
+  '2006': '组织负责人名称不能为空',
+  '2007': '用户名已被占用',
+  '2008': '邮箱已被注册',
+  '2009': '手机号已被注册',
+  '5001': '数据库错误',
+  '5002': '系统错误'
+};
+
+// 由于这是客户端页面，移除所有文件系统操作，只保留控制台日志
+// 确保目录存在（仅在服务器端执行）
+const ensureDirectory = (dirPath: string) => {
+  // 客户端页面，不执行文件操作
+};
+
+// 写入日志到文件（仅在服务器端执行）
+const writeLogToFile = (filePath: string, logEntry: string) => {
+  // 客户端页面，不执行文件操作
+};
+
+// 获取北京时间格式化日期
+const getBeijingTime = (): string => {
+  const now = new Date();
+  const utcOffset = 8 * 60 * 60 * 1000; // 北京时间偏移量
+  const beijingTime = new Date(now.getTime() + utcOffset);
+  return beijingTime.toISOString();
+};
+
+// 记录API错误日志（关键错误）
+const logApiError = (endpoint: string, method: string, error: any) => {
+  const timestamp = getBeijingTime();
+
+  // 控制台输出
+  console.error(`[API-ERROR] ${timestamp} ${method} ${endpoint}`, error);
+
+  // 客户端页面，不执行文件操作
+};
+
+// 记录JavaScript错误日志（关键错误）
+const logJsError = (error: any, context: string) => {
+  const timestamp = getBeijingTime();
+
+  // 控制台输出
+  console.error(`[JS-ERROR] ${timestamp} ${context}`, error);
+
+  // 客户端页面，不执行文件操作
+};
+
+// 记录审计日志（关键操作）
+const logAudit = (operation: string, action: string, details?: any) => {
+  const timestamp = getBeijingTime();
+
+  // 只在关键操作时输出控制台日志
+  if (action === '注册成功' || action === '注册失败' || action === '注册异常') {
+    console.log(`[AUDIT] ${timestamp} ${operation}: ${action}`, details);
+  }
+
+  // 客户端页面，不执行文件操作
+};
+
+// 处理API错误码
+const handleErrorCode = (code: string): string => {
+  return ERROR_CODES[code] || '操作失败，请稍后重试';
+};
+
+// 获取用户友好的错误消息
+const getUserFriendlyMessage = (code: string): string => {
+  const userFriendlyMessages: Record<string, string> = {
+    '2001': '用户名不能为空，请输入用户名',
+    '2002': '邮箱不能为空，请输入邮箱',
+    '2003': '邮箱格式不正确，请输入有效的邮箱地址',
+    '2004': '密码不能为空，请输入密码',
+    '2005': '组织名称不能为空，请输入组织名称',
+    '2006': '组织负责人名称不能为空，请输入组织负责人名称',
+    '2007': '用户名已被占用，请选择其他用户名',
+    '2008': '邮箱已被注册，请使用其他邮箱',
+    '2009': '手机号已被注册，请使用其他手机号'
+  };
+
+  return userFriendlyMessages[code] || '注册失败，请稍后重试';
+};
 
 export default function PublisherRegisterPage() {
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -20,9 +138,10 @@ export default function PublisherRegisterPage() {
     organization_name: '',
     organization_leader: '',
     captcha: '',
-    agreeToTerms: false
+    agreeTerms: false
   });
   const [captchaCode, setCaptchaCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -35,9 +154,11 @@ export default function PublisherRegisterPage() {
   // 只在客户端生成验证码，避免SSR和客户端渲染不匹配
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // 页面加载时不记录审计日志，减少控制台噪音
+
       const initialCaptcha = generateCaptcha();
       setCaptchaCode(initialCaptcha);
-      
+
       // 生成初始的字符变换参数和干扰点位置
       const charTransforms = [];
       for (let i = 0; i < initialCaptcha.length; i++) {
@@ -46,7 +167,7 @@ export default function PublisherRegisterPage() {
           rotate: Math.random() * 8 - 4
         });
       }
-      
+
       const dots = [];
       for (let i = 0; i < 6; i++) {
         dots.push({
@@ -55,11 +176,11 @@ export default function PublisherRegisterPage() {
           r: Math.random() * 1.5 + 1
         });
       }
-      
+
       setCaptchaConfig({ charTransforms, dots });
     }
   }, []);
-  
+
   // 生成随机验证码（与demo.html一致）
   function generateCaptcha(length = 4) {
     // 使用与demo.html相同的字符集，排除容易混淆的字符
@@ -73,9 +194,11 @@ export default function PublisherRegisterPage() {
 
   // 刷新验证码
   const refreshCaptcha = () => {
+    // 刷新验证码时不记录审计日志，减少控制台噪音
+
     const newCaptcha = generateCaptcha();
     setCaptchaCode(newCaptcha);
-    
+
     // 生成固定的字符变换参数和干扰点位置
     const charTransforms = [];
     for (let i = 0; i < newCaptcha.length; i++) {
@@ -84,7 +207,7 @@ export default function PublisherRegisterPage() {
         rotate: Math.random() * 8 - 4
       });
     }
-    
+
     const dots = [];
     for (let i = 0; i < 6; i++) {
       dots.push({
@@ -93,9 +216,9 @@ export default function PublisherRegisterPage() {
         r: Math.random() * 1.5 + 1
       });
     }
-    
+
     setCaptchaConfig({ charTransforms: [...charTransforms], dots: [...dots] });
-    
+
     // 只重置captcha字段，不影响其他表单字段
     setFormData(prev => ({ ...prev, captcha: '' }));
   };
@@ -126,81 +249,94 @@ export default function PublisherRegisterPage() {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
-    
+
     // 基础验证
     // 用户名验证
     if (!formData.username.trim()) {
-      setErrorMessage('用户名不能为空');
+      const errorMsg = '用户名不能为空';
+      setErrorMessage(errorMsg);
       return;
     }
-    
+
     // 用户名长度验证（至少4个字符）
     if (formData.username.trim().length < 4) {
-      setErrorMessage('用户名长度必须大于或等于4个字符');
+      const errorMsg = '用户名长度必须大于或等于4个字符';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 用户名长度验证（不超过16个字符）
     if (formData.username.trim().length > 16) {
-      setErrorMessage('用户名长度不能超过16个字符');
+      const errorMsg = '用户名长度不能超过16个字符';
+      setErrorMessage(errorMsg);
       return;
     }
-    
+
     // 用户名格式验证（字母数字组合）
     const usernameRegex = /^[a-zA-Z0-9]{1,20}$/;
     if (!usernameRegex.test(formData.username.trim())) {
-      setErrorMessage('用户名只能包含字母和数字');
+      const errorMsg = '用户名只能包含字母和数字';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 密码验证
     if (!formData.password.trim()) {
-      setErrorMessage('密码不能为空');
+      const errorMsg = '密码不能为空';
+      setErrorMessage(errorMsg);
       return;
     }
 
     if (formData.password.length < 6) {
-      setErrorMessage('密码长度不能少于6位');
+      const errorMsg = '密码长度不能少于6位';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 确认密码验证
     if (!formData.confirmPassword.trim()) {
-      setErrorMessage('请确认密码');
+      const errorMsg = '请确认密码';
+      setErrorMessage(errorMsg);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('两次输入的密码不一致');
+      const errorMsg = '两次输入的密码不一致';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 企业名称验证（必填）
     if (!formData.organization_name.trim()) {
-      setErrorMessage('企业名称不能为空');
+      const errorMsg = '企业名称不能为空';
+      setErrorMessage(errorMsg);
       return;
     }
 
     if (formData.organization_name.trim().length < 2 || formData.organization_name.trim().length > 100) {
-      setErrorMessage('企业名称长度应在2-100个字符之间');
+      const errorMsg = '企业名称长度应在2-100个字符之间';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 企业负责人验证（必填）
     if (!formData.organization_leader.trim()) {
-      setErrorMessage('企业负责人不能为空');
+      const errorMsg = '企业负责人不能为空';
+      setErrorMessage(errorMsg);
       return;
     }
 
     if (formData.organization_leader.trim().length < 2 || formData.organization_leader.trim().length > 50) {
-      setErrorMessage('企业负责人姓名长度应在2-50个字符之间');
+      const errorMsg = '企业负责人姓名长度应在2-50个字符之间';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 企业负责人格式验证（中文、英文，不能包含空格）
     const organization_leaderRegex = /^[\u4e00-\u9fa5a-zA-Z]+$/;
     if (!organization_leaderRegex.test(formData.organization_leader.trim())) {
-      setErrorMessage('企业负责人姓名只能包含中文和英文，不能有空格');
+      const errorMsg = '企业负责人姓名只能包含中文和英文，不能有空格';
+      setErrorMessage(errorMsg);
       return;
     }
 
@@ -208,7 +344,8 @@ export default function PublisherRegisterPage() {
     if (formData.phone.trim()) {
       const phoneRegex = /^1[3-9]\d{9}$/;
       if (!phoneRegex.test(formData.phone)) {
-        setErrorMessage('请输入正确的手机号码');
+        const errorMsg = '请输入正确的手机号码';
+        setErrorMessage(errorMsg);
         return;
       }
     }
@@ -217,30 +354,34 @@ export default function PublisherRegisterPage() {
     if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        setErrorMessage('请输入正确的邮箱地址');
+        const errorMsg = '请输入正确的邮箱地址';
+        setErrorMessage(errorMsg);
         return;
       }
     }
 
-    if (!formData.agreeToTerms) {
-      setErrorMessage('请阅读并同意用户协议和隐私政策');
+    if (!formData.agreeTerms) {
+      const errorMsg = '请阅读并同意用户协议和隐私政策';
+      setErrorMessage(errorMsg);
       return;
     }
 
     // 验证码验证
     if (!formData.captcha.trim()) {
-      setErrorMessage('请输入验证码');
+      const errorMsg = '请输入验证码';
+      setErrorMessage(errorMsg);
       return;
     }
 
     if (formData.captcha.toUpperCase() !== captchaCode.toUpperCase()) {
-      setErrorMessage('验证码错误');
+      const errorMsg = '验证码错误';
+      setErrorMessage(errorMsg);
       refreshCaptcha();
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       // 准备发送到后端的注册请求数据
       const requestData: RegisterApiRequest = {
@@ -251,7 +392,7 @@ export default function PublisherRegisterPage() {
         organization_name: formData.organization_name,
         organization_leader: formData.organization_leader
       };
-      
+
       // 调用发布者注册API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -262,19 +403,54 @@ export default function PublisherRegisterPage() {
       });
 
       const result: RegisterApiResponse = await response.json();
-      
+
       if (result.success) {
-        // 注册成功
-        setSuccessMessage(result.message || '注册成功！您的账号已创建，现在可以登录了。');
-        // 显示确认提示框
+        const successMsg = result.message || '注册成功！您的账号已创建，现在可以登录了。';
+        setSuccessMessage(successMsg);
         setShowConfirmModal(true);
+      } else if (result.code === 2001) {
+        setErrorMessage('用户名不能为空，请输入用户名');
+      } else if (result.code === 2002) {
+        setErrorMessage('邮箱不能为空，请输入邮箱');
+      } else if (result.code === 2003) {
+        setErrorMessage('邮箱格式不正确，请输入有效的邮箱地址');
+      } else if (result.code === 2004) {
+        setErrorMessage('密码不能为空，请输入密码');
+      } else if (result.code === 2005) {
+        setErrorMessage('组织名称不能为空，请输入组织名称');
+      } else if (result.code === 2006) {
+        setErrorMessage('组织负责人名称不能为空，请输入组织负责人名称');
+      } else if (result.code === 2007) {
+        setErrorMessage('用户名已被占用，请选择其他用户名');
+      } else if (result.code === 2008) {
+        setErrorMessage('邮箱已被注册，请使用其他邮箱');
+      } else if (result.code === 2009) {
+        setErrorMessage('手机号已被注册，请使用其他手机号');
+      } else if (result.code === 5001) {
+        setErrorMessage('注册失败，请稍后重试');
+      } else if (result.code === 5002) {
+        setErrorMessage('注册失败，请稍后重试');
+      } else if (result.code === 1001) {
+        setErrorMessage('请求参数错误');
+      } else if (result.code === 1002) {
+        setErrorMessage('数据库错误，请稍后重试');
+      } else if (result.code === 1000) {
+        setErrorMessage('未知错误，请稍后重试');
       } else {
         setErrorMessage(result.message || '注册失败，请稍后重试');
-        // 刷新验证码
+      }
+
+      if (!result.success) {
         refreshCaptcha();
       }
     } catch (error) {
-      setErrorMessage('注册过程中发生错误，请重试');
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setErrorMessage('网络连接失败，请检查网络设置后重试');
+      } else if (error instanceof Error && error.message.includes('AbortError')) {
+        setErrorMessage('请求超时，请稍后重试');
+      } else {
+        setErrorMessage('注册失败，请稍后重试');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -304,197 +480,253 @@ export default function PublisherRegisterPage() {
 
                 {/* 用户名 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    用户名 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="4-16位字母数字组合"
-                    value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      用户名 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="4-16位字母数字组合"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="w-2/3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                      autoComplete="username"
+                    />
+                  </div>
                 </div>
 
                 {/* 密码 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    密码 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="至少6位字符"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      密码 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="w-2/3 relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="至少6位字符"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700"
+                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                      >
+                        {showPassword ? (
+                          // 隐藏密码图标（闭着的眼睛，带斜线）
+                          <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                            <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+                          </svg>
+                        ) : (
+                          // 显示密码图标（睁开的眼睛）
+                          <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 确认密码 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    确认密码 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="再次输入密码"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      确认密码 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="w-2/3 relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="再次输入密码"
+                        value={formData.confirmPassword}
+                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        className="w-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700"
+                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                      >
+                        {showPassword ? (
+                          // 隐藏密码图标（闭着的眼睛，带斜线）
+                          <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                            <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+                          </svg>
+                        ) : (
+                          // 显示密码图标（睁开的眼睛）
+                          <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 手机号 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    手机号
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="请输入11位手机号（选填）"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      手机号
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="请输入11位手机号（选填）"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-2/3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                    />
+                  </div>
                 </div>
 
                 {/* 邮箱 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    邮箱
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="请输入邮箱地址（选填）"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      邮箱
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="请输入邮箱地址（选填）"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-2/3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                    />
+                  </div>
                 </div>
 
                 {/* 验证码 */}
-                <div>
-
-                  {/* 验证码 */}
-                  <div>
-                    <label className="block text-xs md:text-sm font-medium  mb-1">
-                      验证码 <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        placeholder="请输入验证码"
-                        value={formData.captcha}
-                        onChange={(e) => setFormData({...formData, captcha: e.target.value})}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      />
-                      <div 
-                        className="w-24 h-10 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg cursor-pointer"
-                        onClick={refreshCaptcha}
-                        title="点击刷新"
-                      >
-                        <svg width="96" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
-                          <rect width="120" height="40" fill="#f0f0f0"/>
-                          {/* 为每个字符添加不同的歪斜效果，确保不超出图形框 */}
-                          {captchaCode.split('').map((char, index) => {
-                            const transform = captchaConfig.charTransforms[index] || { skewX: 0, rotate: 0 };
-                            return (
-                              <text 
-                                key={index}
-                                x={25 + index * 20}
-                                y="28"
-                                fontFamily="Arial"
-                                fontSize="24"
-                                fill="#333"
-                                transform={`skewX(${transform.skewX || 0}) rotate(${transform.rotate || 0})`}
-                              >
-                                {char}
-                              </text>
-                            );
-                          })}
-                          {/* 增加更多干扰线 */}
-                          <line x1="5" y1="15" x2="115" y2="25" stroke="#999" strokeWidth="1"/>
-                          <line x1="20" y1="5" x2="100" y2="35" stroke="#999" strokeWidth="1"/>
-                          <line x1="0" y1="20" x2="120" y2="20" stroke="#999" strokeWidth="1"/>
-                          {/* 增加更多干扰点 */}
-                          {captchaConfig.dots.map((dot, i) => (
-                            <circle 
-                              key={i}
-                              cx={dot.cx || 0}
-                              cy={dot.cy || 0}
-                              r={dot.r || 0}
-                              fill="#999"
-                            />
-                          ))}
-                        </svg>
-                      </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">
+                    验证码 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <input
+                      type="text"
+                      placeholder="请输入验证码"
+                      value={formData.captcha}
+                      onChange={(e) => setFormData({ ...formData, captcha: e.target.value })}
+                      className="flex-1 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                    />
+                    <div
+                      className="flex items-center justify-center bg-gray-100 border-l border-gray-300 cursor-pointer"
+                      onClick={refreshCaptcha}
+                      title="点击刷新"
+                    >
+                      <svg width="96" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="120" height="40" fill="#f0f0f0" />
+                        {/* 为每个字符添加不同的歪斜效果，确保不超出图形框 */}
+                        {captchaCode.split('').map((char, index) => {
+                          const transform = captchaConfig.charTransforms[index] || { skewX: 0, rotate: 0 };
+                          return (
+                            <text
+                              key={index}
+                              x={25 + index * 20}
+                              y="28"
+                              fontFamily="Arial"
+                              fontSize="24"
+                              fill="#333"
+                              transform={`skewX(${transform.skewX || 0}) rotate(${transform.rotate || 0})`}
+                            >
+                              {char}
+                            </text>
+                          );
+                        })}
+                        {/* 增加更多干扰线 */}
+                        <line x1="5" y1="15" x2="115" y2="25" stroke="#999" strokeWidth="1" />
+                        <line x1="20" y1="5" x2="100" y2="35" stroke="#999" strokeWidth="1" />
+                        <line x1="0" y1="20" x2="120" y2="20" stroke="#999" strokeWidth="1" />
+                        {/* 增加更多干扰点 */}
+                        {captchaConfig.dots.map((dot, i) => (
+                          <circle
+                            key={i}
+                            cx={dot.cx || 0}
+                            cy={dot.cy || 0}
+                            r={dot.r || 0}
+                            fill="#999"
+                          />
+                        ))}
+                      </svg>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">点击验证码可刷新</p>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">点击验证码可刷新</p>
                 </div>
-              </div>
 
-              {/* 企业信息 */}
-              <div className="bg-blue-50 rounded-lg p-3 md:p-4">
-                <h3 className="text-sm font-bold text-blue-800 mb-3">企业信息</h3>
-                
                 {/* 企业名称 */}
                 <div className="mb-3">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    企业名称 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="请输入企业名称"
-                    value={formData.organization_name}
-                    onChange={(e) => setFormData({...formData, organization_name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      企业名称 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="请输入企业名称"
+                      value={formData.organization_name}
+                      onChange={(e) => setFormData({ ...formData, organization_name: e.target.value })}
+                      className="w-2/3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                    />
+                  </div>
                 </div>
 
                 {/* 企业负责人 */}
                 <div className="mb-1">
-                  <label className="block text-xs md:text-sm font-medium  mb-1">
-                    企业负责人 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="请输入企业负责人姓名"
-                    value={formData.organization_leader}
-                    onChange={(e) => setFormData({...formData, organization_leader: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <label className="w-1/3 px-3 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+                      企业负责人 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="请输入企业负责人姓名"
+                      value={formData.organization_leader}
+                      onChange={(e) => setFormData({ ...formData, organization_leader: e.target.value })}
+                      className="w-2/3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm border-none"
+                    />
+                  </div>
                 </div>
+
               </div>
+
 
               {/* 协议同意 */}
               <div className="flex items-start space-x-2">
                 <input
                   type="checkbox"
-                  id="agreeToTerms"
-                  checked={formData.agreeToTerms}
-                  onChange={(e) => setFormData({...formData, agreeToTerms: e.target.checked})}
+                  id="agreeTerms"
+                  checked={formData.agreeTerms}
+                  onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
                   className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor="agreeToTerms" className="text-xs text-gray-600 leading-relaxed">
-                  我已阅读并同意 
-                  <button 
-                    type="button" 
+                <label htmlFor="agreeTerms" className="text-xs text-gray-600 leading-relaxed">
+                  我已阅读并同意
+                  <button
+                    type="button"
                     onClick={() => setShowUserAgreement(true)}
                     className="text-blue-600  hover:text-blue-800"
                   >
                     《用户协议》
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowPrivacyPolicy(true)}
                     className="text-blue-600  hover:text-blue-800"
                   >
                     《隐私政策》
                   </button>
                   和
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowPlatformServiceNotice(true)}
                     className="text-blue-600  hover:text-blue-800"
                   >
@@ -537,7 +769,7 @@ export default function PublisherRegisterPage() {
             <div className="mt-4 text-center">
               <p className="text-xs text-gray-600">
                 已有账号？{' '}
-                <button 
+                <button
                   onClick={() => router.push('/publisher/auth/login')}
                   className="text-blue-600 hover:text-blue-800 underline"
                 >
@@ -556,27 +788,27 @@ export default function PublisherRegisterPage() {
           </div>
         </div>
       </div>
-      
+
       {/* 注册成功确认提示框 */}
-      <SuccessModal
+      <GlobalWarningModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="注册成功"
         message={successMessage || '您的账号已成功注册，现在可以登录了！'}
         buttonText="确认并登录"
         redirectUrl="/publisher/auth/login"
+        iconType="success"
       />
 
       {/* 协议模态框 */}
-      <UserAgreementModal 
+      <UserAgreementModal
         isOpen={showUserAgreement}
         onClose={() => setShowUserAgreement(false)}
       />
-      <PrivacyPolicyModal 
+      <PrivacyPolicyModal
         isOpen={showPrivacyPolicy}
         onClose={() => setShowPrivacyPolicy(false)}
       />
-      <PlatformServiceNoticeModal 
+      <PlatformServiceNoticeModal
         isOpen={showPlatformServiceNotice}
         onClose={() => setShowPlatformServiceNotice(false)}
       />

@@ -8,6 +8,8 @@ import { AxiosRequestConfig } from 'axios';
 import { cookies } from 'next/headers';
 // 导入API配置，使用里面的默认请求头和token配置
 import { apiConfig } from '../config';
+// 导入简化的日志管理工具
+import { logger } from '../../../utils/simpleLogger';
 
 /**
  * 请求拦截器函数
@@ -77,16 +79,15 @@ export const requestInterceptor = async (config: AxiosRequestConfig): Promise<Ax
   // 记录请求发送的时间，方便调试和性能分析
   config.headers['X-Request-Time'] = Date.now().toString();
   
-  // 记录请求日志（仅开发环境）
-  // 在开发环境下，打印请求的详细信息，方便调试
+  // 记录请求日志
   if (process.env.NODE_ENV === 'development') {
-    console.log('API Request:', {
-      method: config.method,  // 请求方法（GET、POST等）
-      url: config.url,        // 请求URL
-      headers: config.headers,  // 请求头信息
-      data: config.data,      // 请求体数据（POST请求时使用）
-      params: config.params,  // URL参数（GET请求时使用）
-    });
+    logger.api(config.url || '', `Request: ${config.method} - ${JSON.stringify({
+      method: config.method,
+      url: config.url,
+      headers: config.headers,
+      data: config.data,
+      params: config.params,
+    })}`);
   }
   
   // 返回处理后的请求配置，axios会使用这个配置发送请求

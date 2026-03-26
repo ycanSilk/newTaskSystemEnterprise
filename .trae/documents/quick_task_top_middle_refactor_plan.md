@@ -24,7 +24,7 @@
 - **Priority**: P0
 - **Depends On**: 任务1
 - **Description**:
-  - 视频链接长度必须大于35个字符
+  - 错误的口令，请提交你做单的评论口令
   - 视频链接必须包含"抖音"或"douyin"字符
   - 实时显示校验结果
 - **Success Criteria**:

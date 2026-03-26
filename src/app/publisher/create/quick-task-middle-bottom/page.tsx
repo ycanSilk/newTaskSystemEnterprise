@@ -1,12 +1,47 @@
 'use client';
 
-import { Button, Input, AlertModal, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
 import AIcoment from '@/components/aiCommentBtn/AIcoment';
+
+// 替代 apiCall 函数
+const apiCall = async (url: string, options: RequestInit, action: string) => {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`API call failed (${action}):`, error);
+    throw error;
+  }
+};
+
+// 替代 log 函数
+const log = (level: string, message: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${level.toUpperCase()}] ${timestamp} ${message}`;
+  
+  if (data) {
+    if (level === 'error') {
+      console.error(logMessage, data);
+    } else {
+      console.log(logMessage, data);
+    }
+  } else {
+    if (level === 'error') {
+      console.error(logMessage);
+    } else {
+      console.log(logMessage);
+    }
+  }
+};
 // 类型定义
 interface CommentData {
   comment: string;
@@ -16,11 +51,9 @@ interface CommentData {
 }
 
 interface AlertConfig {
-  title: string;
   message: string;
-  icon: string;
   buttonText: string;
-  onButtonClick: () => void;
+  redirectUrl: string;
 }
 
 interface RecommendMark {
@@ -48,11 +81,19 @@ interface PublishCombineTaskResponse {
   timestamp?: number;
 }
 
+// 视频链接输入项类型
+interface VideoUrlInput {
+  url: string;
+  isValid: boolean;
+}
+
 // 自定义表单数据类型，避免与浏览器FormData冲突
 interface QuickTaskFormData {
   videoUrls: string[];
-  middleComment: CommentData; // 中评评论 - 固定为1条
-  bottomComment: CommentData; // 下评评论 - 固定为1条
+  videoUrlInputs: VideoUrlInput[];
+  middleComment: CommentData;
+  middleQuantity: number;
+  bottomComments: CommentData[];
   deadline: string;
   releasesNumber: string;
 }
@@ -126,7 +167,7 @@ export default function PublishTaskPage() {
   const stage1Price = parseFloat(getSearchParam('stage1Price').trim() || '0');
   const stage1Count = parseInt(getSearchParam('stage1Count').trim() || '1'); // 默认为1
   const stage2Price = parseFloat(getSearchParam('stage2Price').trim() || '0');
-  const stage2Count = parseInt(getSearchParam('stage2Count').trim() || '1'); // 默认为1
+  const stage2Count = parseInt(getSearchParam('stage2Count').trim() || '2'); // 默认为2
 
   // 当前时间戳（秒）
   const [currentTime, setCurrentTime] = useState<number>(Math.floor(Date.now() / 1000));
@@ -137,28 +178,23 @@ export default function PublishTaskPage() {
     douyin_id: ''
   });
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-
-  // AI按钮冷却时间
-  const [commentCooldown, setCommentCooldown] = useState(0);
+  // 编辑配置状态
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [editConfig, setEditConfig] = useState<ConfigInfo>({
+    name: '',
+    douyin_id: ''
+  });
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // 实时更新当前时间
   useEffect(() => {
     setCurrentTime(Math.floor(Date.now() / 1000));
   }, []);
 
-  // 冷却时间倒计时
-  useEffect(() => {
-    if (commentCooldown > 0) {
-      const timer = setTimeout(() => {
-        setCommentCooldown(prev => Math.max(0, prev - 1));
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [commentCooldown]);
-
   // 表单数据结构
   const [formData, setFormData] = useState<QuickTaskFormData>({
     videoUrls: [] as string[], // 视频链接数组
+    videoUrlInputs: Array(5).fill({ url: '', isValid: false }), // 默认5个视频链接输入表单
 
     // 中评评论模块 - 固定为1条
     middleComment: {
@@ -168,66 +204,46 @@ export default function PublishTaskPage() {
     },
 
     // 下评评论模块 - 固定为1条
-    bottomComment: {
+    middleQuantity: 1,
+    bottomComments: [{
       comment: '',
       image: null,
       imageUrl: ''
-    },
-    deadline: '1440', // 存储分钟数，默认24小时
+    }],
+    deadline: '30', // 存储分钟数，默认30分钟
     releasesNumber: '1' // 任务发布次数，默认1次，使用字符串类型
   });
 
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
-  // 视频链接输入状态
-  const [videoUrlInput, setVideoUrlInput] = useState('');
-  // 行业选择状态
-  const [selectedIndustry, setSelectedIndustry] = useState('无行业');
   // 行业选项列表
   const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
-  // 会话ID
-  const [sessionId, setSessionId] = useState('');
-  
-  // 只在浏览器环境中初始化会话ID
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('comment_session_id');
-      if (stored) {
-        setSessionId(stored);
-      } else {
-        const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('comment_session_id', newId);
-        setSessionId(newId);
-      }
-    }
-  }, []);
 
   // 页面加载时获取配置信息
   useEffect(() => {
     const fetchConfig = async () => {
       setIsLoadingConfig(true);
       try {
-        const response = await fetch('/api/quickTask/getConfig');
-        const data: GetConfigResponse = await response.json();
+        log('info', '开始获取配置信息');
+        const result = await apiCall('/api/quickTask/getConfig', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }, 'get');
         
-        if (data.success && data.data) {
+        if (result.success && result.data) {
+          log('info', '获取配置成功', result.data);
           setConfig({
-            name: data.data?.config_info?.name || '',
-            douyin_id: data.data?.config_info?.douyin_id || ''
+            name: result.data.config_info?.name || '',
+            douyin_id: result.data.config_info?.douyin_id || ''
           });
-          
-          // 将抖音ID自动填充到下评评论里
-          setFormData((prev: QuickTaskFormData) => ({
-            ...prev,
-            bottomComment: {
-              ...prev.bottomComment,
-              comment: `@${data.data?.config_info?.douyin_id || '无抖音ID'}`
-            }
-          }));
+        } else {
+          log('error', '获取配置失败', { message: result.message, code: result.code });
         }
       } catch (error) {
-        console.error('获取配置失败:', error);
+        log('error', '获取配置失败', error);
       } finally {
         setIsLoadingConfig(false);
       }
@@ -235,6 +251,15 @@ export default function PublishTaskPage() {
 
     fetchConfig();
   }, []);
+
+  // 当开始编辑时，将当前配置复制到编辑状态
+  useEffect(() => {
+    if (isEditingConfig) {
+      setEditConfig({
+        ...config
+      });
+    }
+  }, [isEditingConfig, config]);
 
   // 加载行业选项
   useEffect(() => {
@@ -255,230 +280,191 @@ export default function PublishTaskPage() {
   }, []);
 
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
-    title: '',
     message: '',
-    icon: '',
     buttonText: '确认',
-    onButtonClick: () => { }
+    redirectUrl: ''
   });
 
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
-
-  // 统一的评论生成器模态框状态
-  const [showCommentGenerator, setShowCommentGenerator] = useState(false);
-
   // 显示通用提示框
   const showAlert = (
-    title: string,
     message: string,
-    icon: string,
     buttonText?: string,
-    onButtonClick?: () => void
+    redirectUrl?: string
   ) => {
     setAlertConfig({
-      title,
       message,
-      icon,
       buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => { })
+      redirectUrl: redirectUrl || ''
     });
     setShowAlertModal(true);
   };
 
-  // 处理统一的评论生成器生成的评论
-  const handleCommentGenerated = (comments: string[]) => {
-    setFormData((prevData: QuickTaskFormData) => {
-      let newData = { ...prevData };
-
-      // 处理中评评论（第一条）
-      if (comments.length > 0) {
-        // 中评评论添加name参数
-        let middleComment = comments[0];
-        if (config.name && !middleComment.includes(config.name)) {
-          const namePos = Math.random();
-          if (namePos < 0.33) {
-            middleComment = `${config.name} ${middleComment}`;
-          } else if (namePos < 0.66) {
-            const parts = middleComment.split('，');
-            if (parts.length >= 2) {
-              const insertIndex = Math.floor(Math.random() * (parts.length - 1)) + 1;
-              parts.splice(insertIndex, 0, config.name);
-              middleComment = parts.join('，');
-            } else {
-              middleComment = `${middleComment} ${config.name}`;
-            }
-          } else {
-            middleComment = `${middleComment} ${config.name}`;
-          }
-        }
-        newData.middleComment = {
-          ...newData.middleComment,
-          comment: middleComment
-        };
+  // 保存配置
+  const handleSaveConfig = async () => {
+    log('info', '=== 开始保存配置 ===');
+    log('info', '保存的配置数据', editConfig);
+    setIsSavingConfig(true);
+    try {
+      // 构建正确格式的请求数据
+      const requestData = {
+        config_info: editConfig
+      };
+      log('info', '发送的请求数据', requestData);
+      
+      const result = await apiCall('/api/quickTask/updateConfig', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      }, 'update');
+      
+      if (result.success) {
+        log('info', '配置保存成功，更新本地状态');
+        setConfig(editConfig);
+        setIsEditingConfig(false);
+        showAlert('配置已更新', '确认', '');
+      } else {
+        log('error', '配置保存失败', { message: result.message, code: result.code });
+        showAlert(result.message || '更新配置失败', '确认', '');
       }
+    } catch (error) {
+      log('error', '保存配置失败', error);
+      showAlert('网络错误，请稍后重试', '确认', '');
+    } finally {
+      log('info', '=== 保存配置流程结束 ===');
+      setIsSavingConfig(false);
+    }
+  };
 
-      // 处理下评评论（第二条）
-      if (comments.length > 1) {
-        let bottomComment = comments[1];
-        // 下评评论添加@抖音ID
-        if (config.douyin_id && !bottomComment.includes(`@${config.douyin_id}`)) {
-          const atUserTag = `@${config.douyin_id}`;
-          const parts = bottomComment.split('，');
-          if (parts.length >= 2) {
-            const insertIndex = Math.floor(Math.random() * (parts.length - 1)) + 1;
-            parts.splice(insertIndex, 0, atUserTag);
-            bottomComment = parts.join('，');
-          } else {
-            bottomComment = `${atUserTag} ${bottomComment}`;
+
+  // 状态管理 - AI评论生成
+  const [showCommentGenerator, setShowCommentGenerator] = useState(false);
+  const [isGeneratingComments, setIsGeneratingComments] = useState(false);
+  
+  // 存储生成的评论
+  const [generatedComments, setGeneratedComments] = useState<string[]>([]);
+
+  // 处理评论生成完成
+  const handleCommentGenerated = (comments: string[], success: boolean) => {
+    log('info', '评论生成完成', { comments, success });
+    
+    // 存储生成的评论
+    setGeneratedComments(comments);
+    
+    // 更新评论数据
+    if (comments && comments.length >= 2) {
+      setFormData(prev => ({
+        ...prev,
+        middleComment: {
+          ...prev.middleComment,
+          comment: comments[0]
+        },
+        bottomComments: [
+          {
+            ...prev.bottomComments[0],
+            comment: comments[1]
           }
-        }
-        newData.bottomComment = {
-          ...newData.bottomComment,
-          comment: bottomComment
-        };
-      }
-
-      return newData;
-    });
-
+        ]
+      }));
+    }
+    
     setShowCommentGenerator(false);
-    showAlert('生成成功', '已生成2条评论内容！', '✨');
+    
+    // 只有评论生成成功后，才继续发布任务
+    if (success === true) {
+      log('info', '评论生成成功，等待1秒后继续发布任务');
+      // 增加1秒延时，确保表单数据更新完成
+      setTimeout(() => {
+        log('info', '1秒延时结束，继续发布任务');
+        handlePublishAfterCommentGeneration(comments);
+      }, 1000);
+      
+    } else {
+      log('error', '评论生成失败，停止发布任务');
+      showAlert('AI生成评论失败，请稍后重试', '确认', '');
+      setIsPublishing(false);
+    }
   };
 
-  // 添加视频链接
-  const handleAddVideoUrl = () => {
-    console.log('开始添加视频链接，输入内容:', videoUrlInput);
+  // 发布任务 - 先打开AI生成评论模态框
+  const handlePublish = () => {
+    log('info', '开始发布任务流程');
     
-    const trimmedInput = videoUrlInput.trim();
-    if (!trimmedInput) {
-      showAlert('输入错误', '请输入视频链接', '⚠️');
-      return;
-    }
-    
-    // 按中英文分号分割链接
-    const urls = trimmedInput.split(/[;；]+/).map(url => url.trim()).filter(url => url);
-    console.log('分割后的链接:', urls);
-    
-    if (urls.length === 0) {
-      showAlert('输入错误', '请输入有效的视频链接', '⚠️');
-      return;
-    }
-    
-    // 计算可添加的链接数量
-    const remainingSlots = 10 - formData.videoUrls.length;
-    console.log('剩余可添加数量:', remainingSlots);
-    
-    if (remainingSlots <= 0) {
-      showAlert('输入错误', '视频链接数量不能超过10个', '⚠️');
-      return;
-    }
-    
-    // 过滤并验证链接
-    const validUrls = urls.filter(url => {
-      const isValid = url.length > 35 && !formData.videoUrls.includes(url);
-      console.log(`链接验证: ${url} -> ${isValid}`);
-      return isValid;
-    });
-    
-    if (validUrls.length === 0) {
-      showAlert('输入错误', '所有链接已添加或无效', '⚠️');
-      return;
-    }
-    
-    // 限制添加数量
-    const urlsToAdd = validUrls.slice(0, remainingSlots);
-    console.log('最终添加的链接:', urlsToAdd);
-    
-    // 添加链接到列表
-    setFormData(prev => ({
-      ...prev,
-      videoUrls: [...prev.videoUrls, ...urlsToAdd]
-    }));
-    
-    // 清空输入框
-    setVideoUrlInput('');
-    
-    console.log('添加完成，当前链接数量:', formData.videoUrls.length + urlsToAdd.length);
-    showAlert('成功', `已添加 ${urlsToAdd.length} 个视频链接`, '✅');
-  };
-
-  // 删除视频链接
-  const handleRemoveVideoUrl = (index: number) => {
-    console.log('删除视频链接，索引:', index);
-    setFormData(prev => ({
-      ...prev,
-      videoUrls: prev.videoUrls.filter((_, i) => i !== index)
-    }));
-    console.log('删除完成，当前链接数量:', formData.videoUrls.length - 1);
-  };
-
-  // 发布任务
-  const handlePublish = async () => {
-    console.log('开始发布任务流程');
-    
-    // 表单验证 - 完整验证逻辑
+    // 表单验证 - 视频链接验证
     if (formData.videoUrls.length === 0) {
-      console.log('验证失败：视频链接数量为0');
-      showAlert('输入错误', '请输入视频链接', '⚠️');
+      log('warn', '验证失败：视频链接数量为0');
+      showAlert('请输入有效的视频链接', '确认', '');
       return;
     }
 
     if (formData.videoUrls.length > 10) {
-      console.log('验证失败：视频链接数量超过10个');
-      showAlert('输入错误', '视频链接数量不能超过10个', '⚠️');
+      log('warn', '验证失败：视频链接数量超过10个');
+      showAlert('视频链接数量不能超过10个', '确认', '');
       return;
     }
 
-    if (formData.videoUrls.some(url => url.length <= 35)) {
-      console.log('验证失败：存在无效的视频链接');
-      showAlert('输入错误', '所有视频链接长度必须大于35个字符', '⚠️');
-      return;
-    }
+    // 打开AI生成评论模态框
+    log('info', '打开AI生成评论模态框');
+    setShowCommentGenerator(true);
+  };
 
-    // 验证任务发布次数
-    const releasesNumber = parseInt(formData.releasesNumber) || 1;
-    if (releasesNumber < 1 || releasesNumber > 10) {
-      console.log('验证失败：任务发布次数无效');
-      showAlert('输入错误', '任务发布次数必须在1-10之间', '⚠️');
-      return;
-    }
-
-    // 验证评论内容
-    if (!formData.middleComment.comment || formData.middleComment.comment.trim() === '') {
-      console.log('验证失败：中评评论为空');
-      showAlert('输入错误', '中评评论不能为空', '⚠️');
-      return;
-    }
-
-    // 验证中评评论必须包含固定名称
-    if (config.name && !formData.middleComment.comment.includes(config.name)) {
-      console.log('验证失败：中评评论必须包含固定名称');
-      showAlert('输入错误', `中评评论必须包含固定名称 "${config.name}"`, '⚠️');
-      return;
-    }
-
-    if (!formData.bottomComment.comment || formData.bottomComment.comment.trim() === '') {
-      console.log('验证失败：下评评论为空');
-      showAlert('输入错误', '下评评论不能为空', '⚠️');
-      return;
-    }
-
-    // 验证下评评论必须包含@抖音ID
-    if (config.douyin_id && !formData.bottomComment.comment.includes(`@${config.douyin_id}`)) {
-      console.log('验证失败：下评评论必须包含@抖音ID');
-      showAlert('输入错误', `下评评论必须包含 "@${config.douyin_id}"`, '⚠️');
-      return;
-    }
-
-    console.log('验证通过，开始构建请求数据');
+  // 评论生成完成后继续发布任务
+  const handlePublishAfterCommentGeneration = async (comments: string[]) => {
+    console.log('评论生成完成，继续发布任务');
+    console.log('使用生成的评论进行验证:', comments);
     
     // 显示加载状态
     setIsPublishing(true);
 
     try {
+      // 任务发布次数等于有效视频链接数量
+      const releasesNumber = formData.videoUrls.length;
+
+      // 验证评论内容
+    if (!comments[0] || comments[0].trim() === '') {
+      console.log('验证失败：中评评论为空');
+      showAlert('中评评论不能为空', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
+
+    // 验证中评评论必须包含固定名称
+    if (config.name && !comments[0].includes(config.name)) {
+      console.log('验证失败：中评评论必须包含固定名称');
+      showAlert(`中评评论必须包含固定名称 "${config.name}"`, '确认', '');
+      setIsPublishing(false);
+      return;
+    }
+
+    if (comments.length < 2) {
+      console.log('验证失败：下评评论数量不足');
+      showAlert('下评评论数量不足', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
+
+    if (!comments[1] || comments[1].trim() === '') {
+      console.log('验证失败：下评评论为空');
+      showAlert('下评评论不能为空', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
+
+    // 验证下评评论必须包含@抖音ID
+    if (config.douyin_id && !comments[1].includes(`@${config.douyin_id}`)) {
+      console.log('验证失败：下评评论必须包含@抖音ID');
+      showAlert(`下评评论必须包含 "@${config.douyin_id}"`, '确认', '');
+      setIsPublishing(false);
+      return;
+    }
+
+      console.log('验证通过，开始构建请求数据');
+
       // 计算总价格
-      const stage2Count = 1; // 固定为1条下评评论
+      const stage2Count = formData.middleQuantity;
       const singlePrice = (stage1Price * stage1Count) + (stage2Price * stage2Count);
       const totalPrice = singlePrice * releasesNumber;
       console.log('价格计算：', { singlePrice, totalPrice, releasesNumber });
@@ -498,24 +484,26 @@ export default function PublishTaskPage() {
 
       // 添加中评评论（第0条）
       recommendMarks.push({
-        comment: formData.middleComment.comment || '',
+        comment: comments[0] || '',
         image_url: formData.middleComment.imageUrl || ''
       });
       console.log('添加中评评论');
 
-      // 添加下评评论（第1条）
-      const bottomComment: RecommendMark = {
-        comment: formData.bottomComment.comment || '',
-        image_url: formData.bottomComment.imageUrl || ''
-      };
+      // 添加下评评论
+      for (let i = 1; i < Math.min(2, comments.length); i++) {
+        const recommendMark: RecommendMark = {
+          comment: comments[i] || '',
+          image_url: formData.bottomComments[i-1].imageUrl || ''
+        };
 
-      // 在下评评论添加@用户标记（抖音ID）
-      if (config.douyin_id) {
-        bottomComment.at_user = config.douyin_id;
-        console.log('在下评评论添加@用户标记:', config.douyin_id);
+        // 在第一条下评评论添加@用户标记（抖音ID）
+        if (i === 1 && config.douyin_id) {
+          recommendMark.at_user = config.douyin_id;
+          console.log('在下评评论添加@用户标记:', config.douyin_id);
+        }
+
+        recommendMarks.push(recommendMark);
       }
-
-      recommendMarks.push(bottomComment);
       console.log('添加下评评论完成，共', recommendMarks.length, '条评论');
 
       // 构建请求体
@@ -532,74 +520,98 @@ export default function PublishTaskPage() {
       console.log('请求数据构建完成:', requestData);
 
       // 调用API
-      console.log('开始调用API');
-      const response = await fetch('/api/quickTask/Task', {
+      log('info', '开始调用API发布任务');
+      const result = await apiCall('/api/quickTask/Task', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestData),
         credentials: 'include'
-      });
+      }, 'create');
 
-      // 解析响应
-      const result: CreateQuickTaskResponse = await response.json();
-
-      console.log('API响应结果：', result);
+      log('info', 'API响应结果', result);
       // 处理响应结果
       if (result.success) {
         // 发布成功
-        console.log('任务发布成功');
-        showAlert(
-          '发布成功',
-          result.message || '任务发布成功！',
-          '✅',
-          '确定',
-          () => {
-            // 在用户点击确认按钮后跳转
-            console.log('跳转到抖音任务创建页面');
-            router.push('/publisher/create/douyin');
-          }
-        );
+        log('info', '任务发布成功');
+        showAlert(result.message || '任务发布成功！','确定', '/publisher/create/douyin');
       } else {
         // 发布失败
-        console.log('任务发布失败:', result.message);
-        if (result.message?.includes('余额不足')) {
-          // 特定处理余额不足的情况
-          showAlert('账户余额不足', '您的账户余额不足以支付任务费用，请先充值后再尝试发布任务。', '⚠️', '前往充值', () => {
-            console.log('跳转到充值页面');
-            router.push('/publisher/finance');
-          });
+        log('error', '任务发布失败', { message: result.message, code: result.code });
+        if (result.code === 4019) {
+          showAlert('账户余额不足，请充值后再发布任务。','前往充值', '/publisher/recharge');
+        } else if (result.code === 4001) {
+          showAlert('发布任务失败', '确定', '');
+        } else if (result.code === 4002) {
+          showAlert('任务模板 ID 不能为空', '确定', '');
+        } else if (result.code === 4003) {
+          showAlert('视频链接不能为空', '确定', '');
+        } else if (result.code === 4004) {
+          showAlert('视频链接数量必须与发布次数一致', '确定', '');
+        } else if (result.code === 4005) {
+          showAlert('到期时间不能为空', '确定', '');
+        } else if (result.code === 4006) {
+          showAlert('到期时间不能早于当前时间', '确定', '');
+        } else if (result.code === 4007) {
+          showAlert('发布次数必须大于 0', '确定', '');
+        } else if (result.code === 4008) {
+          showAlert('发布次数不能超过 100', '确定', '');
+        } else if (result.code === 4009) {
+          showAlert('任务不存在', '确定', '');
+        } else if (result.code === 4010) {
+          showAlert('任务已禁用', '确定', '');
+        } else if (result.code === 4011) {
+          showAlert('发布任务失败', '确定', '');
+        } else if (result.code === 4012) {
+          showAlert('只能发布一个评论', '确定', '');
+        } else if (result.code === 4013) {
+          showAlert('任务数量必须大于 0', '确定', '');
+        } else if (result.code === 4014) {
+          showAlert('评论不能为空', '确定', '');
+        } else if (result.code === 4015) {
+          showAlert('评论数量必须与发布次数一致', '确定', '');
+        } else if (result.code === 4016) {
+          showAlert('总价计算错误', '确定', '');
+        } else if (result.code === 4017) {
+          showAlert('用户信息异常', '确定', '');
+        } else if (result.code === 4018) {
+          showAlert('余额不足', '确定', '');
+        } else if (result.code === 5001) {
+          showAlert('网络超时，请重试', '确定', '');
+        } else if (result.code === 5002) {
+          showAlert('任务发布失败', '确定', '');
         } else {
-          // 显示错误信息
-          showAlert('发布失败', result.message || '任务发布失败', '❌');
+          showAlert( '任务发布失败','确认','');
         }
       }
     } catch (error) {
-      console.error('发布任务时发生错误:', error);
+      log('error', '发布任务时发生错误', error);
       // 分析错误类型给出更具体的提示
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        showAlert('网络错误', '无法连接到服务器，请检查网络连接后重试', '⚠️');
+        showAlert('网络超时，请重试', '确认', '');
       } else {
-        showAlert('发布错误', '发布任务时发生错误，请稍后重试', '⚠️');
+        showAlert('发布任务失败，请稍后重试', '确认', '');
       }
     } finally {
-      console.log('发布任务流程结束');
+      log('info', '发布任务流程结束');
       setIsPublishing(false);
     }
   };
 
   // 价格计算
-  const singlePrice = (stage1Price * stage1Count) + (stage2Price * 1);
-  const releasesNumber = parseInt(formData.releasesNumber) || 1;
+  const singlePrice = (stage1Price * stage1Count) + (stage2Price * formData.middleQuantity);
+  const releasesNumber = formData.videoUrls.length;
   const totalPrice = singlePrice * releasesNumber;
   const totalCost = totalPrice.toFixed(2);
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
-          中下评快捷派单
+          中下评快捷派单<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
         </h1>
 
         <div className="ml-5">
@@ -620,14 +632,61 @@ export default function PublishTaskPage() {
         {/* 固定昵称显示 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            固定名称
+            固定名称 & 抖音ID
           </label>
-          <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
-            {isLoadingConfig ? (
-              <span className="text-gray-500">加载中...</span>
-            ) : (
-              <span>{config.name || '未设置'}</span>
-            )}
+          <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div>
+              <div className="flex flex-col space-y-2 md:flex md:flex-row md:items-center md:space-x-4">
+                <div className="w-full md:w-auto">
+                  <div className="flex flex-col md:flex md:items-center">
+                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">名称:</span>
+                    {isEditingConfig ? (
+                      <input
+                        type="text"
+                        value={editConfig.name}
+                        onChange={(e) => setEditConfig({...editConfig, name: e.target.value})}
+                        className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-0 md:ml-2">{config.name || '未设置'}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="w-full md:w-auto">
+                  <div className="flex flex-col md:flex md:items-center">
+                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">抖音ID:</span>
+                    {isEditingConfig ? (
+                      <input
+                        type="text"
+                        value={editConfig.douyin_id}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value})}
+                        className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              {isEditingConfig ? (
+                <Button
+                  onClick={handleSaveConfig}
+                  disabled={isSavingConfig}
+                  className="bg-blue-500 text-white hover:bg-blue-600"
+                >
+                  {isSavingConfig ? '保存中...' : '保存'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setIsEditingConfig(true)}
+                  className="bg-gray-500 text-white hover:bg-gray-600"
+                >
+                  设置
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -635,66 +694,68 @@ export default function PublishTaskPage() {
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
             <span>视频链接 <span className="text-red-500">*</span></span>
-            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
+            
           </label>
-          <div className="space-y-2">
-            {/* 单个视频链接输入 */}
-            <div className="space-y-2">
-              <textarea
-                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-[100px] resize-none"
-                placeholder="请输入抖音视频链接（至少35个字符），多个链接请用分号(;)分隔"
-                value={videoUrlInput}
-                onChange={(e) => setVideoUrlInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault(); // 阻止默认换行行为
-                    handleAddVideoUrl();
-                  }
-                }}
-              />
-              <Button
-                onClick={handleAddVideoUrl}
-                disabled={!videoUrlInput.trim() || formData.videoUrls.length >= 10}
-                className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                添加
-              </Button>
-            </div>
-            
-            {videoUrlInput.length > 0 && videoUrlInput.length <= 35 && (
-              <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
-            )}
-            {formData.videoUrls.length >= 10 && (
-              <p className="text-sm text-red-500 mt-1">视频链接数量不能超过10个</p>
-            )}
-            
-            {/* 已添加的视频链接列表 */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                已添加的视频链接（{formData.videoUrls.length}/10）
-              </label>
-              <div className="h-[100px] overflow-y-auto">
-                {formData.videoUrls.length === 0 ? (
-                  <div className="p-4 border border-gray-200 rounded-lg text-center text-gray-500 h-full flex items-center justify-center">
-                    暂无视频链接，请添加
+          <div className="space-y-4">
+            {/* 5个视频链接输入表单 */}
+            {formData.videoUrlInputs.map((input, index) => {
+              // 验证视频链接
+              const validateVideoUrl = (url: string) => {
+                return url.length > 35 && (
+                  url.includes('复制打开抖音') || 
+                  url.includes('复制此链接，打开Dou音搜索') || 
+                  url.includes('douyin.com')
+                );
+              };
+              
+              const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const newUrl = e.target.value;
+                const newInputs = [...formData.videoUrlInputs];
+                newInputs[index] = {
+                  url: newUrl,
+                  isValid: validateVideoUrl(newUrl)
+                };
+                setFormData(prev => ({
+                  ...prev,
+                  videoUrlInputs: newInputs,
+                  // 更新有效的视频链接数组
+                  videoUrls: newInputs.filter(input => input.isValid).map(input => input.url)
+                }));
+              };
+              
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">                
+                    {input.url && (
+                      <span className={`text-xs ${input.isValid ? 'text-green-500' : 'text-red-500'}`}>
+                        {input.isValid ? '✓ 有效' : '✗ 无效'}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {formData.videoUrls.map((url, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <span className="text-sm truncate flex-1">{url}</span>
-                        <Button
-                          onClick={() => handleRemoveVideoUrl(index)}
-                          variant="secondary"
-                          className="px-2 py-1 text-xs"
-                        >
-                          删除
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  <input
+                    type="text"
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${input.url && !input.isValid ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="请输入抖音视频链接"
+                    value={input.url}
+                    onChange={handleUrlChange}
+                  />
+                  {input.url && !input.isValid && (
+                    <p className="text-sm text-red-500">
+                      {input.url.length <= 35 ? '错误的口令，请提交你做单的评论口令' : '错误的口令，请提交你做单的评论口令'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* 有效视频链接数量提示 */}
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700">
+                有效视频链接数量：<span className="font-medium">{formData.videoUrls.length}</span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                提示：只有有效的视频链接会被计入任务发布次数
+              </p>
             </div>
           </div>
         </div>
@@ -702,20 +763,14 @@ export default function PublishTaskPage() {
         {/* 任务发布次数 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务发布次数（最多10次）
+            任务发布次数
           </label>
-          <Input
-            type="text"
-            value={formData.releasesNumber}
-            onChange={(e) => {
-              const value = e.target.value;
-              // 允许输入数字或为空
-              if (value === '' || (/^\d+$/.test(value) && parseInt(value) >= 1 && parseInt(value) <= 10)) {
-                setFormData({ ...formData, releasesNumber: value });
-              }
-            }}
-            className="w-full"
-          />
+          <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <p className="text-lg font-medium">{formData.videoUrls.length}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              发布次数根据有效视频链接数量自动计算
+            </p>
+          </div>
         </div>
 
         {/* 截止时间 */}
@@ -735,31 +790,12 @@ export default function PublishTaskPage() {
           </select>
         </div>
 
-        {/* 统一的AI生成评论按钮 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <Button
-            onClick={() => {
-              setShowCommentGenerator(true);
-              setCommentCooldown(10); // 设置10秒冷却时间
-            }}
-            disabled={isPublishing || commentCooldown > 0}
-            className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isPublishing ? '生成中...' : commentCooldown > 0 ? `冷却中(${commentCooldown}s)` : 'AI生成评论'}
-          </Button>
-        </div>
-
         {/* 中评评论模块 - 固定为1条 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            中评评论（固定1条）
-          </label>
-          <div className="mt-2 text-sm text-gray-500">
-            中评任务固定1条，中评任务单价为¥{(stage2Price || 0).toFixed(1)}
-          </div>
+          {/* 中评评论输入框 - 固定一条 */}
           <div className="mb-1 py-2 border-b border-gray-900">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              中评评论 <span className="text-red-500">(自动添加固定名称:{config.name})</span>
+              中评评论
             </label>
             <div className="flex space-x-3">
               <textarea
@@ -802,45 +838,56 @@ export default function PublishTaskPage() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             下评评论（固定1条）
           </label>
-          <div className="mb-1 py-2 border-b border-gray-900">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              下评评论 <span className="text-red-500">(自动添加抖音ID:{config.douyin_id})</span>
-            </label>
-            <div className="flex space-x-3">
-              <textarea
-                className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder="请输入下评评论内容"
-                value={formData.bottomComment.comment}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setFormData({ ...formData, bottomComment: { ...formData.bottomComment, comment: newValue } });
-                }}
-                style={{ height: '80px' }}
-              />
+          
 
-              {/* 图片上传区域 */}
-              <div>
-                <ImageUpload
-                  maxCount={1}
-                  columns={1}
-                  gridWidth="80px"
-                  itemSize="80x80"
-                  title=""
-                  onImagesChange={(images: File[], urls: string[]) => {
-                    setFormData((prev: QuickTaskFormData) => ({
-                      ...prev,
-                      bottomComment: {
-                        ...prev.bottomComment,
-                        imageUrl: urls[0] || ''
-                      }
-                    }));
-                  }}
-                />
-              </div>
-            </div>
+
+          <div className="mt-2 text-sm text-gray-500">
+            中评任务固定1条，下评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
           </div>
+
+          {/* 下评评论输入框 - 固定1条 */}
+          {formData.bottomComments.map((comment: CommentData, index: number) => {
+            return (
+              <div key={index} className="mb-1 py-2 border-b border-gray-900">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  下评评论 {<span className="text-red-500">(自动添加抖音ID:{config.douyin_id})</span>}
+                </label>
+                <div className="flex space-x-3">
+                  <textarea
+                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={3}
+                    placeholder="下评评论会自动添加@抖音ID"
+                    value={comment.comment}
+                    onChange={(e) => {
+                      const newComments = [...formData.bottomComments];
+                      newComments[index] = { ...newComments[index], comment: e.target.value };
+                      setFormData({ ...formData, bottomComments: newComments });
+                    }}
+                    style={{ height: '80px' }}
+                  />
+
+                  {/* 图片上传区域 */}
+                  <div>
+                    <ImageUpload
+                      maxCount={1}
+                      columns={1}
+                      gridWidth="80px"
+                      itemSize="80x80"
+                      title=""
+                      onImagesChange={(images: File[], urls: string[]) => {
+                        const newComments = [...formData.bottomComments];
+                        newComments[index] = { ...newComments[index], imageUrl: urls[0] || '' };
+                        setFormData({ ...formData, bottomComments: newComments });
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
+
+    
 
         {/* 费用预览 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
@@ -870,64 +917,55 @@ export default function PublishTaskPage() {
       </div>
 
       {/* 通用提示框组件 */}
-      <AlertModal
+      <GlobalWarningModal
         isOpen={showAlertModal}
-        title={alertConfig.title}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
-        onButtonClick={() => {
-          alertConfig.onButtonClick();
-          setShowAlertModal(false);
-        }}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="success"
         onClose={() => setShowAlertModal(false)}
       />
-
-      {/* 统一的评论生成器模态框 */}
-      <Modal
-        isOpen={showCommentGenerator}
-        onClose={() => setShowCommentGenerator(false)}
-        title="AI生成评论"
-        className="w-full max-w-md"
-      >
-        {/* 行业筛选下拉菜单 */}
-        <div className="bg-white rounded-md  shadow-sm mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            行业选择
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={selectedIndustry}
-            onChange={(e) => setSelectedIndustry(e.target.value)}
-          >
-            {industryOptions.map((industry, index) => (
-              <option key={index} value={industry}>{industry}</option>
-            ))}
-          </select>
-        </div>
-        
-        <AIcoment
-          onCommentsGenerated={handleCommentGenerated}
-          onProgressUpdate={(current, total) => {
-            // 可选：显示进度
-            console.log(`评论生成进度: ${current}/${total}`);
-          }}
-          isLoading={isPublishing}
-          onLoadingChange={setIsPublishing}
-          commentCount={2} // 生成2条评论：1条中评 + 1条下评
-          atUser={config.douyin_id}
-          name={config.name}
-          userComments={[formData.middleComment.comment, formData.bottomComment.comment]}
-          industry={selectedIndustry}
-          sessionId={sessionId}
-        />
-      </Modal>
 
       {/* 任务帮助模态框 */}
       <TaskAssistance
         isOpen={showTaskAssistance}
         onClose={() => setShowTaskAssistance(false)}
       />
-
-    </div>
+      
+      {/* AI生成评论模态框 */}
+      <Modal
+        isOpen={showCommentGenerator}
+        onClose={() => !isGeneratingComments && setShowCommentGenerator(false)}
+        title="AI生成评论"
+        className="w-full max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            {isGeneratingComments ? (
+              <div className="space-y-2">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="text-gray-700">正在生成评论，请稍候...</p>
+                <p className="text-sm text-gray-500">AI正在为您生成优质评论，大约需要3-5秒</p>
+              </div>
+            ) : (
+              <AIcoment
+                onCommentsGenerated={handleCommentGenerated}
+                onProgressUpdate={(current, total) => {
+                  // 可选：显示进度
+                  console.log(`评论生成进度: ${current}/${total}`);
+                }}
+                isLoading={isGeneratingComments}
+                onLoadingChange={setIsGeneratingComments}
+                commentCount={2} // 生成2条评论：1条中评 + 1条下评
+                atUser={config.douyin_id}
+                name={config.name}
+                userComments={[formData.middleComment.comment, ...formData.bottomComments.map(c => c.comment)]}
+                sessionId="default"
+              />
+            )}
+          </div>
+        </div>
+      </Modal>
+      </div>
   );
 }

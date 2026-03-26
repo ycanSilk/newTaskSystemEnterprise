@@ -22,6 +22,8 @@ const BalancePage = () => {
   const [latestBalanceStr, setLatestBalanceStr] = useState('0.00');
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
   const itemsPerPage = 20;
 
   // 获取钱包余额和交易明细
@@ -31,8 +33,19 @@ const BalancePage = () => {
         setLoading(true);
         setError(null);
 
-        // 调用新的钱包API端点
-        const response = await fetch('/api/paymentWallet/getWalletBalance', {
+        // 构建API请求参数
+        let apiUrl = `/api/paymentWallet/getWalletBalance?page=${currentPage}&page_size=${itemsPerPage}`;
+        // 根据当前标签页添加type参数
+        if (activeTab === 'recharge') {
+          apiUrl += '&type=1'; // 收入
+        } else if (activeTab === 'withdraw') {
+          apiUrl += '&type=2'; // 支出
+        }
+
+        console.log('API请求URL:', apiUrl);
+
+        // 调用新的钱包API端点，添加分页参数和type参数
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -56,22 +69,20 @@ const BalancePage = () => {
           
           // 设置余额信息
           const walletInfo = walletData.data.wallet;
-          // 使用最新交易记录的after_balance作为总余额
-          const latestBalance = sortedTransactions.length > 0 
-            ? parseFloat(sortedTransactions[0].after_balance) || 0 
-            : parseFloat(walletInfo.balance) || 0;
+          // 直接使用钱包信息中的balance作为总余额，而不是使用交易记录的after_balance
+          const latestBalance = parseFloat(walletInfo.balance) || 0;
           setTotalBalance(latestBalance);
           // 存储最新余额的字符串格式
-          const latestBalanceString = sortedTransactions.length > 0 
-            ? sortedTransactions[0].after_balance 
-            : walletInfo.balance;
-          setLatestBalanceStr(latestBalanceString);
+          setLatestBalanceStr(walletInfo.balance);
           // 假设可用余额等于总余额，冻结余额为0，因为新API没有返回这些字段
           setBalance(latestBalance);
           setFrozenBalance(0);
           
-          // 重置分页到第一页
-          setCurrentPage(1);
+          // 更新分页信息
+          if (walletData.data.pagination) {
+            setTotalPages(walletData.data.pagination.total_pages || 1);
+            setTotalTransactions(walletData.data.pagination.total || 0);
+          }
         } else {
           throw new Error(walletData.message || '获取钱包数据失败');
         }
@@ -83,7 +94,7 @@ const BalancePage = () => {
     };
 
     fetchWalletData();
-  }, []);
+  }, [currentPage, itemsPerPage, activeTab]);
 
   // 当activeTab变化时，重置当前页码到第一页
   useEffect(() => {
@@ -254,46 +265,18 @@ const BalancePage = () => {
           ) : (
             // 交易记录处理
             <div>
-              {/* 1. 首先根据type字段过滤交易记录 */}
+              {/* 直接使用API返回的交易记录（后端已过滤和分页） */}
               {(() => {
-                // 过滤交易记录
-                const filteredTransactions = transactions.filter(transaction => {
-                  // 计算30天前的时间戳
-                  const thirtyDaysAgo = new Date();
-                  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                  const transactionDate = new Date(transaction.created_at);
-                  
-                  // 首先过滤时间，只保留最近30天内的记录
-                  const isWithinThirtyDays = transactionDate >= thirtyDaysAgo;
-                  
-                  // 然后根据当前activeTab和type字段进行过滤
-                  if (!isWithinThirtyDays) {
-                    return false;
-                  }
-                  
-                  if (activeTab === 'recharge') {
-                    // 收入明细：只显示type=1的记录
-                    return transaction.type === 1;
-                  } else if (activeTab === 'withdraw') {
-                    // 支出明细：只显示type=2的记录
-                    return transaction.type === 2;
-                  }
-                  // 全部明细：显示所有记录
-                  return true;
-                });
-
-                // 2. 分页处理
-                const totalFiltered = filteredTransactions.length;
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+                // 直接使用API返回的交易记录
+                const paginatedTransactions = transactions;
+                const totalFiltered = transactions.length;
 
                 return (
                   <>
                     {/* 显示交易记录总数信息 */}
                     <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
                       <div className="text-xs ">
-                        共显示 {paginatedTransactions.length} / {totalFiltered} 条记录
+                        共 {totalTransactions} 条记录，当前显示第 {currentPage} 页
                       </div>
                     </div>
 
@@ -301,7 +284,7 @@ const BalancePage = () => {
                     {paginatedTransactions.map((transaction) => {
                       const iconInfo = getTransactionIcon();
                       // 根据type字段判断交易类型
-                      const isIncome = transaction.type === 1;
+                      const isIncome = Number(transaction.type) === 1;
                       const { date, time } = extractDateTime(transaction.created_at);
 
                       return (
@@ -337,25 +320,27 @@ const BalancePage = () => {
                     })}
 
                     {/* 3. 分页控件 */}
-                    {totalFiltered > itemsPerPage && (
-                      <div className="px-4 py-3 border-t border-gray-100 flex justify-center items-center space-x-2">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          disabled={currentPage === 1}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          上一页
-                        </button>
-                        <span className="text-sm text-gray-600">
-                          第 {currentPage} / {Math.ceil(totalFiltered / itemsPerPage)} 页
-                        </span>
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalFiltered / itemsPerPage), prev + 1))}
-                          disabled={currentPage >= Math.ceil(totalFiltered / itemsPerPage)}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          下一页
-                        </button>
+                    {totalPages > 1 && (
+                      <div className="flex justify-center mt-8">
+                        <nav className="flex items-center space-x-4">
+                          <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                          >
+                            上一页
+                          </button>
+                          <span className="px-4 py-2 text-gray-700 font-medium">
+                            第 {currentPage} / {totalPages} 页
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                          >
+                            下一页
+                          </button>
+                        </nav>
                       </div>
                     )}
                   </>

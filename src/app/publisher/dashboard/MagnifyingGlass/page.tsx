@@ -15,16 +15,29 @@ const dyurl = "https://www.douyin.com/video/7598199346240228614"
 export default function CompletedTabPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<MagnifierTaskItem[]>([]);
+  const [originalTasks, setOriginalTasks] = useState<MagnifierTaskItem[]>([]); // 原始任务列表
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentSearchTerm, setCurrentSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // 输入框内容
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   const [tooltipMessage, setTooltipMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [pageSize] = useState<number>(20);
 
-  // 处理搜索
+  // 处理搜索点击（前端过滤）
   const handleSearch = () => {
-    // 只有点击搜索按钮时才进行搜索过滤
-    setCurrentSearchTerm(searchTerm);
+    console.log('Search button clicked with term:', searchTerm);
+    if (!searchTerm.trim()) {
+      // 搜索框为空，显示所有任务
+      setTasks(originalTasks);
+    } else {
+      // 只过滤任务ID匹配的任务
+      const filteredTasks = originalTasks.filter(task => 
+        task.id.toString().includes(searchTerm.trim())
+      );
+      console.log('Filtered tasks:', filteredTasks.length, 'tasks');
+      setTasks(filteredTasks);
+    }
   };
 
   // 处理任务操作
@@ -33,10 +46,10 @@ export default function CompletedTabPage() {
   };
 
   // API调用 - 获取放大镜任务列表
-  const fetchMagnifierTasks = async () => {
+  const fetchMagnifierTasks = async (page: number = 1) => {
     try {
       // 直接使用fetch
-      const response = await fetch('/api/task/getMagnifierTaskList', {
+      const response = await fetch(`/api/task/getMagnifierTaskList?page=${page}&page_size=${pageSize}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -49,6 +62,12 @@ export default function CompletedTabPage() {
       const result: GetMagnifierTaskListApiResponse = await response.json();
       
       if (result.code === 0) {
+        // 更新分页信息
+        if (result.data) {
+          // 计算总页数
+          const totalPages = Math.ceil((result.data.total || 0) / (result.data.pageSize || 10));
+          setTotalPages(totalPages > 0 ? totalPages : 1);
+        }
         return result.data.list || [];
       }
       return [];
@@ -81,35 +100,16 @@ export default function CompletedTabPage() {
   // 刷新任务列表数据
   const refreshTasks = async () => {
     try {
-      const newTasks = await fetchMagnifierTasks();
+      const newTasks = await fetchMagnifierTasks(currentPage);
+      setOriginalTasks(newTasks);
       setTasks(newTasks);
+      showCopySuccess('数据已更新');
     } catch (error) {
       console.error('刷新任务列表失败:', error);
     }
   };
 
-  // 过滤最近订单
-  const filterRecentOrders = (tasks: MagnifierTaskItem[]) => {
-    if (!tasks || !Array.isArray(tasks)) return [];
-    return tasks.filter(task => {
-      const taskTime = new Date(task.created_at).getTime();
-      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      return taskTime >= sevenDaysAgo;
-    });
-  };
 
-  // 搜索订单 - 只支持ID搜索
-  const searchOrders = (tasks: MagnifierTaskItem[]) => {
-    if (!tasks || !Array.isArray(tasks)) return [];
-    if (!currentSearchTerm.trim()) return tasks;
-    const searchTermStr = currentSearchTerm.trim();
-    
-    const filtered = tasks.filter(task => {
-      const idMatch = task.id.toString() === searchTermStr;
-      return idMatch;
-    });
-    return filtered;
-  };
 
   // 显示复制成功提示
   const showCopySuccess = (message: string) => {
@@ -138,12 +138,29 @@ export default function CompletedTabPage() {
     });
   };
 
-  // 初始化数据
+  // 分页处理函数
+  const handlePageChange = async (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    setLoading(true);
+    try {
+      const newTasks = await fetchMagnifierTasks(page);
+      setOriginalTasks(newTasks);
+      setTasks(newTasks);
+    } catch (error) {
+      console.error('获取任务列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始化数据和设置轮询
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
       try {
-        const initialTasks = await fetchMagnifierTasks();
+        const initialTasks = await fetchMagnifierTasks(currentPage);
+        setOriginalTasks(initialTasks);
         setTasks(initialTasks);
       } catch (error) {
         console.error('初始化任务列表失败:', error);
@@ -153,7 +170,28 @@ export default function CompletedTabPage() {
     };
 
     initData();
-  }, []);
+
+    // 设置被动轮询，每1分钟刷新一次
+    const pollingInterval = 1 * 60 * 1000; // 1分钟
+    const intervalId = setInterval(() => {
+      refreshTasks();
+    }, pollingInterval);
+
+    // 监听页面可见性变化，当页面重新可见时刷新数据
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 清理函数
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentPage]);
 
   // MainOrderCard组件定义，使用MagnifierTaskItem类型
   const MainOrderCard = ({ task, onCopyOrderNumber, onCopyComment, onViewDetails, onReorder }: {
@@ -264,17 +302,12 @@ export default function CompletedTabPage() {
     );
   }
 
-  // 获取过滤和搜索后的订单 - 默认按时间排序，不再过滤最近7天的订单
-  const filteredTasks = searchOrders(tasks).sort((a, b) => {
-    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return dateB - dateA;
-  });
+
   
 
 
   return (
-    <div className="mx-4 mt-6 space-y-4">
+    <div className="mx-4 mt-6">
       {/* 复制成功提示 */}
       {showCopyTooltip && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50">
@@ -286,7 +319,7 @@ export default function CompletedTabPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-800">放大镜任务</h3>
-          <span className="text-sm text-gray-500">共 {filteredTasks.length} 个任务</span>
+          <span className="text-sm text-gray-500">共 {tasks.length} 个任务</span>
         </div>
         
         {/* 内置搜索功能 */}
@@ -317,20 +350,52 @@ export default function CompletedTabPage() {
       
       {/* 任务列表 */}
       <div>
-        {filteredTasks.length > 0 ? (
-          filteredTasks.map((task) => (
-            <MainOrderCard
-              key={task.id}
-              task={task}
-              onCopyOrderNumber={handleCopyOrderNumber}
-              onCopyComment={handleCopyComment}
-              onViewDetails={(orderId: string) => {
-                // 直接跳转到任务详情页
-                router.push(`/publisher/orders/task-detail/${orderId}`);
-              }}
-              onReorder={(orderId) => handleTaskAction(orderId, 'reorder')}
-            />
-          ))
+        {tasks.length > 0 ? (
+          <>
+            {tasks.map((task) => (
+              <MainOrderCard
+                key={task.id}
+                task={task}
+                onCopyOrderNumber={handleCopyOrderNumber}
+                onCopyComment={handleCopyComment}
+                onViewDetails={(orderId: string) => {
+                  // 直接跳转到任务详情页
+                  router.push(`/publisher/orders/task-detail/${orderId}`);
+                }}
+                onReorder={(orderId) => handleTaskAction(orderId, 'reorder')}
+              />
+            ))}
+            
+            {/* 分页控件 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                <nav className="flex items-center space-x-4">
+                  {/* 上一页按钮 */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    上一页
+                  </button>
+                  
+                  {/* 页码信息 */}
+                  <span className="px-4 py-2 text-gray-700 font-medium">
+                    第 {currentPage} / {totalPages} 页
+                  </span>
+                  
+                  {/* 下一页按钮 */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    下一页
+                  </button>
+                </nav>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-8 bg-white rounded-lg shadow-sm">
             <p className="text-gray-500">暂无相关任务</p>

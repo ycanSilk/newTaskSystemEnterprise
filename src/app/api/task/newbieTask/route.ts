@@ -1,32 +1,31 @@
-// 获取任务列表API路由
-// 该文件是Next.js API路由，用于处理获取任务列表的HTTP请求
-// 遵循RESTful设计规范，只处理GET请求，其他方法返回405
+// 发布单个任务API路由
+// 该文件是Next.js API路由，用于处理发布单个任务的HTTP请求
+// 遵循RESTful设计规范，只处理POST请求，其他方法返回405
 
-import { NextResponse, NextRequest } from 'next/server';
-import { handleGetTasksList } from '../../../../api/handlers/task/getTasksListHandler';
+import { NextResponse } from 'next/server';
+import { handleNewBbieTask } from '../../../../api/handlers/task/newbieTaskHandler';
 
 /**
- * GET方法处理函数 - 获取任务列表
+ * POST方法处理函数 - 发布单个任务
  * @param request - Next.js请求对象
  * @returns NextResponse - API响应
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  // 调用处理函数，传递完整的请求对象，包含查询参数
-  // 这样处理函数可以获取并使用 status 参数
-  return handleGetTasksList(request);
+export async function POST(request: Request): Promise<NextResponse> {
+  // 调用处理函数，不包含业务逻辑
+  return handleNewBbieTask(request);
 }
 
 /**
- * POST方法处理函数 - 不允许
+ * GET方法处理函数 - 不允许GET请求
  * @returns NextResponse - 405错误响应
  */
-export async function POST(): Promise<NextResponse> {
+export async function GET(): Promise<NextResponse> {
   // 返回405方法不允许响应，使用标准化格式
   return NextResponse.json(
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -44,7 +43,7 @@ export async function PUT(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -62,7 +61,7 @@ export async function DELETE(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -80,7 +79,7 @@ export async function PATCH(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -98,7 +97,7 @@ export async function HEAD(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },
@@ -116,7 +115,7 @@ export async function OPTIONS(): Promise<NextResponse> {
     {
       success: false,
       code: 405,
-      message: '方法不允许，请使用GET请求',
+      message: '方法不允许，请使用POST请求',
       timestamp: Date.now(),
       data: null
     },

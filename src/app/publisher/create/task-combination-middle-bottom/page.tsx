@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Input, AlertModal, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -109,12 +110,10 @@ export default function PublishTaskPage() {
     loadIndustries();
   }, []);
 
-  const [alertConfig, setAlertConfig] = useState<AlertConfig>({
-    title: '',
+  const [alertConfig, setAlertConfig] = useState({
     message: '',
-    icon: '',
     buttonText: '确认',
-    onButtonClick: () => { }
+    redirectUrl: ''
   });
 
   // 任务帮助模态框状态
@@ -125,20 +124,25 @@ export default function PublishTaskPage() {
   // 中评评论的MiddleCommentGenerator模态框状态
   const [showTopCommentGenerator, setShowTopCommentGenerator] = useState(false);
 
+  // 验证视频链接 - 统一使用 quick-task-top-middle 页面的验证条件
+  const validateVideoUrl = (url: string) => {
+    return url.length > 35 && (
+      url.includes('复制打开抖音') || 
+      url.includes('复制此链接，打开Dou音搜索') || 
+      url.includes('douyin.com')
+    );
+  };
+
   // 显示通用提示框
   const showAlert = (
-    title: string,
     message: string,
-    icon: string,
     buttonText?: string,
-    onButtonClick?: () => void
+    redirectUrl?: string
   ) => {
     setAlertConfig({
-      title,
       message,
-      icon,
       buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => { })
+      redirectUrl: redirectUrl || ''
     });
     setShowAlertModal(true);
   };
@@ -151,14 +155,14 @@ export default function PublishTaskPage() {
 
     // 1. 检查是否已经有一个@用户（限制数量为1）
     if (mentions.length >= 1) {
-      showAlert('提示', '仅支持添加一个@用户', '💡');
+      showAlert('仅支持添加一个@用户');
       return;
     }
 
     // 2. 非法字符校验（只允许数字）
     const validPattern = /^[0-9]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('提示', '用户ID或昵称只能包含数字', '⚠️');
+      showAlert('用户ID或昵称只能包含数字');
       return;
     }
 
@@ -178,7 +182,7 @@ export default function PublishTaskPage() {
         }))
       }));
     } else if (mentions.includes(trimmedMention)) {
-      showAlert('提示', '该用户昵称ID已添加', '💡');
+      showAlert('该用户昵称ID已添加');
     }
   };
 
@@ -241,7 +245,7 @@ export default function PublishTaskPage() {
     });
 
     setShowMiddleCommentGenerator(false);
-    showAlert('生成成功', '已生成1条下评评论内容！', '✨');
+    showAlert('已生成1条下评评论内容！');
   };
 
   // 处理中评评论的MiddleCommentGenerator生成的评论
@@ -257,7 +261,7 @@ export default function PublishTaskPage() {
         }
       }));
       setShowTopCommentGenerator(false);
-      showAlert('生成成功', '中评评论内容已通过AI生成！', '✨');
+      showAlert('中评评论内容已通过AI生成！');
     }
   };
 
@@ -269,13 +273,36 @@ export default function PublishTaskPage() {
   const handlePublish = async () => {
     // 表单验证 - 完整验证逻辑
     if (!formData.videoUrl) {
-      showAlert('输入错误', '请输入视频链接', '⚠️');
+      showAlert('请输入视频链接');
+      return;
+    }
+
+    // 验证视频链接
+    if (!validateVideoUrl(formData.videoUrl)) {
+      showAlert('请输入有效的视频链接');
       return;
     }
 
     // 验证任务数量
     if (formData.middleQuantity === undefined) {
-      showAlert('输入错误', '请输入任务数量', '⚠️');
+      showAlert('请输入任务数量');
+      return;
+    }
+
+    // 验证评论内容
+    if (!formData.topComment.comment || formData.topComment.comment.trim() === '') {
+      showAlert('中评评论不能为空');
+      return;
+    }
+
+    if (formData.middleComments.length === 0) {
+      showAlert('请至少添加一条下评评论');
+      return;
+    }
+
+    const emptyMiddleComments = formData.middleComments.filter(comment => !comment.comment || comment.comment.trim() === '');
+    if (emptyMiddleComments.length > 0) {
+      showAlert('下评评论不能为空');
       return;
     }
 
@@ -341,38 +368,42 @@ export default function PublishTaskPage() {
       // 解析响应
       const result: PublishCombineTaskResponse = await response.json();
 
-      console.log('请求API结果：', result);
-      // 处理响应结果
       if (result.code === 0) {
-        // 发布成功
-        showAlert(
-          '发布成功',
-          result.message || '任务发布成功！',
-          '✅',
-          '确定',
-          () => {
-            // 在用户点击确认按钮后跳转
-            router.push('/publisher/create/douyin');
-          }
-        );
-      } else {
-        // 发布失败
-        if (result.message?.includes('余额不足')) {
-          // 特定处理余额不足的情况
-          showAlert('账户余额不足', '您的账户余额不足以支付任务费用，请先充值后再尝试发布任务。', '⚠️', '前往充值', () => {
-            router.push('/publisher/finance');
-          });
-        } else {
-          // 显示错误信息
-          showAlert('发布失败', result.message || '任务发布失败', '❌');
-        }
+        // 发布成功 - 统一跳转到 /publisher/create/douyin
+        showAlert(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
+      } else if (result.code === 4001) {
+        showAlert('发布失败', '确定', '');
+      } else if (result.code === 4002) {
+        showAlert('发布失败', '确定', '');
+      } else if (result.code === 4003) {
+        showAlert('视频链接不能为空', '确定', '');
+      } else if(result.code === 4004){
+        showAlert('截止时间不能为空', '确定', '');
+      } else if(result.code === 4005){
+        showAlert('到期时间不能早于当前时间', '确定', '');
+      } else if(result.code === 4006){
+        showAlert('发布失败', '确定', '');
+      } else if(result.code === 4007){
+        showAlert('发布失败', '确定', '');
+      } else if(result.code === 4008){
+        showAlert('任务数量必须大于 0', '确定', '');
+      } else if(result.code === 4009){
+        showAlert('截止时间不能为空', '确定', '');
+      } else if(result.code === 4016){
+        showAlert('余额不足', '确定', '/publisher/recharge');
+      } else if(result.code === 5002){
+        showAlert('任务发布失败', '确定', '');
+      } else if(result.code === 5001){
+        showAlert('网络超时', '确定', '');
+      }else if(result.code === 4014){
+        showAlert('评论不能为空', '确定', '');
       }
     } catch (error) {
       // 分析错误类型给出更具体的提示
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        showAlert('网络错误', '无法连接到服务器，请检查网络连接后重试', '⚠️');
+        showAlert('网络超时，请重试');
       } else {
-        showAlert('发布错误', '发布任务时发生错误，请稍后重试', '⚠️');
+        showAlert('发布任务失败，请稍后重试');
       }
     } finally {
       setIsPublishing(false);
@@ -389,7 +420,7 @@ export default function PublishTaskPage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
-          发布中下评评论
+          发布中下评评论<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
         </h1>
 
         <div className="ml-5">
@@ -419,15 +450,17 @@ export default function PublishTaskPage() {
             <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
           <Input
-            placeholder="请输入抖音视频链接（至少35个字符）"
+            placeholder="请输入抖音视频链接"
             value={formData.videoUrl}
             onChange={(e) => {
               setFormData({ ...formData, videoUrl: e.target.value });
             }}
-            className="w-full"
+            className={`w-full ${formData.videoUrl.length > 0 && !validateVideoUrl(formData.videoUrl) ? 'border-red-500' : 'border-gray-200'}`}
           />
-          {formData.videoUrl.length > 0 && formData.videoUrl.length <= 35 && (
-            <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
+          {formData.videoUrl.length > 0 && !validateVideoUrl(formData.videoUrl) && (
+            <p className="text-sm text-red-500 mt-1">
+              {formData.videoUrl.length <= 35 ? '错误的口令，请提交你做单的评论口令' : '错误的口令，请提交你做单的评论口令'}
+            </p>
           )}
         </div>
 
@@ -626,7 +659,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3">
         <Button
           onClick={handlePublish}
-          disabled={!formData.videoUrl || formData.videoUrl.length <= 35 || formData.middleQuantity === undefined}
+          disabled={!formData.videoUrl || !validateVideoUrl(formData.videoUrl) || formData.middleQuantity === undefined}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
           发布任务 - ¥{totalCost}
@@ -640,17 +673,14 @@ export default function PublishTaskPage() {
         </Button>
       </div>
 
-      {/* 通用提示框组件 */}
-      <AlertModal
+      {/* 通用提示框组件 - 使用 GlobalWarningModal */}
+      <GlobalWarningModal
         isOpen={showAlertModal}
-        title={alertConfig.title}
+        onClose={() => setShowAlertModal(false)}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
-        onButtonClick={() => {
-          alertConfig.onButtonClick();
-          setShowAlertModal(false);
-        }}
-        onClose={() => setShowAlertModal(false)}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="success"
       />
 
       {/* 中评评论的MiddleCommentGenerator模态框 */}

@@ -21,13 +21,19 @@ import { GetWalletBalanceResponse } from '../../types/paymentWallet/getWalletBal
  */
 export async function handleGetWalletBalance(request: NextRequest): Promise<NextResponse> {
   try {
-    // 从请求URL中获取分页参数
+    // 从请求URL中获取分页参数和type参数
     const url = new URL(request.url);
     const page = url.searchParams.get('page') || '1';
     const page_size = url.searchParams.get('page_size') || '100';
+    const type = url.searchParams.get('type');
     
     // 构建带分页参数的请求URL
-    const endpointWithParams = `${GET_WALLET_BALANCE_ENDPOINT}?page=${page}&page_size=${page_size}`;
+    let endpointWithParams = `${GET_WALLET_BALANCE_ENDPOINT}?page=${page}&page_size=${page_size}`;
+    
+    // 如果type参数存在，添加到请求URL中
+    if (type) {
+      endpointWithParams += `&type=${type}`;
+    }
     
     // 调用API客户端发送GET请求到获取钱包余额和交易明细端点
     const response = await apiClient.get<ApiResponse<GetWalletBalanceResponse>>(endpointWithParams);

@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Input, AlertModal, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -95,12 +96,12 @@ export default function PublishTaskPage() {
   // 通用提示框状态
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
-    title: '',
     message: '',
-    icon: '',
     buttonText: '确认',
-    onButtonClick: () => { }
+    redirectUrl: ''
   });
+
+
 
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
@@ -108,20 +109,27 @@ export default function PublishTaskPage() {
   // MiddleCommentGenerator模态框状态
   const [showMiddleCommentGenerator, setShowMiddleCommentGenerator] = useState(false);
 
+  // 验证视频链接
+  const validateVideoUrl = (url: string) => {
+    return url.length > 35 && (
+      url.includes('复制打开抖音') || 
+      url.includes('复制此链接，打开Dou音搜索') || 
+      url.includes('douyin.com')
+    );
+  };
+
+
+
   // 显示通用提示框
   const showAlert = (
-    title: string,
     message: string,
-    icon: string,
     buttonText?: string,
-    onButtonClick?: () => void
+    redirectUrl?: string
   ) => {
     setAlertConfig({
-      title,
       message,
-      icon,
       buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => { })
+      redirectUrl: redirectUrl || ''
     });
     setShowAlertModal(true);
   };
@@ -220,14 +228,14 @@ export default function PublishTaskPage() {
 
     // 1. 检查是否已经有一个@用户（限制数量为1）
     if (mentions.length >= 1) {
-      showAlert('提示', '仅支持添加一个@用户', '💡');
+      showAlert('仅支持添加一个@用户', '确认', '');
       return;
     }
 
     // 2. 非法字符校验（只允许字母、数字、下划线、中文和@符号）
     const validPattern = /^[a-zA-Z0-9_\u4e00-\u9fa5@]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('提示', '用户ID或昵称包含非法字符，仅支持字母、数字、下划线和中文', '⚠️');
+      showAlert('用户ID或昵称包含非法字符，仅支持字母、数字、下划线和中文', '确认', '');
       return;
     }
 
@@ -254,7 +262,7 @@ export default function PublishTaskPage() {
         });
       }
     } else if (mentions.includes(trimmedMention)) {
-      showAlert('提示', '该用户昵称ID已添加', '💡');
+      showAlert('该用户昵称ID已添加', '确认', '');
     }
   };
 
@@ -304,12 +312,12 @@ export default function PublishTaskPage() {
             prompts.push(comments[randomIndex]);
           }
         } else {
-          showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
-          return;
-        }
+            showAlert('评论库加载失败，请稍后重试', '确认', '');
+            return;
+          }
       } catch (error) {
         console.error('加载评论库失败:', error);
-        showAlert('提示', '评论库加载失败，请稍后重试', '⚠️');
+        showAlert('评论库加载失败，请稍后重试', '确认', '');
         return;
       }
 
@@ -363,10 +371,10 @@ export default function PublishTaskPage() {
         }))
       }));
 
-      showAlert('成功', `已为${commentCount}条评论生成内容！`, '✨');
+      showAlert(`已为${commentCount}条评论生成内容！`, '确认', '');
     } catch (error) {
       console.error('AI生成评论评论失败:', error);
-      showAlert('生成失败', '网络错误，请稍后重试', 'error');
+      showAlert('网络错误，请稍后重试', '确认', '');
     } finally {
       setIsPublishing(false);
     }
@@ -436,7 +444,7 @@ export default function PublishTaskPage() {
     });
 
     setShowMiddleCommentGenerator(false);
-    showAlert('成功', `已为${comments.length}条评论生成内容！`, '✨');
+    showAlert(`已为${comments.length}条评论生成内容！`, '确认', '');
   };
 
   // 发布任务
@@ -446,16 +454,24 @@ export default function PublishTaskPage() {
       return;
     }
 
+
+
     // 表单验证
     if (!formData.videoUrl.trim()) {
-      showAlert('验证失败', '请输入抖音视频链接', 'error');
+      showAlert('请输入抖音视频链接', '确认', '');
+      return;
+    }
+
+    // 验证视频链接格式
+    if (!validateVideoUrl(formData.videoUrl)) {
+      showAlert('请输入有效的视频链接', '确认', '');
       return;
     }
 
     // 验证评论内容
     const emptyComments = formData.comments.filter(comment => !comment.content || comment.content.trim() === '');
     if (emptyComments.length > 0) {
-      showAlert('输入错误', '请填写所有评论内容', '⚠️');
+      showAlert('请填写所有评论内容', '确认', '');
       return;
     }
 
@@ -507,30 +523,40 @@ export default function PublishTaskPage() {
       });
 
       const result: PublishSingleTaskResponse = await response.json();
-
-      // 处理响应
       if (result.code === 0) {
-        // 显示成功提示，1秒后自动跳转到指定页面
-        showAlert(
-          '成功',
-          result.message || '',
-          '✅',
-          '确定',
-          () => {
-            // 延迟1秒后跳转
-            setTimeout(() => {
-              router.push('/publisher/create/douyin');
-            }, 1000);
-          }
-        );
-      } else {
-        // 显示失败提示
-        showAlert('发布失败', result.message || '任务发布失败，请稍后重试', '❌');
+        // 发布成功 - 统一跳转到 /publisher/create/douyin
+        showAlert(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
+      } else if (result.code === 4001) {
+        showAlert('发布失败', '确定', '');
+      } else if (result.code === 4002) {
+        showAlert('发布失败', '确定', '');
+      } else if (result.code === 4003) {
+        showAlert('视频链接不能为空', '确定', '');
+      } else if(result.code === 4004){
+        showAlert('截止时间不能为空', '确定', '');
+      } else if(result.code === 4005){
+        showAlert('到期时间不能早于当前时间', '确定', '');
+      } else if(result.code === 4006){
+        showAlert('发布失败', '确定', '');
+      } else if(result.code === 4007){
+        showAlert('发布失败', '确定', '');
+      } else if(result.code === 4008){
+        showAlert('任务数量必须大于 0', '确定', '');
+      } else if(result.code === 4009){
+        showAlert('截止时间不能为空', '确定', '');
+      } else if(result.code === 4016){
+        showAlert('余额不足', '确定', '/publisher/recharge');
+      } else if(result.code === 5002){
+        showAlert('任务发布失败', '确定', '');
+      } else if(result.code === 5001){
+        showAlert('网络超时', '确定', '');
+      }else if(result.code === 4014){
+        showAlert('评论不能为空', '确定', '');
       }
     } catch (error) {
       // 处理错误
       console.error('发布任务失败:', error);
-      showAlert('发布失败', '网络错误，请稍后重试', '⚠️');
+      showAlert('网络错误，请稍后重试', '确认', '');
     } finally {
       // 无论成功失败，都重置加载状态
       setIsPublishing(false);
@@ -544,7 +570,7 @@ export default function PublishTaskPage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
-          发布中评评论
+          发布中评评论<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
         </h1>
 
         <div className="ml-5">
@@ -573,13 +599,15 @@ export default function PublishTaskPage() {
             <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>*派单指引</span>
           </label>
           <Input
-            placeholder="请输入抖音视频链接（至少35个字符）"
+            placeholder="请输入抖音视频链接"
             value={formData.videoUrl}
             onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-            className="w-full"
+            className={`w-full ${formData.videoUrl.length > 0 && !validateVideoUrl(formData.videoUrl) ? 'border-red-500' : 'border-gray-200'}`}
           />
-          {formData.videoUrl.length > 0 && formData.videoUrl.length <= 35 && (
-            <p className="text-sm text-red-500 mt-1">视频链接长度必须大于35个字符</p>
+          {formData.videoUrl.length > 0 && !validateVideoUrl(formData.videoUrl) && (
+            <p className="text-sm text-red-500 mt-1">
+              {formData.videoUrl.length <= 35 ? '错误的口令，请提交你做单的评论口令' : '错误的口令，请提交你做单的评论口令'}
+            </p>
           )}
         </div>
 
@@ -692,14 +720,14 @@ export default function PublishTaskPage() {
                       if (newValue.includes('@')) {
                         // 只有最后一条评论可以包含@用户标识
                         if (index !== formData.comments.length - 1) {
-                          showAlert('提示', '@用户标识只能出现在最后一条评论中', '⚠️');
+                          showAlert('@用户标识只能出现在最后一条评论中', '确认', '');
                           return;
                         }
 
                         // 检查@用户标识是否只出现一次
                         const atCount = (newValue.match(/@/g) || []).length;
                         if (atCount > 1) {
-                          showAlert('提示', '每条评论只能包含一个@用户标识', '⚠️');
+                          showAlert('每条评论只能包含一个@用户标识', '确认', '');
                           return;
                         }
                       }
@@ -752,7 +780,7 @@ export default function PublishTaskPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 space-y-3 z-40">
         <Button
           onClick={handlePublish}
-          disabled={!formData.videoUrl.trim() || formData.videoUrl.length <= 35 || formData.quantity === undefined || formData.quantity < 1 || isPublishing || isAIGenerating || formData.comments.some(comment => !comment.content || comment.content.trim() === '')}
+          disabled={!formData.videoUrl.trim() || !validateVideoUrl(formData.videoUrl) || formData.quantity === undefined || formData.quantity < 1 || isPublishing || isAIGenerating || formData.comments.some(comment => !comment.content || comment.content.trim() === '')}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
           {isPublishing ? '发布中...' : `发布任务 - ¥${totalCost}`}
@@ -761,15 +789,12 @@ export default function PublishTaskPage() {
       </div>
 
       {/* 通用提示框组件 */}
-      <AlertModal
+      <GlobalWarningModal
         isOpen={showAlertModal}
-        title={alertConfig.title}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
-        onButtonClick={() => {
-          alertConfig.onButtonClick();
-          setShowAlertModal(false);
-        }}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="success"
         onClose={() => setShowAlertModal(false)}
       />
 

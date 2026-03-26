@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Input, AlertModal, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,11 +17,9 @@ interface CommentData {
 }
 
 interface AlertConfig {
-  title: string;
   message: string;
-  icon: string;
   buttonText: string;
-  onButtonClick: () => void;
+  redirectUrl: string;
 }
 
 interface RecommendMark {
@@ -52,6 +51,7 @@ interface PublishCombineTaskResponse {
 interface VideoUrlInput {
   url: string;
   isValid: boolean;
+  isDuplicate: boolean;
 }
 
 // 自定义表单数据类型，避免与浏览器FormData冲突
@@ -63,6 +63,7 @@ interface QuickTaskFormData {
   middleComments: CommentData[];
   deadline: string;
   releasesNumber: string;
+  duplicateWarning: string;
 }
 
 // 类型定义
@@ -145,6 +146,13 @@ export default function PublishTaskPage() {
     douyin_id: ''
   });
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  // 编辑配置状态
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [editConfig, setEditConfig] = useState<ConfigInfo>({
+    name: '',
+    douyin_id: ''
+  });
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // 实时更新当前时间
   useEffect(() => {
@@ -154,7 +162,7 @@ export default function PublishTaskPage() {
   // 表单数据结构
   const [formData, setFormData] = useState<QuickTaskFormData>({
     videoUrls: [] as string[], // 视频链接数组
-    videoUrlInputs: Array(5).fill({ url: '', isValid: false }), // 默认5个视频链接输入表单
+    videoUrlInputs: Array(5).fill({ url: '', isValid: false, isDuplicate: false }), // 默认5个视频链接输入表单
 
     // 上评评论模块 - 固定为1条
     topComment: {
@@ -174,8 +182,9 @@ export default function PublishTaskPage() {
       image: null,
       imageUrl: ''
     }],
-    deadline: '30', // 存储分钟数，默认30分钟
-    releasesNumber: '1' // 任务发布次数，默认1次，使用字符串类型
+    deadline: '60', // 存储分钟数，默认30分钟
+    releasesNumber: '1',
+    duplicateWarning: ''
   });
 
   // 状态管理
@@ -190,21 +199,20 @@ export default function PublishTaskPage() {
       setIsLoadingConfig(true);
       try {
         const response = await fetch('/api/quickTask/getConfig');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data: GetConfigResponse = await response.json();
         
-        if (data.success && data.data) {
+        console.log('获取配置成功:', data);
+        
+        if (data.success && data.data && data.data.config_info) {
           setConfig({
-            name: data.data?.config_info?.name || '',
-            douyin_id: data.data?.config_info?.douyin_id || ''
+            name: data.data.config_info.name || '',
+            douyin_id: data.data.config_info.douyin_id || ''
           });
-          
-          // 将抖音ID自动填充到第二条中评评论里
-          setFormData((prev: QuickTaskFormData) => ({
-            ...prev,
-            middleComments: prev.middleComments.map((comment, index) => 
-              index === 1 ? { ...comment, comment: `@${data.data?.config_info?.douyin_id || '无抖音ID'}` } : comment
-            )
-          }));
+        } else {
+          console.error('获取配置失败: 数据格式不正确', data);
         }
       } catch (error) {
         console.error('获取配置失败:', error);
@@ -215,6 +223,15 @@ export default function PublishTaskPage() {
 
     fetchConfig();
   }, []);
+
+  // 当开始编辑时，将当前配置复制到编辑状态
+  useEffect(() => {
+    if (isEditingConfig) {
+      setEditConfig({
+        ...config
+      });
+    }
+  }, [isEditingConfig, config]);
 
   // 加载行业选项
   useEffect(() => {
@@ -234,32 +251,70 @@ export default function PublishTaskPage() {
     loadIndustries();
   }, []);
 
-  const [alertConfig, setAlertConfig] = useState<AlertConfig>({
-    title: '',
+  const [alertConfig, setAlertConfig] = useState({
     message: '',
-    icon: '',
     buttonText: '确认',
-    onButtonClick: () => { }
+    redirectUrl: ''
   });
 
   // 任务帮助模态框状态
   const [showTaskAssistance, setShowTaskAssistance] = useState(false);
   // 显示通用提示框
   const showAlert = (
-    title: string,
     message: string,
-    icon: string,
     buttonText?: string,
-    onButtonClick?: () => void
+    redirectUrl?: string
   ) => {
     setAlertConfig({
-      title,
       message,
-      icon,
       buttonText: buttonText || '确认',
-      onButtonClick: onButtonClick || (() => { })
+      redirectUrl: redirectUrl || ''
     });
     setShowAlertModal(true);
+  };
+
+  // 保存配置
+  const handleSaveConfig = async () => {
+    console.log('=== 开始保存配置 ===');
+    console.log('保存的配置数据:', editConfig);
+    setIsSavingConfig(true);
+    try {
+      // 构建正确格式的请求数据
+      const requestData = {
+        config_info: editConfig
+      };
+      console.log('发送的请求数据:', requestData);
+      console.log('发送API请求到: /api/quickTask/updateConfig');
+      const response = await fetch('/api/quickTask/updateConfig', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      console.log('API响应状态:', response.status);
+      console.log('API响应状态文本:', response.statusText);
+      
+      const data = await response.json();
+      console.log('API响应数据:', data);
+      
+      if (data.success) {
+        console.log('配置保存成功，更新本地状态');
+        setConfig(editConfig);
+        setIsEditingConfig(false);
+        showAlert('配置已更新', '确认', '');
+      } else {
+        console.error('配置保存失败:', data.message || '更新配置失败');
+        showAlert(data.message || '更新配置失败', '确认', '');
+      }
+    } catch (error) {
+      console.error('保存配置失败:', error);
+      showAlert('网络错误，请稍后重试', '确认', '');
+    } finally {
+      console.log('=== 保存配置流程结束 ===');
+      setIsSavingConfig(false);
+    }
   };
 
 
@@ -311,7 +366,7 @@ export default function PublishTaskPage() {
       
     } else {
       console.log('评论生成失败，停止发布任务');
-      showAlert('评论生成失败', 'AI生成评论失败，请稍后重试', '⚠️');
+      showAlert('AI生成评论失败，请稍后重试', '确认', '');
       setIsPublishing(false);
     }
   };
@@ -323,13 +378,13 @@ export default function PublishTaskPage() {
     // 表单验证 - 视频链接验证
     if (formData.videoUrls.length === 0) {
       console.log('验证失败：视频链接数量为0');
-      showAlert('输入错误', '请输入有效的视频链接', '⚠️');
+      showAlert('请输入有效的视频链接', '确认', '');
       return;
     }
 
     if (formData.videoUrls.length > 10) {
       console.log('验证失败：视频链接数量超过10个');
-      showAlert('输入错误', '视频链接数量不能超过10个', '⚠️');
+      showAlert('视频链接数量不能超过10个', '确认', '');
       return;
     }
 
@@ -351,49 +406,49 @@ export default function PublishTaskPage() {
       const releasesNumber = formData.videoUrls.length;
 
       // 验证评论内容
-      if (!comments[0] || comments[0].trim() === '') {
-        console.log('验证失败：上评评论为空');
-        showAlert('输入错误', '上评评论不能为空', '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    if (!comments[0] || comments[0].trim() === '') {
+      console.log('验证失败：上评评论为空');
+      showAlert('上评评论不能为空', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
-      // 验证上评评论必须包含固定名称
-      if (config.name && !comments[0].includes(config.name)) {
-        console.log('验证失败：上评评论必须包含固定名称');
-        showAlert('输入错误', `上评评论必须包含固定名称 "${config.name}"`, '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    // 验证上评评论必须包含固定名称
+    if (config.name && !comments[0].includes(config.name)) {
+      console.log('验证失败：上评评论必须包含固定名称');
+      showAlert(`上评评论必须包含固定名称 "${config.name}"`, '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
-      if (comments.length < 2) {
-        console.log('验证失败：中评评论数量不足');
-        showAlert('输入错误', '中评评论数量不足', '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    if (comments.length < 2) {
+      console.log('验证失败：中评评论数量不足');
+      showAlert('中评评论数量不足', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
-      if (!comments[1] || comments[1].trim() === '') {
-        console.log('验证失败：第一条中评评论为空');
-        showAlert('输入错误', '第一条中评评论不能为空', '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    if (!comments[1] || comments[1].trim() === '') {
+      console.log('验证失败：第一条中评评论为空');
+      showAlert('第一条中评评论不能为空', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
-      if (!comments[2] || comments[2].trim() === '') {
-        console.log('验证失败：第二条中评评论为空');
-        showAlert('输入错误', '第二条中评评论不能为空', '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    if (!comments[2] || comments[2].trim() === '') {
+      console.log('验证失败：第二条中评评论为空');
+      showAlert('第二条中评评论不能为空', '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
-      // 验证第二条中评评论必须包含@抖音ID
-      if (config.douyin_id && !comments[2].includes(`@${config.douyin_id}`)) {
-        console.log('验证失败：第二条中评评论必须包含@抖音ID');
-        showAlert('输入错误', `第二条中评评论必须包含 "@${config.douyin_id}"`, '⚠️');
-        setIsPublishing(false);
-        return;
-      }
+    // 验证第二条中评评论必须包含@抖音ID
+    if (config.douyin_id && !comments[2].includes(`@${config.douyin_id}`)) {
+      console.log('验证失败：第二条中评评论必须包含@抖音ID');
+      showAlert(`第二条中评评论必须包含 "@${config.douyin_id}"`, '确认', '');
+      setIsPublishing(false);
+      return;
+    }
 
       console.log('验证通过，开始构建请求数据');
 
@@ -473,37 +528,66 @@ export default function PublishTaskPage() {
         // 发布成功
         console.log('任务发布成功');
         showAlert(
-          '发布成功',
           result.message || '任务发布成功！',
-          '✅',
           '确定',
-          () => {
-            // 在用户点击确认按钮后跳转
-            console.log('跳转到抖音任务创建页面');
-            router.push('/publisher/create/douyin');
-          }
+          '/publisher/create/douyin'
         );
       } else {
         // 发布失败
         console.log('任务发布失败:', result.message);
-        if (result.message?.includes('余额不足')) {
-          // 特定处理余额不足的情况
-          showAlert('账户余额不足', '您的账户余额不足以支付任务费用，请先充值后再尝试发布任务。', '⚠️', '前往充值', () => {
-            console.log('跳转到充值页面');
-            router.push('/publisher/finance');
-          });
+         if (result.code === 4019) {
+          showAlert('账户余额不足，请充值后再发布任务。','前往充值', '/publisher/recharge');
+        } else if (result.code === 4001) {
+          showAlert('发布任务失败', '确定', '');
+        } else if (result.code === 4002) {
+          showAlert('任务模板 ID 不能为空', '确定', '');
+        } else if (result.code === 4003) {
+          showAlert('视频链接不能为空', '确定', '');
+        } else if (result.code === 4004) {
+          showAlert('视频链接数量必须与发布次数一致', '确定', '');
+        } else if (result.code === 4005) {
+          showAlert('到期时间不能为空', '确定', '');
+        } else if (result.code === 4006) {
+          showAlert('到期时间不能早于当前时间', '确定', '');
+        } else if (result.code === 4007) {
+          showAlert('发布次数必须大于 0', '确定', '');
+        } else if (result.code === 4008) {
+          showAlert('发布次数不能超过 100', '确定', '');
+        } else if (result.code === 4009) {
+          showAlert('任务不存在', '确定', '');
+        } else if (result.code === 4010) {
+          showAlert('任务已禁用', '确定', '');
+        } else if (result.code === 4011) {
+          showAlert('发布任务失败', '确定', '');
+        } else if (result.code === 4012) {
+          showAlert('只能发布一个评论', '确定', '');
+        } else if (result.code === 4013) {
+          showAlert('任务数量必须大于 0', '确定', '');
+        } else if (result.code === 4014) {
+          showAlert('评论不能为空', '确定', '');
+        } else if (result.code === 4015) {
+          showAlert('评论数量必须与发布次数一致', '确定', '');
+        } else if (result.code === 4016) {
+          showAlert('总价计算错误', '确定', '');
+        } else if (result.code === 4017) {
+          showAlert('用户信息异常', '确定', '');
+        } else if (result.code === 4018) {
+          showAlert('余额不足', '确定', '');
+        } else if (result.code === 5001) {
+          showAlert('网络超时，请重试', '确定', '');
+        } else if (result.code === 5002) {
+          showAlert('任务发布失败', '确定', '');
         } else {
-          // 显示错误信息
-          showAlert('发布失败', result.message || '任务发布失败', '❌');
-        }
+          showAlert( '任务发布失败','确认','');
+        }        
       }
     } catch (error) {
       console.error('发布任务时发生错误:', error);
       // 分析错误类型给出更具体的提示
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        showAlert('网络错误', '无法连接到服务器，请检查网络连接后重试', '⚠️');
+        showAlert('网络超时，请重试', '确认', '');
       } else {
-        showAlert('发布错误', '发布任务时发生错误，请稍后重试', '⚠️');
+        showAlert('发布任务失败，请稍后重试', '确认', '');
       }
     } finally {
       console.log('发布任务流程结束');
@@ -523,7 +607,7 @@ export default function PublishTaskPage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-3 space-y-2">
         <h1 className="text-2xl font-bold pl-5">
-          上中评快捷派单
+          上中评快捷派单<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
         </h1>
 
         <div className="ml-5">
@@ -544,14 +628,61 @@ export default function PublishTaskPage() {
         {/* 固定昵称显示 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            固定名称
+            固定名称 & 抖音ID
           </label>
-          <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
-            {isLoadingConfig ? (
-              <span className="text-gray-500">加载中...</span>
-            ) : (
-              <span>{config.name || '未设置'}</span>
-            )}
+          <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div>
+              <div className="flex flex-col space-y-2 md:flex md:flex-row md:items-center md:space-x-4">
+                <div className="w-full md:w-auto">
+                  <div className="flex flex-col md:flex md:items-center">
+                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">名称:</span>
+                    {isEditingConfig ? (
+                      <input
+                        type="text"
+                        value={editConfig.name}
+                        onChange={(e) => setEditConfig({...editConfig, name: e.target.value})}
+                        className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-0 md:ml-2">{config.name || '未设置'}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="w-full md:w-auto">
+                  <div className="flex flex-col md:flex md:items-center">
+                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">抖音ID:</span>
+                    {isEditingConfig ? (
+                      <input
+                        type="text"
+                        value={editConfig.douyin_id}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value})}
+                        className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              {isEditingConfig ? (
+                <Button
+                  onClick={handleSaveConfig}
+                  disabled={isSavingConfig}
+                  className="bg-blue-500 text-white hover:bg-blue-600"
+                >
+                  {isSavingConfig ? '保存中...' : '保存'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setIsEditingConfig(true)}
+                  className="bg-gray-500 text-white hover:bg-gray-600"
+                >
+                  设置
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -559,28 +690,63 @@ export default function PublishTaskPage() {
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
             <span>视频链接 <span className="text-red-500">*</span></span>
-            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
+            
           </label>
           <div className="space-y-4">
             {/* 5个视频链接输入表单 */}
             {formData.videoUrlInputs.map((input, index) => {
               // 验证视频链接
               const validateVideoUrl = (url: string) => {
-                return url.length > 35 && (url.includes('复制') || url.includes('打开抖音'));
+                return url.length > 35 && (
+                  url.includes('复制打开抖音') || 
+                  url.includes('复制此链接，打开Dou音搜索') || 
+                  url.includes('douyin.com')
+                );
               };
               
               const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 const newUrl = e.target.value;
                 const newInputs = [...formData.videoUrlInputs];
+                
+                // 更新当前输入框的URL
                 newInputs[index] = {
                   url: newUrl,
-                  isValid: validateVideoUrl(newUrl)
+                  isValid: validateVideoUrl(newUrl),
+                  isDuplicate: false
                 };
+                
+                // 重新验证所有输入框
+                newInputs.forEach((input, i) => {
+                  newInputs[i].isValid = validateVideoUrl(input.url);
+                });
+                
+                // 检测重复链接
+                const validUrls = newInputs.filter(input => input.isValid).map(input => input.url);
+                const urlCount: Record<string, number> = {};
+                
+                // 统计每个链接出现的次数
+                validUrls.forEach(url => {
+                  urlCount[url] = (urlCount[url] || 0) + 1;
+                });
+                
+                // 标记重复链接
+                newInputs.forEach((input, i) => {
+                  if (input.isValid && urlCount[input.url] > 1) {
+                    newInputs[i].isDuplicate = true;
+                  } else {
+                    newInputs[i].isDuplicate = false;
+                  }
+                });
+                
+                // 过滤掉重复的链接，只保留第一个
+                const deduplicatedUrls = validUrls.filter((url, idx) => validUrls.indexOf(url) === idx);
+                const duplicateCount = validUrls.length - deduplicatedUrls.length;
+                
                 setFormData(prev => ({
                   ...prev,
                   videoUrlInputs: newInputs,
-                  // 更新有效的视频链接数组
-                  videoUrls: newInputs.filter(input => input.isValid).map(input => input.url)
+                  videoUrls: deduplicatedUrls,
+                  duplicateWarning: duplicateCount > 0 ? `已检测到${duplicateCount}条重复链接，只保留第一条` : ''
                 }));
               };
               
@@ -588,8 +754,8 @@ export default function PublishTaskPage() {
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">                
                     {input.url && (
-                      <span className={`text-xs ${input.isValid ? 'text-green-500' : 'text-red-500'}`}>
-                        {input.isValid ? '✓ 有效' : '✗ 无效'}
+                      <span className={`text-xs ${input.isDuplicate ? 'text-red-500' : input.isValid ? 'text-green-500' : 'text-red-500'}`}>
+                        {input.isDuplicate ? '✗ 重复' : input.isValid ? '✓ 有效' : '✗ 无效'}
                       </span>
                     )}
                   </div>
@@ -602,7 +768,7 @@ export default function PublishTaskPage() {
                   />
                   {input.url && !input.isValid && (
                     <p className="text-sm text-red-500">
-                      {input.url.length <= 35 ? '视频链接长度必须大于35个字符' : '视频链接必须包含"复制"或"打开抖音"'}
+                      {input.url.length <= 35 ? '错误的口令，请提交你做单的评论口令' : '错误的口令，请提交你做单的评论口令'}
                     </p>
                   )}
                 </div>
@@ -614,8 +780,13 @@ export default function PublishTaskPage() {
               <p className="text-sm text-gray-700">
                 有效视频链接数量：<span className="font-medium">{formData.videoUrls.length}</span>
               </p>
+              {formData.duplicateWarning && (
+                <p className="text-xs text-red-500 mt-1">
+                  {formData.duplicateWarning}
+                </p>
+              )}
               <p className="text-xs text-gray-500 mt-1">
-                提示：只有有效的视频链接会被计入任务发布次数
+                提示：只有有效的视频链接会被计入任务发布次数，重复链接只保留第一条
               </p>
             </div>
           </div>
@@ -634,122 +805,6 @@ export default function PublishTaskPage() {
           </div>
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
-
-        {/* 上评评论模块 - 固定为1条 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          {/* 上评评论输入框 - 固定一条 */}
-          <div className="mb-1 py-2 border-b border-gray-900">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              上评评论
-            </label>
-            <div className="flex space-x-3">
-              <textarea
-                className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder="请输入上评评论内容"
-                value={formData.topComment.comment}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setFormData({ ...formData, topComment: { ...formData.topComment, comment: newValue } });
-                }}
-                style={{ height: '80px' }}
-              />
-
-              {/* 图片上传区域 */}
-              <div>
-                <ImageUpload
-                  maxCount={1}
-                  columns={1}
-                  gridWidth="80px"
-                  itemSize="80x80"
-                  title=""
-                  onImagesChange={(images: File[], urls: string[]) => {
-                    setFormData((prev: QuickTaskFormData) => ({
-                      ...prev,
-                      topComment: {
-                        ...prev.topComment,
-                        imageUrl: urls[0] || ''
-                      }
-                    }));
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 中评评论模块 - 固定为2条 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm overflow-y-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            中评评论（固定2条）
-          </label>
-          
-
-
-          <div className="mt-2 text-sm text-gray-500">
-            上评任务固定1条，中评任务固定2条，中评任务单价为¥{(stage2Price || 0).toFixed(1)}
-          </div>
-
-          {/* 中评评论输入框 - 固定2条 */}
-          {formData.middleComments.map((comment: CommentData, index: number) => {
-            return (
-              <div key={index} className="mb-1 py-2 border-b border-gray-900">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  中评评论{index + 1} {index === 1 && <span className="text-red-500">(自动添加抖音ID:{config.douyin_id})</span>}
-                </label>
-                <div className="flex space-x-3">
-                  <textarea
-                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
-                    placeholder={index === 0 ? "请输入第一条中评评论内容" : "第二条中评评论会自动添加@抖音ID"}
-                    value={comment.comment}
-                    onChange={(e) => {
-                      const newComments = [...formData.middleComments];
-                      newComments[index] = { ...newComments[index], comment: e.target.value };
-                      setFormData({ ...formData, middleComments: newComments });
-                    }}
-                    style={{ height: '80px' }}
-                  />
-
-                  {/* 图片上传区域 */}
-                  <div>
-                    <ImageUpload
-                      maxCount={1}
-                      columns={1}
-                      gridWidth="80px"
-                      itemSize="80x80"
-                      title=""
-                      onImagesChange={(images: File[], urls: string[]) => {
-                        const newComments = [...formData.middleComments];
-                        newComments[index] = { ...newComments[index], imageUrl: urls[0] || '' };
-                        setFormData({ ...formData, middleComments: newComments });
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-    
-
         {/* 费用预览 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <div className="flex justify-between">
@@ -766,7 +821,7 @@ export default function PublishTaskPage() {
           disabled={formData.videoUrls.length === 0}
           className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg disabled:opacity-50"
         >
-          生成评论并发布 - ¥{totalCost}
+          发布任务 - ¥{totalCost}
         </Button>
         <Button
           onClick={() => router.back()}
@@ -778,15 +833,12 @@ export default function PublishTaskPage() {
       </div>
 
       {/* 通用提示框组件 */}
-      <AlertModal
+      <GlobalWarningModal
         isOpen={showAlertModal}
-        title={alertConfig.title}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
-        onButtonClick={() => {
-          alertConfig.onButtonClick();
-          setShowAlertModal(false);
-        }}
+        redirectUrl={alertConfig.redirectUrl}
+        iconType="success"
         onClose={() => setShowAlertModal(false)}
       />
 

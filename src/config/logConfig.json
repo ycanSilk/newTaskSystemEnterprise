@@ -1,0 +1,15 @@
+{
+  "system": "windows",
+  "timezone": "Asia/Shanghai",
+  "logRootDirs": {
+    "windows": "D:\\github\\newTaskSystemEnterprise\\src\\logs",
+    "linux": "/www/wwwroot/logs"
+  },
+  "auditRootDirs": {
+    "windows": "D:\\github\\newTaskSystemEnterprise\\src\\audit",
+    "linux": "/www/wwwroot/audit"
+  },
+  "auditLogFile": "audit.log",
+  "apiLogFile": "api.log",
+  "jsLogFile": "js.log"
+}

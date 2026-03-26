@@ -18,7 +18,7 @@ const TransactionListPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const itemsPerPage = 100;
+  const itemsPerPage = 20;
 
   // 从created_at中提取日期和时间
   const extractDateTime = (createTime: string) => {
@@ -70,8 +70,17 @@ const TransactionListPage = () => {
       setLoading(true);
       setError(null);
       
-      // 调用后端API获取交易记录，只传递page参数
-      const response = await fetch(`/api/paymentWallet/getWalletBalance?page=${currentPage}&page_size=${itemsPerPage}`, {
+      // 构建API请求参数
+      let apiUrl = `/api/paymentWallet/getWalletBalance?page=${currentPage}&page_size=${itemsPerPage}`;
+      // 根据当前标签页添加type参数
+      if (activeTab === 'recharge') {
+        apiUrl += '&type=1'; // 收入
+      } else if (activeTab === 'withdraw') {
+        apiUrl += '&type=2'; // 支出
+      }
+      
+      // 调用后端API获取交易记录，传递分页参数和type参数
+      const response = await fetch(apiUrl, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -95,12 +104,6 @@ const TransactionListPage = () => {
         console.log('30天前日期:', thirtyDaysAgo);
         
         const sortedTransactions = data.data.transactions
-          // 只保留最近30天的记录
-          .filter(transaction => {
-            const transactionDate = new Date(transaction.created_at);
-            console.log('交易记录日期:', transaction.created_at, '是否有效:', !isNaN(transactionDate.getTime()), '是否在30天以内:', transactionDate >= thirtyDaysAgo);
-            return transactionDate >= thirtyDaysAgo;
-          })
           // 按创建时间倒序排序
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         
@@ -219,47 +222,21 @@ const TransactionListPage = () => {
                   <div>
                     {/* 1. 首先根据type字段过滤交易记录 */}
                     {(() => {
-                      // 过滤交易记录
-                      console.log('原始交易记录:', transactions);
-                      console.log('当前activeTab:', activeTab);
-                      const filteredTransactions = transactions.filter(transaction => {
-                        // 过滤掉related_type为rental_order_pending的记录
-                        if (transaction.related_type === 'rental_order_pending') {
-                          console.log('过滤掉rental_order_pending记录:', transaction);
-                          return false;
-                        }
-                        // 根据当前activeTab和type字段进行过滤
-                        if (activeTab === 'recharge') {
-                          // 收入明细：只显示type=1的记录
-                          const result = transaction.type === 1;
-                          if (!result) console.log('过滤掉非收入记录:', transaction);
-                          return result;
-                        } else if (activeTab === 'withdraw') {
-                          // 支出明细：只显示type=2的记录
-                          const result = transaction.type === 2;
-                          if (!result) console.log('过滤掉非支出记录:', transaction);
-                          return result;
-                        }
-                        // 全部明细：显示所有记录
-                        return true;
-                      });
-                      console.log('过滤后的交易记录:', filteredTransactions);
-
-                      // 2. 分页处理 - API已经返回了分页数据，直接使用
-                      console.log('前端过滤后的交易记录长度:', filteredTransactions.length);
+                      // 直接使用API返回的交易记录（后端已过滤和分页）
+                      console.log('API返回的交易记录:', transactions);
                       console.log('当前页码:', currentPage);
                       console.log('每页大小:', itemsPerPage);
                       
                       // API已经返回了分页数据，不需要再进行分页
-                      const paginatedTransactions = filteredTransactions;
-                      const totalFiltered = filteredTransactions.length;
+                      const paginatedTransactions = transactions;
+                      const totalFiltered = transactions.length;
 
                       return (
                         <>
                           {/* 显示交易记录总数信息 */}
                           <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
                             <div className="text-xs ">
-                              共显示 {paginatedTransactions.length} 条记录
+                              共 {totalRecords} 条记录，当前显示第 {currentPage} 页
                             </div>
                           </div>
 
@@ -267,7 +244,7 @@ const TransactionListPage = () => {
                           {paginatedTransactions.map((transaction) => {
                             const iconInfo = getTransactionIcon();
                             // 根据type字段判断交易类型
-                            const isIncome = transaction.type === 1;
+                            const isIncome = Number(transaction.type) === 1;
                             const { date, time } = extractDateTime(transaction.created_at);
 
                             return (
@@ -308,89 +285,29 @@ const TransactionListPage = () => {
                 )}
                 
                 {/* 3. 分页控件 - 始终显示 */}
-                <div className="px-4 py-3 border-t border-gray-100 flex flex-col items-center space-y-3">
-                  {/* 分页控制 */}
-                  <div className="flex items-center space-x-1">
-                    {/* 上一页按钮 */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      上一页
-                    </button>
-                    
-                    {/* 页码导航 */}
-                    <div className="flex items-center space-x-1">
-                      {/* 第一页 */}
-                      {currentPage > 3 && (
-                        <button
-                          onClick={() => setCurrentPage(1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          1
-                        </button>
-                      )}
-                      
-                      {/* 省略号 */}
-                      {currentPage > 4 && (
-                        <span className="px-3 py-1 text-gray-400">...</span>
-                      )}
-                      
-                      {/* 前一页 */}
-                      {currentPage > 1 && (
-                        <button
-                          onClick={() => setCurrentPage(prev => prev - 1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {currentPage - 1}
-                        </button>
-                      )}
-                      
-                      {/* 当前页 */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8">
+                    <nav className="flex items-center space-x-4">
                       <button
-                        className="px-3 py-1 bg-blue-100 border border-blue-300 rounded text-sm font-medium text-blue-600"
-                        disabled
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                       >
-                        {currentPage}
+                        上一页
                       </button>
-                      
-                      {/* 后一页 */}
-                      {currentPage < totalPages && (
-                        <button
-                          onClick={() => setCurrentPage(prev => prev + 1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {currentPage + 1}
-                        </button>
-                      )}
-                      
-                      {/* 省略号 */}
-                      {currentPage < totalPages - 3 && (
-                        <span className="px-3 py-1 text-gray-400">...</span>
-                      )}
-                      
-                      {/* 最后一页 */}
-                      {currentPage < totalPages - 2 && (
-                        <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {totalPages}
-                        </button>
-                      )}
-                    </div>
-                    
-                    {/* 下一页按钮 */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      下一页
-                    </button>
+                      <span className="px-4 py-2 text-gray-700 font-medium">
+                        第 {currentPage} / {totalPages} 页
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                      >
+                        下一页
+                      </button>
+                    </nav>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

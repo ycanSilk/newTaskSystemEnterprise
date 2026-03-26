@@ -7,6 +7,8 @@ import { LoadingOutlined } from '@ant-design/icons';
 import ImageUpload from '../../../components/imagesUpload/ImageUpload';
 import { RechargeWalletRequest } from '../../types/paymentWallet/rechargeWalletTypes';
 import { GetWalletBalanceResponseData, GetWalletBalanceResponse, WalletInfo, Transaction } from '@/app/types/paymentWallet/getWalletBalanceTypes';
+import { GetRechargeListResponse, RechargeRecord } from '@/api/types/recharge/getRechargeListTypes';
+import { ApiResponse } from '@/api/types/common';
 
 
 
@@ -34,7 +36,7 @@ export default function PublisherFinancePage() {
   const [alertCallback, setAlertCallback] = useState<(() => void) | null>(null);
   
   // 充值记录相关状态
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<RechargeRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,7 +84,7 @@ export default function PublisherFinancePage() {
   };
 
   // 处理查看交易详情
-  const handleViewTransaction = (transaction: Transaction) => {
+  const handleViewTransaction = (transaction: RechargeRecord) => {
     // 将交易记录转换为URL编码的JSON字符串，作为查询参数传递
     const transactionParams = encodeURIComponent(JSON.stringify(transaction));
     router.push(`/publisher/balance/transactionDetails/${transaction.id}?data=${transactionParams}` as any);
@@ -94,8 +96,8 @@ export default function PublisherFinancePage() {
       setRecordsLoading(true);
       setRecordsError(null);
       
-      // 调用后端API获取交易记录，只传递page参数
-      const response = await fetch(`/api/paymentWallet/getWalletBalance?page=${currentPage}`, {
+      // 调用后端API获取充值记录，传递page和page_size参数
+      const response = await fetch(`/api/recharge/rechargeList?page=${currentPage}&page_size=20`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -107,22 +109,13 @@ export default function PublisherFinancePage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: GetWalletBalanceResponse = await response.json();
-      if (!data.success || !data.data) {
-        throw new Error(data.message || '获取交易记录失败');
+      const data: ApiResponse<GetRechargeListResponse> = await response.json();
+      if (data.code !== 0 || !data.data) {
+        throw new Error(data.message || '获取充值记录失败');
       }
       
-      // 计算7天前的日期
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
-      
-      // 按创建时间倒序排序，只保留7天以内且related_type为recharge的记录
-      const sortedTransactions = data.data.transactions
-        // 只保留最近7天的记录
-        .filter(transaction => {
-          const transactionDate = new Date(transaction.created_at);
-          return transactionDate >= sevenDaysAgo && transaction.related_type === 'recharge';
-        })
+      // 按创建时间倒序排序
+      const sortedTransactions = data.data.records
         // 按创建时间倒序排序
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
@@ -134,8 +127,8 @@ export default function PublisherFinancePage() {
         setTotalPages(data.data.pagination.total_pages || 1);
       }
     } catch (err) {
-      setRecordsError(err instanceof Error ? err.message : '获取交易记录失败');
-      console.error('获取交易记录失败:', err);
+      setRecordsError(err instanceof Error ? err.message : '获取充值记录失败');
+      console.error('获取充值记录失败:', err);
     } finally {
       setRecordsLoading(false);
     }
@@ -542,7 +535,7 @@ export default function PublisherFinancePage() {
                     {/* 显示交易记录总数信息 */}
                     <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
                       <div className="text-xs ">
-                        共显示 {transactions.length} 条记录
+                        共 {totalRecords} 条记录，当前显示第 {currentPage} 页
                       </div>
                     </div>
 
@@ -588,89 +581,29 @@ export default function PublisherFinancePage() {
                 )}
                 
                 {/* 分页控件 - 始终显示 */}
-                <div className="px-4 py-3 border-t border-gray-100 flex flex-col items-center space-y-3">
-                  {/* 分页控制 */}
-                  <div className="flex items-center space-x-1">
-                    {/* 上一页按钮 */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      上一页
-                    </button>
-                    
-                    {/* 页码导航 */}
-                    <div className="flex items-center space-x-1">
-                      {/* 第一页 */}
-                      {currentPage > 3 && (
-                        <button
-                          onClick={() => setCurrentPage(1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          1
-                        </button>
-                      )}
-                      
-                      {/* 省略号 */}
-                      {currentPage > 4 && (
-                        <span className="px-3 py-1 text-gray-400">...</span>
-                      )}
-                      
-                      {/* 前一页 */}
-                      {currentPage > 1 && (
-                        <button
-                          onClick={() => setCurrentPage(prev => prev - 1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {currentPage - 1}
-                        </button>
-                      )}
-                      
-                      {/* 当前页 */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8">
+                    <nav className="flex items-center space-x-4">
                       <button
-                        className="px-3 py-1 bg-blue-100 border border-blue-300 rounded text-sm font-medium text-blue-600"
-                        disabled
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                       >
-                        {currentPage}
+                        上一页
                       </button>
-                      
-                      {/* 后一页 */}
-                      {currentPage < totalPages && (
-                        <button
-                          onClick={() => setCurrentPage(prev => prev + 1)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {currentPage + 1}
-                        </button>
-                      )}
-                      
-                      {/* 省略号 */}
-                      {currentPage < totalPages - 3 && (
-                        <span className="px-3 py-1 text-gray-400">...</span>
-                      )}
-                      
-                      {/* 最后一页 */}
-                      {currentPage < totalPages - 2 && (
-                        <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                        >
-                          {totalPages}
-                        </button>
-                      )}
-                    </div>
-                    
-                    {/* 下一页按钮 */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      下一页
-                    </button>
+                      <span className="px-4 py-2 text-gray-700 font-medium">
+                        第 {currentPage} / {totalPages} 页
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                      >
+                        下一页
+                      </button>
+                    </nav>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

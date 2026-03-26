@@ -8,13 +8,66 @@ import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/taskAssistance';
 import AiCommentGenerator from '@/components/aiCommentBtn/AiCommentGenerator';
 
-import {
-  PublishTaskFormData,
-  PublishSingleTaskRequest,
-  PublishSingleTaskResponse
-} from '@/app/types/task/publishSingleTaskTypes';
+// 类型定义
+interface RecommendMark {
+  comment: string;
+  image_url: string;
+  at_user: string;
+}
 
-export default function PublishTaskPage() {
+interface PublishTaskFormData {
+  videoUrl: string;
+  quantity: number;
+  comments: Array<{
+    content: string;
+    image: File | null;
+    imageUrl: string;
+  }>;
+  deadline: string;
+}
+
+interface NewBbieTaskRequest {
+  template_id: number;
+  video_url: string;
+  deadline: number;
+  task_count: number;
+  total_price: number;
+  is_newbie: number;
+  recommend_marks: RecommendMark[];
+}
+
+interface WalletInfo {
+  before_balance: string;
+  after_balance: string;
+  deducted: string;
+}
+
+interface NewBbieTaskResponseData {
+  task_id: number;
+  is_combo: boolean;
+  template_id: number;
+  template_title: string;
+  video_url: string;
+  deadline: number;
+  task_count: number;
+  task_done: number;
+  task_doing: number;
+  task_reviewing: number;
+  unit_price: number;
+  total_price: number;
+  recommend_marks: RecommendMark[];
+  status: number;
+  wallet: WalletInfo;
+}
+
+interface NewBbieTaskResponse {
+  code: number;
+  message: string;
+  data: NewBbieTaskResponseData;
+  timestamp: number;
+}
+
+export default function NewbieTaskPage() {
 
     // 状态管理 - 只保留必要的UI状态
   const [showModal, setShowModal] = useState(false); // 控制模态框显示
@@ -103,8 +156,6 @@ export default function PublishTaskPage() {
     redirectUrl: ''
   });
 
-
-
   // 验证视频链接
   const validateVideoUrl = (url: string) => {
     return url.length > 35 && (
@@ -113,8 +164,6 @@ export default function PublishTaskPage() {
       url.includes('douyin.com')
     );
   };
-
-
 
   // 显示通用提示框
   const showAlert = (
@@ -260,37 +309,35 @@ export default function PublishTaskPage() {
     if (isPublishing) {
       return;
     }
-
-
     
     // 1. 验证视频链接
     if (!formData.videoUrl.trim()) {
-      showAlert('请输入抖音视频链接', '确认', '');
+      showAlert('请输入抖音视频链接');
       return;
     }
 
     // 2. 验证视频链接格式
     if (!validateVideoUrl(formData.videoUrl)) {
-      showAlert('请输入有效的视频链接', '确认', '');
+      showAlert('请输入有效的视频链接');
       return;
     }
     
     // 2. 验证截止时间
     if (!formData.deadline) {
-      showAlert('请选择任务截止时间', '确认', '');
+      showAlert('请选择任务截止时间');
       return;
     }
     
     // 3. 验证评论内容
     const validComments = formData.comments.filter(comment => comment.content.trim() !== '');
     if (validComments.length === 0) {
-      showAlert('请输入评论内容', '确认', '');
+      showAlert('请输入评论内容');
       return;
     }
     
     // 4. 验证任务数量
     if (!formData.quantity || formData.quantity < 1) {
-      showAlert('请设置有效的任务数量', '确认', '');
+      showAlert('请设置有效的任务数量');
       return;
     }
     
@@ -310,7 +357,7 @@ export default function PublishTaskPage() {
       if (foundShieldWords.length > 0) {
         // 去重并显示屏蔽词
         const uniqueShieldWords = foundShieldWords.filter((word, index, self) => self.indexOf(word) === index);
-        showAlert(`评论中包含敏感词: ${uniqueShieldWords.join('、')}，请重新输入评论`, '确认', '');
+        showAlert(`评论中包含敏感词: ${uniqueShieldWords.join('、')}，请重新输入评论`);
         return;
       }
       
@@ -325,12 +372,13 @@ export default function PublishTaskPage() {
       const deadline = currentTime + parseInt(formData.deadline) * 60;
       
       // 构建请求体
-      const requestBody: PublishSingleTaskRequest = {
+      const requestBody: NewBbieTaskRequest = {
         template_id: templateId,
         video_url: formData.videoUrl.trim(),
         deadline,
         task_count: formData.quantity,
         total_price: totalPrice,
+        is_newbie:1,
         recommend_marks: formData.comments.map(comment => ({
           comment: comment.content.trim(),
           image_url: comment.imageUrl,
@@ -339,7 +387,7 @@ export default function PublishTaskPage() {
       };
 
       // 调用API
-      const apiUrl = '/api/task/publishSingleTask';
+      const apiUrl = '/api/task/newbieTask';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -349,42 +397,57 @@ export default function PublishTaskPage() {
         body: JSON.stringify(requestBody),
       });
       
-      const result: PublishSingleTaskResponse = await response.json();
+      const result: NewBbieTaskResponse = await response.json();
       
+      // 处理响应
       if (result.code === 0) {
-        // 发布成功 - 统一跳转到 /publisher/create/douyin
+        // 成功处理
         showAlert(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
+      } else if (result.code === 4016) {
+        // 余额不足
+        showAlert('账户余额不足，请先充值', '前往充值', '/publisher/recharge');
       } else if (result.code === 4001) {
-        showAlert('发布失败', '确定', '');
+        showAlert('请求体不能为空', '确定', '');
       } else if (result.code === 4002) {
-        showAlert('发布失败', '确定', '');
+        showAlert('任务模板 ID 不能为空', '确定', '');
       } else if (result.code === 4003) {
         showAlert('视频链接不能为空', '确定', '');
-      } else if(result.code === 4004){
-        showAlert('截止时间不能为空', '确定', '');
-      } else if(result.code === 4005){
+      } else if (result.code === 4004) {
+        showAlert('到期时间不能为空', '确定', '');
+      } else if (result.code === 4005) {
         showAlert('到期时间不能早于当前时间', '确定', '');
-      } else if(result.code === 4006){
-        showAlert('发布失败', '确定', '');
-      } else if(result.code === 4007){
-        showAlert('发布失败', '确定', '');
-      } else if(result.code === 4008){
+      } else if (result.code === 4006) {
+        showAlert('任务模板不存在', '确定', '');
+      } else if (result.code === 4007) {
+        showAlert('任务模板已禁用', '确定', '');
+      } else if (result.code === 4008) {
         showAlert('任务数量必须大于 0', '确定', '');
-      } else if(result.code === 4009){
-        showAlert('截止时间不能为空', '确定', '');
-      } else if(result.code === 4016){
-        showAlert('余额不足', '确定', '/publisher/recharge');
-      } else if(result.code === 5002){
+      } else if (result.code === 4009) {
+        showAlert('推荐评论格式错误', '确定', '');
+      } else if (result.code === 4010) {
+        showAlert('推荐评论数量不匹配', '确定', '');
+      } else if (result.code === 4011) {
+        showAlert('总价计算错误', '确定', '');
+      } else if (result.code === 4012) {
+        showAlert('组合任务阶段 1 固定为 1 个任务', '确定', '');
+      } else if (result.code === 4013) {
+        showAlert('阶段 2 数量必须大于 0', '确定', '');
+      } else if (result.code === 4014) {
+        showAlert('用户信息异常', '确定', '');
+      } else if (result.code === 4015) {
+        showAlert('钱包不存在', '确定', '');
+      } else if (result.code === 5001) {
+        showAlert('数据库错误', '确定', '');
+      } else if (result.code === 5002) {
         showAlert('任务发布失败', '确定', '');
-      } else if(result.code === 5001){
-        showAlert('网络超时', '确定', '');
-      }else if(result.code === 4014){
-        showAlert('评论不能为空', '确定', '');
+      } else {
+        // 显示错误信息
+        showAlert(result.message || '任务发布失败', '确定', '');
       }
     } catch (error) {
       // 错误处理
       console.error('发布任务失败:', error);
-      showAlert('网络错误，请稍后重试', '确认', '');
+      showAlert('网络错误，请稍后重试');
     } finally {
       // 无论成功失败，都重置加载状态
       setIsPublishing(false);
@@ -522,7 +585,7 @@ export default function PublishTaskPage() {
                   content: comments[index] || ''
                 }))
               }));
-              showAlert(`已为${comments.length}条评论生成内容！`, '确认', '');
+              showAlert(`已为${comments.length}条评论生成内容！`);
             }}
             onProgressUpdate={(current, total) => {
               // 可选：显示进度
@@ -629,17 +692,15 @@ export default function PublishTaskPage() {
         </Button>
       </div>
 
-      {/* 通用提示框组件 */}
+      {/* 通用提示框组件 - 使用 GlobalWarningModal */}
       <GlobalWarningModal
         isOpen={showAlertModal}
+        onClose={() => setShowAlertModal(false)}
         message={alertConfig.message}
         buttonText={alertConfig.buttonText}
         redirectUrl={alertConfig.redirectUrl}
         iconType="success"
-        onClose={() => setShowAlertModal(false)}
       />
-      
-
     </div>
   );
 }

@@ -2,19 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// 导入登录页面类型定义
 import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
-// 导入useUser钩子，用于检查登录状态
 import { useUser } from '@/hooks/useUser';
-// 导入登录成功后保存用户信息的函数
 import { saveUserOnLoginSuccess } from '@/store/userStore';
-
-// 导入设备信息管理工具
 import { getDeviceInfo } from '@/utils/device';
-// 导入协议模态框
 import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
 import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
 import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
+  const userFriendlyMessages: Record<number, string> = {
+    4001: '注册失败',
+    4002: '请输入账号',
+    4003: '请输入密码',
+    4004: '账号或密码错误',
+    4005: '您的账号已被禁用，请联系管理员',
+    4006: '登录设备数量已达到限制，请先退出其他设备',
+    5001: '注册失败',
+    5002: '注册失败',
+    1001: '注册失败',
+    1002: '注册失败'
+  };
+
+ 
+
 
 
 export default function PublisherLoginPage() {
@@ -225,7 +234,7 @@ export default function PublisherLoginPage() {
     // 验证码一致性校验（忽略大小写）
     if (formData.captcha.toUpperCase() !== captchaCode.toUpperCase()) {
       setErrorMessage('验证码错误');
-      refreshCaptcha(); // 验证码错误时刷新
+      refreshCaptcha();
       return;
     }
 
@@ -238,7 +247,6 @@ export default function PublisherLoginPage() {
     setIsLoading(true);
 
     try {
-      // 直接使用fetch
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -251,42 +259,67 @@ export default function PublisherLoginPage() {
           device_name: deviceInfo.device_name
         })
       });
-      
-      const result: LoginApiResponse = await response.json();
-      console.log('登录响应:', result);
-      console.log('登录响应:', result.message);
-      
-      if(result.code === 401){
-        setErrorMessage(result.message);
+
+
+      const httpStatus = response.status;
+
+      if (!response.ok) {
+        if (httpStatus === 400) {
+          setErrorMessage('登陆失败');
+        } else if (httpStatus === 401) {
+          setErrorMessage('未授权，请重新登录');
+        } else if (httpStatus === 403) {
+          setErrorMessage('禁止访问');
+        } else if (httpStatus === 404) {
+          setErrorMessage('网络超时');
+        } else if (httpStatus >= 502) {
+          setErrorMessage('网络超时');
+        } else {
+          setErrorMessage('网络超时');
+        }
+        refreshCaptcha();
         return;
       }
+
+      const result: LoginApiResponse = await response.json();
+
       if (result.code === 0) {
         saveUserOnLoginSuccess(result.data, result.data.token, deviceInfo);
-
-        // 使用replace代替push，避免浏览器历史记录中留下登录页
-        // 确保只执行一次重定向
         router.replace('/publisher/dashboard');
+      } else if (result.code === 4001) {
+        setErrorMessage('注册失败');
+      } else if (result.code === 4002) {
+        setErrorMessage('请输入账号');
+      } else if (result.code === 4003) {
+        setErrorMessage('请输入密码');
+      } else if (result.code === 4004) {
+        setErrorMessage('账号或密码错误');
+      } else if (result.code === 4005) {
+        setErrorMessage('您的账号已被禁用，请联系管理员');
+      } else if (result.code === 4006) {
+        setErrorMessage('登录设备数量已达到限制，请先退出其他设备');
+      } else if (result.code === 5001) {
+        setErrorMessage('注册失败');
+      } else if (result.code === 5002) {
+        setErrorMessage('注册失败');
+      } else if (result.code === 1001) {
+        setErrorMessage('注册失败');
+      } else if (result.code === 1002) {
+        setErrorMessage('注册失败');
+      } else if (result.code === 1000) {
+        setErrorMessage('注册失败');
       } else {
-        // 登录失败，显示前端通用错误提示
-        setErrorMessage('账号和密码错误');
-        refreshCaptcha(); // 验证码错误时刷新
+        setErrorMessage(result.message || '登录失败，请稍后重试');
       }
     } catch (error) {
-      // 解析错误信息，显示前端通用错误提示
-      if (error instanceof Error) {
-        // 网络错误处理
-        if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
-          setErrorMessage('网络连接失败，请检查网络设置后重试');
-        } else if (error.message.includes('AbortError')) {
-          setErrorMessage('请求超时，请稍后重试');
-        } else {
-          // 其他所有错误都显示通用登录失败提示
-          setErrorMessage('账号和密码错误');
-        }
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setErrorMessage('网络连接失败，请检查网络设置后重试');
+      } else if (error instanceof Error && error.message.includes('AbortError')) {
+        setErrorMessage('请求超时，请稍后重试');
       } else {
-        // 未知错误
         setErrorMessage('登录失败，请稍后重试');
       }
+
       refreshCaptcha();
     } finally {
       setIsLoading(false);
@@ -347,42 +380,24 @@ export default function PublisherLoginPage() {
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                   />
-                  {/* 眼睛按钮 */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 focus:outline-none ${showPassword ? 'bg-blue-100 text-blue-600 p-1 rounded-full' : 'text-gray-500 hover:text-gray-700'}`}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700"
                     aria-label={showPassword ? "隐藏密码" : "显示密码"}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      {showPassword ? (
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878l3.125-3.125M8.25 3a10.05 10.05 0 00-7.5 11.227m13.5-4.073a10.05 10.05 0 01-7.5-11.227M8.25 3a11.94 11.94 0 015.547 2.912"
-                        />
-                      ) : (
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      )}
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                        <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round"/>
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" fill="none" strokeWidth="1.7"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
