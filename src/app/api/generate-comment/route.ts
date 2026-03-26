@@ -182,7 +182,7 @@ function buildPrompt(
   
   // 添加原评论内容
   prompt += `评论内容：${cleanedDraft}\n`;
-  prompt += `不要生成包含用户名、人名、姓名、抖音名称相关的评论，直接返回生成的评论。`;
+  prompt += `严格要求：只能生成纯文本评论，绝对不能包含任何特殊字符、表情符号、特殊符号等。只使用中文字符、标点符号（逗号、句号、感叹号、问号等）和数字。不要添加任何装饰性符号或表情。直接返回生成的评论内容，不要包含任何解释或说明文字。不要生成包含用户名、人名、姓名、抖音名称相关的评论，直接返回生成的评论。`;
   
   return prompt;
 }
@@ -205,7 +205,7 @@ async function callDeepSeek(
       { role: 'user', content: prompt },
     ],
     temperature,
-    max_tokens: 60, // 限制输出长度，节省token
+    max_tokens: 200, // 限制输出长度，节省token
     top_p: 0.95,
     frequency_penalty: 0.6, // 降低重复词频率
     presence_penalty: 0.6,  // 鼓励谈论新内容

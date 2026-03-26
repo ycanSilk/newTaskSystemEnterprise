@@ -398,7 +398,7 @@ export default function MiddleCommentGenerator({
       const uniqueResults = results.map((r, idx) => {
         // 如果与前一条太相似，稍微修改
         if (idx > 0 && r === results[idx - 1]) {
-          return r + ' 👍';
+          return r + '，';
         }
         return r;
       });
@@ -573,9 +573,9 @@ export default function MiddleCommentGenerator({
       
       {/* 提示信息 */}
       <div className="text-xs text-gray-500 space-y-1">
-        <p>✨ 批量生成：一次性生成所有评论，速度快但风格变化较少</p>
-        <p>🎯 逐条生成：逐条生成并参考历史，风格更多样，质量更高</p>
-        <p>📝 已生成评论会自动保存到历史，避免重复</p>
+        <p>批量生成：一次性生成所有评论，速度快但风格变化较少</p>
+        <p>逐条生成：逐条生成并参考历史，风格更多样，质量更高</p>
+        <p>已生成评论会自动保存到历史，避免重复</p>
       </div>
 
       {error && (

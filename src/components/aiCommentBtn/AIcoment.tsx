@@ -74,13 +74,7 @@ export default function MiddleCommentGenerator({
     }
   }, [ruleConfig, isLoading]);
 
-  // 抖音评论表情列表
-  const douyinEmojis = ['👍', '❤️', '🌟', '🔥', '🤔', '😂', '🎉', '👏', '🤩', '💯', '✨', '🙏', '🤣', '😍', '🤗', '🤫', '🤭', '🤔', '😎', '😱'];
 
-  // 生成随机抖音表情
-  const getRandomEmoji = () => {
-    return douyinEmojis[Math.floor(Math.random() * douyinEmojis.length)];
-  };
 
   // 行业选项列表
   const industryOptions = [
@@ -447,7 +441,7 @@ export default function MiddleCommentGenerator({
       const uniqueResults = results.map((r, idx) => {
         // 如果与前一条太相似，稍微修改
         if (idx > 0 && r === results[idx - 1]) {
-          return r + ' 👍';
+          return r + '，';
         }
         return r;
       });
@@ -514,8 +508,6 @@ export default function MiddleCommentGenerator({
         }
       }
       
-      // 添加抖音表情
-      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     // 中评评论的第二条（第三条评论）：固定带atUser参数
     else if (i === 2 && atUser) {
@@ -537,8 +529,6 @@ export default function MiddleCommentGenerator({
       processedComment = insertAtUser(trimmedContent, atUser);
       console.log('[Middle Comment Generator] 处理后的最后一条评论:', processedComment);
       
-      // 添加抖音表情
-      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     // 其他评论（中评第一条）
     else {
@@ -549,8 +539,6 @@ export default function MiddleCommentGenerator({
         processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
       }
       
-      // 添加抖音表情
-      processedComment = processedComment + ' ' + getRandomEmoji();
     }
     
     return processedComment;
@@ -588,9 +576,7 @@ export default function MiddleCommentGenerator({
     }
     
     if (isUnique) {
-      // 添加抖音表情
-      const promptWithEmoji = randomPrompt + ' ' + getRandomEmoji();
-      filteredComments.push(promptWithEmoji);
+      filteredComments.push(randomPrompt);
     }
   }
       

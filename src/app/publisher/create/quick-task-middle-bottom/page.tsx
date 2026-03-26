@@ -85,6 +85,7 @@ interface PublishCombineTaskResponse {
 interface VideoUrlInput {
   url: string;
   isValid: boolean;
+  isDuplicate: boolean;
 }
 
 // 自定义表单数据类型，避免与浏览器FormData冲突
@@ -194,7 +195,7 @@ export default function PublishTaskPage() {
   // 表单数据结构
   const [formData, setFormData] = useState<QuickTaskFormData>({
     videoUrls: [] as string[], // 视频链接数组
-    videoUrlInputs: Array(5).fill({ url: '', isValid: false }), // 默认5个视频链接输入表单
+    videoUrlInputs: Array(5).fill({ url: '', isValid: false, isDuplicate: false }), // 默认5个视频链接输入表单
 
     // 中评评论模块 - 固定为1条
     middleComment: {
@@ -210,7 +211,7 @@ export default function PublishTaskPage() {
       image: null,
       imageUrl: ''
     }],
-    deadline: '30', // 存储分钟数，默认30分钟
+    deadline: '60', // 存储分钟数，默认60分钟
     releasesNumber: '1' // 任务发布次数，默认1次，使用字符串类型
   });
 
@@ -251,6 +252,15 @@ export default function PublishTaskPage() {
 
     fetchConfig();
   }, []);
+
+  // 验证视频链接
+  const validateVideoUrl = (url: string) => {
+    return url.length > 35 && (
+      url.includes('复制打开抖音') || 
+      url.includes('复制此链接，打开Dou音搜索') || 
+      url.includes('douyin.com')
+    );
+  };
 
   // 当开始编辑时，将当前配置复制到编辑状态
   useEffect(() => {
@@ -421,7 +431,8 @@ export default function PublishTaskPage() {
 
     try {
       // 任务发布次数等于有效视频链接数量
-      const releasesNumber = formData.videoUrls.length;
+      const validVideoUrls = formData.videoUrlInputs.filter(input => input.isValid);
+      const releasesNumber = validVideoUrls.length;
 
       // 验证评论内容
     if (!comments[0] || comments[0].trim() === '') {
@@ -713,8 +724,28 @@ export default function PublishTaskPage() {
                 const newInputs = [...formData.videoUrlInputs];
                 newInputs[index] = {
                   url: newUrl,
+                  isDuplicate: false,
                   isValid: validateVideoUrl(newUrl)
                 };
+                
+                // 检测重复链接
+                const validUrls = newInputs.filter(input => input.isValid).map(input => input.url);
+                const urlCount: Record<string, number> = {};
+                
+                // 统计每个链接出现的次数
+                validUrls.forEach(url => {
+                  urlCount[url] = (urlCount[url] || 0) + 1;
+                });
+                
+                // 标记重复链接
+                newInputs.forEach((input, i) => {
+                  if (input.isValid && urlCount[input.url] > 1) {
+                    newInputs[i].isDuplicate = true;
+                  } else {
+                    newInputs[i].isDuplicate = false;
+                  }
+                });
+                
                 setFormData(prev => ({
                   ...prev,
                   videoUrlInputs: newInputs,
@@ -727,8 +758,8 @@ export default function PublishTaskPage() {
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">                
                     {input.url && (
-                      <span className={`text-xs ${input.isValid ? 'text-green-500' : 'text-red-500'}`}>
-                        {input.isValid ? '✓ 有效' : '✗ 无效'}
+                      <span className={`text-xs ${input.isDuplicate ? 'text-red-500' : 'text-green-500'}`}>
+                        {input.isDuplicate ? '✗ 重复' : input.isValid ? '✓ 有效' : '✗ 无效'}
                       </span>
                     )}
                   </div>
@@ -773,120 +804,8 @@ export default function PublishTaskPage() {
           </div>
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
-
-        {/* 中评评论模块 - 固定为1条 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          {/* 中评评论输入框 - 固定一条 */}
-          <div className="mb-1 py-2 border-b border-gray-900">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              中评评论
-            </label>
-            <div className="flex space-x-3">
-              <textarea
-                className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder="请输入中评评论内容"
-                value={formData.middleComment.comment}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setFormData({ ...formData, middleComment: { ...formData.middleComment, comment: newValue } });
-                }}
-                style={{ height: '80px' }}
-              />
-
-              {/* 图片上传区域 */}
-              <div>
-                <ImageUpload
-                  maxCount={1}
-                  columns={1}
-                  gridWidth="80px"
-                  itemSize="80x80"
-                  title=""
-                  onImagesChange={(images: File[], urls: string[]) => {
-                    setFormData((prev: QuickTaskFormData) => ({
-                      ...prev,
-                      middleComment: {
-                        ...prev.middleComment,
-                        imageUrl: urls[0] || ''
-                      }
-                    }));
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 下评评论模块 - 固定为1条 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm overflow-y-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            下评评论（固定1条）
-          </label>
-          
-
-
-          <div className="mt-2 text-sm text-gray-500">
-            中评任务固定1条，下评任务固定1条，下评任务单价为¥{(stage2Price || 0).toFixed(1)}
-          </div>
-
-          {/* 下评评论输入框 - 固定1条 */}
-          {formData.bottomComments.map((comment: CommentData, index: number) => {
-            return (
-              <div key={index} className="mb-1 py-2 border-b border-gray-900">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  下评评论 {<span className="text-red-500">(自动添加抖音ID:{config.douyin_id})</span>}
-                </label>
-                <div className="flex space-x-3">
-                  <textarea
-                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
-                    placeholder="下评评论会自动添加@抖音ID"
-                    value={comment.comment}
-                    onChange={(e) => {
-                      const newComments = [...formData.bottomComments];
-                      newComments[index] = { ...newComments[index], comment: e.target.value };
-                      setFormData({ ...formData, bottomComments: newComments });
-                    }}
-                    style={{ height: '80px' }}
-                  />
-
-                  {/* 图片上传区域 */}
-                  <div>
-                    <ImageUpload
-                      maxCount={1}
-                      columns={1}
-                      gridWidth="80px"
-                      itemSize="80x80"
-                      title=""
-                      onImagesChange={(images: File[], urls: string[]) => {
-                        const newComments = [...formData.bottomComments];
-                        newComments[index] = { ...newComments[index], imageUrl: urls[0] || '' };
-                        setFormData({ ...formData, bottomComments: newComments });
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
+     
+     
     
 
         {/* 费用预览 */}
