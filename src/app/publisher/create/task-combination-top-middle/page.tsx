@@ -5,7 +5,7 @@ import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningM
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
-import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import TaskAssistance from '@/components/taskAssistance/topMiddleTask';
 import AiCommentGenerator from '@/components/aiCommentBtn/AiCommentGenerator';
 import MiddleCommentGenerator from '@/components/aiCommentBtn/MiddleCommentGenerator';
 import type {
@@ -129,7 +129,10 @@ export default function PublishTaskPage() {
     return url.length > 35 && (
       url.includes('复制打开抖音') || 
       url.includes('复制此链接，打开Dou音搜索') || 
-      url.includes('douyin.com')
+      url.includes('douyin.com')||
+      url.includes('复制打开:/ 抖音')||
+      url.includes('复制打开')||
+      url.includes('抖音')
     );
   };
 
@@ -507,7 +510,6 @@ export default function PublishTaskPage() {
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
           <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
             <span>视频链接 <span className="text-red-500">*</span></span>
-            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
           </label>
           <Input
             placeholder="请输入抖音视频链接"
@@ -625,12 +627,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，只输入数字，不需要输入@符号。</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，支持英文字母和数字，不需要输入@符号。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（仅支持数字）"
+                placeholder="输入用户ID或昵称（支持英文字母和数字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value.replace(/[^0-9]/g, ''))}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}

@@ -6,7 +6,7 @@ import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningM
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
-import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import TaskAssistance from '@/components/taskAssistance/quickTaskTopMiddle';
 import AIcoment from '@/components/aiCommentBtn/AIcoment';
 // 类型定义
 interface CommentData {
@@ -655,8 +655,9 @@ export default function PublishTaskPage() {
                       <input
                         type="text"
                         value={editConfig.douyin_id}
-                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value})}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '')})}
                         className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="支持英文字母和数字"
                       />
                     ) : (
                       <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>
@@ -700,7 +701,10 @@ export default function PublishTaskPage() {
                 return url.length > 35 && (
                   url.includes('复制打开抖音') || 
                   url.includes('复制此链接，打开Dou音搜索') || 
-                  url.includes('douyin.com')
+                  url.includes('douyin.com')||
+                  url.includes('复制打开:/ 抖音')||
+                  url.includes('复制打开')||
+                  url.includes('抖音')
                 );
               };
               

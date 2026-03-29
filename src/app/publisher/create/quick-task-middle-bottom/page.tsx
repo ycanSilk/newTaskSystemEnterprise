@@ -6,7 +6,7 @@ import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningM
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
-import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import TaskAssistance from '@/components/taskAssistance/quickTaskMiddleBottom';
 import AIcoment from '@/components/aiCommentBtn/AIcoment';
 
 // 替代 apiCall 函数
@@ -92,11 +92,13 @@ interface VideoUrlInput {
 interface QuickTaskFormData {
   videoUrls: string[];
   videoUrlInputs: VideoUrlInput[];
+  topComment: CommentData;
   middleComment: CommentData;
   middleQuantity: number;
   bottomComments: CommentData[];
   deadline: string;
   releasesNumber: string;
+  duplicateWarning: string | null;
 }
 
 // 类型定义
@@ -196,8 +198,11 @@ export default function PublishTaskPage() {
   const [formData, setFormData] = useState<QuickTaskFormData>({
     videoUrls: [] as string[], // 视频链接数组
     videoUrlInputs: Array(5).fill({ url: '', isValid: false, isDuplicate: false }), // 默认5个视频链接输入表单
-
-    // 中评评论模块 - 固定为1条
+    topComment: {
+      comment: '',
+      image: null,
+      imageUrl: ''
+    },
     middleComment: {
       comment: '',
       image: null,
@@ -212,7 +217,8 @@ export default function PublishTaskPage() {
       imageUrl: ''
     }],
     deadline: '60', // 存储分钟数，默认60分钟
-    releasesNumber: '1' // 任务发布次数，默认1次，使用字符串类型
+    releasesNumber: '1', // 任务发布次数，默认1次，使用字符串类型
+    duplicateWarning: null
   });
 
   // 状态管理
@@ -236,10 +242,26 @@ export default function PublishTaskPage() {
         
         if (result.success && result.data) {
           log('info', '获取配置成功', result.data);
+          const douyinId = result.data.config_info?.douyin_id || '';
           setConfig({
             name: result.data.config_info?.name || '',
-            douyin_id: result.data.config_info?.douyin_id || ''
+            douyin_id: douyinId
           });
+          
+          // 将抖音ID插入到下评评论里
+          setFormData(prev => ({
+            ...prev,
+            bottomComments: prev.bottomComments.map((comment, index) => {
+              // 只在下评评论中插入抖音ID
+              if (index === 0 && douyinId) {
+                return {
+                  ...comment,
+                  comment: `@${douyinId}`
+                };
+              }
+              return comment;
+            })
+          }));
         } else {
           log('error', '获取配置失败', { message: result.message, code: result.code });
         }
@@ -258,7 +280,10 @@ export default function PublishTaskPage() {
     return url.length > 35 && (
       url.includes('复制打开抖音') || 
       url.includes('复制此链接，打开Dou音搜索') || 
-      url.includes('douyin.com')
+      url.includes('douyin.com')||
+      url.includes('复制打开:/ 抖音')||
+      url.includes('复制打开')||
+      url.includes('抖音')
     );
   };
 
@@ -430,9 +455,9 @@ export default function PublishTaskPage() {
     setIsPublishing(true);
 
     try {
-      // 任务发布次数等于有效视频链接数量
-      const validVideoUrls = formData.videoUrlInputs.filter(input => input.isValid);
-      const releasesNumber = validVideoUrls.length;
+      // 任务发布次数等于去重后的有效视频链接数量
+      const videoUrls = formData.videoUrls;
+      const releasesNumber = videoUrls.length;
 
       // 验证评论内容
     if (!comments[0] || comments[0].trim() === '') {
@@ -464,6 +489,13 @@ export default function PublishTaskPage() {
       return;
     }
 
+    // 确保下评评论包含@抖音ID
+    if (config.douyin_id && !comments[1].includes(`@${config.douyin_id}`)) {
+      console.log('下评评论未包含@抖音ID，已自动添加');
+      comments[1] = `@${config.douyin_id} ${comments[1]}`;
+      console.log('修改后的下评评论:', comments[1]);
+    }
+
     // 验证下评评论必须包含@抖音ID
     if (config.douyin_id && !comments[1].includes(`@${config.douyin_id}`)) {
       console.log('验证失败：下评评论必须包含@抖音ID');
@@ -472,7 +504,7 @@ export default function PublishTaskPage() {
       return;
     }
 
-      console.log('验证通过，开始构建请求数据');
+   
 
       // 计算总价格
       const stage2Count = formData.middleQuantity;
@@ -487,7 +519,6 @@ export default function PublishTaskPage() {
       console.log('截止时间计算：', { deadlineMinutes, currentTimestamp, deadlineTimestamp });
 
       // 视频链接数组
-      const videoUrls = formData.videoUrls;
       console.log('视频链接数量：', videoUrls.length);
 
       // 构建recommend_marks数组
@@ -502,8 +533,16 @@ export default function PublishTaskPage() {
 
       // 添加下评评论
       for (let i = 1; i < Math.min(2, comments.length); i++) {
+        let commentText = comments[i] || '';
+        
+        // 确保下评评论包含@抖音ID
+        if (i === 1 && config.douyin_id && !commentText.includes(`@${config.douyin_id}`)) {
+          commentText = `@${config.douyin_id} ${commentText}`;
+          console.log('下评评论未包含@抖音ID，已自动添加:', commentText);
+        }
+        
         const recommendMark: RecommendMark = {
-          comment: comments[i] || '',
+          comment: commentText,
           image_url: formData.bottomComments[i-1].imageUrl || ''
         };
 
@@ -516,6 +555,7 @@ export default function PublishTaskPage() {
         recommendMarks.push(recommendMark);
       }
       console.log('添加下评评论完成，共', recommendMarks.length, '条评论');
+      console.log('最终评论内容:', recommendMarks.map(mark => mark.comment));
 
       // 构建请求体
       const requestData: CreateQuickTaskRequest = {
@@ -532,6 +572,7 @@ export default function PublishTaskPage() {
 
       // 调用API
       log('info', '开始调用API发布任务');
+
       const result = await apiCall('/api/quickTask/Task', {
         method: 'POST',
         headers: {
@@ -540,7 +581,8 @@ export default function PublishTaskPage() {
         body: JSON.stringify(requestData),
         credentials: 'include'
       }, 'create');
-
+      console.log('API响应结果:', result);
+      console.log('发布任务的请求体:', requestData);
       log('info', 'API响应结果', result);
       // 处理响应结果
       if (result.success) {
@@ -587,7 +629,7 @@ export default function PublishTaskPage() {
         } else if (result.code === 4017) {
           showAlert('用户信息异常', '确定', '');
         } else if (result.code === 4018) {
-          showAlert('余额不足', '确定', '');
+          showAlert('余额不足', '前往充值', '/publisher/recharge');
         } else if (result.code === 5001) {
           showAlert('网络超时，请重试', '确定', '');
         } else if (result.code === 5002) {
@@ -670,8 +712,9 @@ export default function PublishTaskPage() {
                       <input
                         type="text"
                         value={editConfig.douyin_id}
-                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value})}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '')})}
                         className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="支持英文字母和数字"
                       />
                     ) : (
                       <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>
@@ -715,7 +758,10 @@ export default function PublishTaskPage() {
                 return url.length > 35 && (
                   url.includes('复制打开抖音') || 
                   url.includes('复制此链接，打开Dou音搜索') || 
-                  url.includes('douyin.com')
+                  url.includes('douyin.com')||
+                  url.includes('复制打开:/ 抖音')||
+                  url.includes('复制打开')||
+                  url.includes('抖音')
                 );
               };
               
@@ -746,12 +792,26 @@ export default function PublishTaskPage() {
                   }
                 });
                 
+                // 过滤掉重复的链接，只保留第一个出现的链接
+                const deduplicatedUrls = validUrls.filter((url, idx) => validUrls.indexOf(url) === idx);
+                const duplicateCount = validUrls.length - deduplicatedUrls.length;
+                
+                // 发布任务校验：检查是否有重复链接
+                if (duplicateCount > 0) {
+                  log('warn', '检测到重复链接', { duplicateCount, validUrls, deduplicatedUrls });
+                }
+                
                 setFormData(prev => ({
                   ...prev,
                   videoUrlInputs: newInputs,
-                  // 更新有效的视频链接数组
-                  videoUrls: newInputs.filter(input => input.isValid).map(input => input.url)
+                  videoUrls: deduplicatedUrls,
+                  duplicateWarning: duplicateCount > 0 ? `已检测到${duplicateCount}条重复链接，只保留第一条` : ''
                 }));
+                
+                // 发布任务校验：检查是否有重复链接
+                if (duplicateCount > 0) {
+                  log('warn', '检测到重复链接', { duplicateCount, validUrls, deduplicatedUrls });
+                }
               };
               
               return (

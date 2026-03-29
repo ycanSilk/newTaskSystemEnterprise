@@ -6,7 +6,7 @@ import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningM
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
-import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import TaskAssistance from '@/components/taskAssistance/middleTask';
 import MiddleCommentGenerator from '@/components/aiCommentBtn/MiddleCommentGenerator';
 import {
   PublishTaskFormData,
@@ -114,7 +114,10 @@ export default function PublishTaskPage() {
     return url.length > 35 && (
       url.includes('复制打开抖音') || 
       url.includes('复制此链接，打开Dou音搜索') || 
-      url.includes('douyin.com')
+      url.includes('douyin.com')||
+      url.includes('复制打开:/ 抖音')||
+      url.includes('复制打开')||
+      url.includes('抖音')
     );
   };
 
@@ -232,10 +235,10 @@ export default function PublishTaskPage() {
       return;
     }
 
-    // 2. 非法字符校验（只允许字母、数字、下划线、中文和@符号）
-    const validPattern = /^[a-zA-Z0-9_\u4e00-\u9fa5@]+$/;
+    // 2. 非法字符校验（支持英文字母和数字）
+    const validPattern = /^[a-zA-Z0-9]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('用户ID或昵称包含非法字符，仅支持字母、数字、下划线和中文', '确认', '');
+      showAlert('用户ID或昵称只能包含英文字母和数字', '确认', '');
       return;
     }
 
@@ -635,12 +638,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，只输入数字，不需要输入@符号。</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，支持英文字母和数字，不需要输入@符号。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（仅支持数字）"
+                placeholder="输入用户ID或昵称（支持英文字母和数字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value.replace(/[^0-9]/g, ''))}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}

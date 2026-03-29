@@ -5,7 +5,7 @@ import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningM
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
-import TaskAssistance from '@/components/taskAssistance/taskAssistance';
+import TaskAssistance from '@/components/taskAssistance/topTask';
 import AiCommentGenerator from '@/components/aiCommentBtn/AiCommentGenerator';
 
 import {
@@ -110,7 +110,10 @@ export default function PublishTaskPage() {
     return url.length > 35 && (
       url.includes('复制打开抖音') || 
       url.includes('复制此链接，打开Dou音搜索') || 
-      url.includes('douyin.com')
+      url.includes('douyin.com')||
+      url.includes('复制打开:/ 抖音')||
+      url.includes('复制打开')||
+      url.includes('抖音')
     );
   };
 
@@ -461,8 +464,7 @@ export default function PublishTaskPage() {
         {/* 视频链接 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm">
           <label className="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
-            <span>视频链接 <span className="text-red-500">*</span></span>
-            <span className="text-blue-500 cursor-pointer hover:underline" onClick={() => setShowTaskAssistance(true)}>！派单指引</span>
+            <span>视频链接 <span className="text-red-500">*</span></span>          
           </label>
           <Input
             placeholder="请输入抖音视频链接"

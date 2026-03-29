@@ -3,6 +3,9 @@
 import { Button, Input, AlertModal } from '@/components/ui';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import TaskAssistance from '@/components/taskAssistance/magnifying';
+
+
 
 // 导入放大镜任务发布的类型定义
 import type { CreateMagnifierTaskRequest, CreateMagnifierTaskApiResponse } from '@/api/types/task/createMagnifierTaskTypes';
@@ -25,7 +28,8 @@ export default function PublishSearchKeywordTaskPage() {
     quantity: '1',
     unitPrice: '5'
   });
-
+  const [showTaskAssistance, setShowTaskAssistance] = useState(false); // 控制任务帮助模态框显示
+  
   // API调用状态
   const [isLoading, setIsLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
@@ -155,15 +159,18 @@ export default function PublishSearchKeywordTaskPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <h1 className="text-2xl font-bold pl-5">
-          放大镜
-        </h1>
-
-        <div className="text-lg pl-5 text-red-500"></div>
+       <h1 className="text-2xl font-bold p-5">
+              放大镜任务<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
+            </h1>
+      
+              <TaskAssistance 
+                      isOpen={showTaskAssistance} 
+                      onClose={() => setShowTaskAssistance(false)} 
+                    />
 
       <div className="px-4 py-3 space-y-2">
         {/* 视频链接 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务发布 <span className="text-red-500">*</span>
           </label>
@@ -176,7 +183,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 截止时间 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务截止时间
           </label>
@@ -193,7 +200,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 搜索词内容 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm overflow-y-auto">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm overflow-y-auto">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             指定搜索词内容 <span className="text-red-500">*</span>
           </label>
@@ -211,7 +218,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 任务数量 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务数量 <span className="text-red-500">*</span>
           </label>
@@ -227,7 +234,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 任务单价 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             任务单价（元） <span className="text-red-500">*</span>
           </label>
@@ -247,7 +254,7 @@ export default function PublishSearchKeywordTaskPage() {
         </div>
 
         {/* 费用预览 */}
-        <div className="bg-white rounded-xl py-1 px-4 shadow-sm">
+        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
           <h3 className="font-medium text-gray-900 mb-3">费用预览</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">

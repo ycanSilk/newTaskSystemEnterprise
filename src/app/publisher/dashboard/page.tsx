@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import TaskAssistance from '@/components/taskAssistance/review';
 
 // 懒加载四个对应状态的页面组件
 const ActiveTabPage = dynamic(() => import('./InProgress/page'), {
@@ -25,10 +26,11 @@ const MagnifyingGlassTabPage = dynamic(() => import('./MagnifyingGlass/page'), {
 
 
 
+
 // 导入加载组件，用于状态加载中显示
 import { Loading } from '@/components/ui';
 // 导入任务列表API响应类型
-import { GetTasksListResponse, Task, OrderStats,Pagination } from '../../types/task/getTasksListTypes';
+import { GetTasksListResponse, Task, OrderStats, Pagination } from '../../types/task/getTasksListTypes';
 // 导入待审核任务列表API响应类型
 import { PendingTasksListResponse } from '../../types/task/pendingTasksListTypes';
 
@@ -53,6 +55,8 @@ interface TaskStats {
 }
 
 export default function PublisherDashboardPage() {
+  // 控制任务帮助模态框显示
+  const [showTaskAssistance, setShowTaskAssistance] = useState(false);
   // 获取搜索参数，用于从URL中读取tab值
   const searchParams = useSearchParams();
   // 获取路由对象，用于页面跳转
@@ -63,7 +67,7 @@ export default function PublisherDashboardPage() {
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   // 滚动位置缓存
   const scrollPositionRef = useRef<number>(0);
-  
+
 
 
   // 确保页面加载时默认显示tab=InProgress参数
@@ -74,7 +78,7 @@ export default function PublisherDashboardPage() {
       window.history.replaceState({}, '', newUrl.toString());
     }
   }, []);
-  
+
 
 
   // 保存滚动位置
@@ -90,7 +94,7 @@ export default function PublisherDashboardPage() {
   // 处理选项卡切换并更新URL参数
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    
+
     // 更新URL参数
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('tab', tab);
@@ -103,7 +107,7 @@ export default function PublisherDashboardPage() {
   return (
     <div className="pb-20">
       {/* 只保留4个切换按钮 */}
-      <div className="mx-4 mt-4 grid grid-cols-4 gap-1">        
+      <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
         <button
           onClick={() => handleTabChange('InProgress')}
           className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
@@ -129,16 +133,27 @@ export default function PublisherDashboardPage() {
           放大镜任务
         </button>
       </div>
+      <div>
 
-      <Suspense fallback={<div className="flex justify-center items-center py-20">加载中...</div>}>        
+        <div className="flex justify-end mt-3">
+          <span className="text-blue-500 pr-5  cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！审核任务演示</span>
+
+        </div>
+
+        <TaskAssistance
+          isOpen={showTaskAssistance}
+          onClose={() => setShowTaskAssistance(false)}
+        />
+      </div>
+      <Suspense fallback={<div className="flex justify-center items-center py-20">加载中...</div>}>
         {activeTab === 'InProgress' && (
-          <ActiveTabPage  />
+          <ActiveTabPage />
         )}
         {activeTab === 'AwaitingReview' && (
           <AwaitingReviewTabPage />
         )}
         {activeTab === 'Completed' && (
-          <CompletedTabPage  />
+          <CompletedTabPage />
         )}
         {activeTab === 'MagnifyingGlass' && (
           <MagnifyingGlassTabPage />

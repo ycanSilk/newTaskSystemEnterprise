@@ -4,6 +4,9 @@ import { Button, Input } from '@/components/ui';
 import GlobalWarningModal from '@/components/button/globalWarning/GlobalWarningModal';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import TaskAssistance from '@/components/taskAssistance/topTask';
+import AiCommentGenerator from '@/components/aiCommentBtn/AiCommentGenerator';
+
 
 // 定义API请求参数类型
 interface PublishSingleTaskRequest {
@@ -87,7 +90,7 @@ export default function PublishSearchKeywordTaskPage() {
     });
     setShowAlert(true);
   };
-
+  const [showTaskAssistance, setShowTaskAssistance] = useState(false); // 控制任务帮助模态框显示
   // 发布任务
   const handlePublish = async () => {
     try {
@@ -193,11 +196,13 @@ export default function PublishSearchKeywordTaskPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <h1 className="text-2xl font-bold pl-5">
-          放大镜
-        </h1>
+        放大镜任务<span className="text-blue-500 cursor-pointer hover:underline ml-5" onClick={() => setShowTaskAssistance(true)}>！派单演示</span>
+      </h1>
 
-        <div className="text-lg pl-5 text-red-500"></div>
-
+        <TaskAssistance 
+                isOpen={showTaskAssistance} 
+                onClose={() => setShowTaskAssistance(false)} 
+              />
       <div className="px-4 py-3 space-y-4">
         {/* 视频链接 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">

@@ -33,7 +33,7 @@ export default function AwaitingReviewNotification() {
 
   // 配置参数
   const config = {
-    pollingInterval: 60000, // 固定60秒检测间隔   
+    pollingInterval: 30000, // 固定30秒检测间隔   
   };
 
 
