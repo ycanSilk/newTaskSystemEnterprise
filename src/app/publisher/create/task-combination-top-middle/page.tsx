@@ -221,10 +221,16 @@ export default function PublishTaskPage() {
       return;
     }
 
-    // 2. 非法字符校验（只允许字母、数字、下划线、中文和@符号）
-    const validPattern = /^[a-zA-Z0-9_\u4e00-\u9fa5@]+$/;
+    // 2. 非法字符校验（除特殊符号外都可以输入）
+    const validPattern = /^[^!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('用户ID或昵称包含非法字符，仅支持字母、数字、下划线和中文');
+      showAlert('用户ID或昵称不能包含特殊符号');
+      return;
+    }
+
+    // 3. 字数限制校验（最多10个字）
+    if (trimmedMention.length > 10) {
+      showAlert('用户ID或昵称不能超过10个字');
       return;
     }
 
@@ -627,12 +633,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，支持英文字母和数字，不需要输入@符号。</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，除特殊符号外都可以输入，不需要输入@符号，最多10个字。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（支持英文字母和数字）"
+                placeholder="输入用户ID或昵称（除特殊符号外都可以输入，最多10个字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '').substring(0, 10))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}

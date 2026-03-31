@@ -712,9 +712,9 @@ export default function PublishTaskPage() {
                       <input
                         type="text"
                         value={editConfig.douyin_id}
-                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '')})}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '').substring(0, 10)})}
                         className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="支持英文字母和数字"
+                        placeholder="除特殊符号外均可输入，最多10个字符"
                       />
                     ) : (
                       <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>

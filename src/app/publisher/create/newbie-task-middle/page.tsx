@@ -8,11 +8,64 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/middleTask';
 import MiddleCommentGenerator from '@/components/aiCommentBtn/MiddleCommentGenerator';
-import {
-  PublishTaskFormData,
-  PublishSingleTaskRequest,
-  PublishSingleTaskResponse
-} from '@/app/types/task/publishSingleTaskTypes';
+// 类型定义
+interface RecommendMark {
+  comment: string;
+  image_url: string;
+  at_user: string;
+}
+
+interface PublishTaskFormData {
+  videoUrl: string;
+  quantity: number;
+  comments: Array<{
+    content: string;
+    image: File | null;
+    imageUrl: string;
+  }>;
+  deadline: string;
+}
+
+interface NewBbieTaskRequest {
+  template_id: number;
+  video_url: string;
+  deadline: number;
+  task_count: number;
+  total_price: number;
+  is_newbie: number;
+  recommend_marks: RecommendMark[];
+}
+
+interface WalletInfo {
+  before_balance: string;
+  after_balance: string;
+  deducted: string;
+}
+
+interface NewBbieTaskResponseData {
+  task_id: number;
+  is_combo: boolean;
+  template_id: number;
+  template_title: string;
+  video_url: string;
+  deadline: number;
+  task_count: number;
+  task_done: number;
+  task_doing: number;
+  task_reviewing: number;
+  unit_price: number;
+  total_price: number;
+  recommend_marks: RecommendMark[];
+  status: number;
+  wallet: WalletInfo;
+}
+
+interface NewBbieTaskResponse {
+  code: number;
+  message: string;
+  data: NewBbieTaskResponseData;
+  timestamp: number;
+}
 
 export default function PublishTaskPage() {
   const router = useRouter();
@@ -235,10 +288,16 @@ export default function PublishTaskPage() {
       return;
     }
 
-    // 2. 非法字符校验（支持英文字母和数字）
-    const validPattern = /^[a-zA-Z0-9]+$/;
+    // 2. 非法字符校验（除特殊符号外都可以输入）
+    const validPattern = /^[^!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/;
     if (!validPattern.test(trimmedMention)) {
-      showAlert('用户ID或昵称只能包含英文字母和数字', '确认', '');
+      showAlert('用户ID或昵称不能包含特殊符号', '确认', '');
+      return;
+    }
+
+    // 3. 字数限制校验（最多10个字）
+    if (trimmedMention.length > 10) {
+      showAlert('用户ID或昵称不能超过10个字', '确认', '');
       return;
     }
 
@@ -491,12 +550,13 @@ export default function PublishTaskPage() {
       const deadline = currentTime + deadlineMinutes * 60;
 
       // 构建请求参数
-      const requestData: PublishSingleTaskRequest = {
+      const requestData: NewBbieTaskRequest = {
         template_id: templateId,
         video_url: formData.videoUrl.trim(),
         deadline,
         task_count: formData.quantity,
         total_price: totalPrice,
+        is_newbie: 1,
         recommend_marks: formData.comments.map((comment, index) => {
           // 构建recommend_mark对象
           const recommendMark = {
@@ -515,7 +575,7 @@ export default function PublishTaskPage() {
       };
 
       // 调用API
-      const apiUrl = '/api/task/publishSingleTask';
+      const apiUrl = '/api/task/newbieTask';
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -525,36 +585,33 @@ export default function PublishTaskPage() {
         body: JSON.stringify(requestData),
       });
 
-      const result: PublishSingleTaskResponse = await response.json();
+      const result: NewBbieTaskResponse = await response.json();
+      // 处理响应
       if (result.code === 0) {
-        // 发布成功 - 统一跳转到 /publisher/create/douyin
+        // 成功处理
         showAlert(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
-      } else if (result.code === 4001) {
-        showAlert('发布失败', '确定', '');
-      } else if (result.code === 4002) {
-        showAlert('发布失败', '确定', '');
+      } else if (result.code === 4016) {
+        // 余额不足
+        showAlert('账户余额不足，请先充值', '前往充值', '/publisher/recharge');
       } else if (result.code === 4003) {
         showAlert('视频链接不能为空', '确定', '');
-      } else if(result.code === 4004){
-        showAlert('截止时间不能为空', '确定', '');
-      } else if(result.code === 4005){
+      } else if (result.code === 4004) {
+        showAlert('到期时间不能为空', '确定', '');
+      } else if (result.code === 4005) {
         showAlert('到期时间不能早于当前时间', '确定', '');
-      } else if(result.code === 4006){
-        showAlert('发布失败', '确定', '');
-      } else if(result.code === 4007){
-        showAlert('发布失败', '确定', '');
-      } else if(result.code === 4008){
+      } else if (result.code === 4008) {
         showAlert('任务数量必须大于 0', '确定', '');
-      } else if(result.code === 4009){
-        showAlert('截止时间不能为空', '确定', '');
-      } else if(result.code === 4016){
-        showAlert('余额不足', '确定', '/publisher/recharge');
-      } else if(result.code === 5002){
+      } else if (result.code === 4009) {
+        showAlert('推荐评论格式错误', '确定', '');
+      } else if (result.code === 4010) {
+        showAlert('推荐评论数量不匹配', '确定', '');
+      } else if (result.code === 4011) {
+        showAlert('总价计算错误', '确定', '');
+      } else if (result.code === 5002) {
         showAlert('任务发布失败', '确定', '');
-      } else if(result.code === 5001){
-        showAlert('网络超时', '确定', '');
-      }else if(result.code === 4014){
-        showAlert('评论不能为空', '确定', '');
+      } else {
+        // 显示错误信息
+        showAlert(result.message || '任务发布失败', '确定', '');
       }
     } catch (error) {
       // 处理错误
@@ -638,12 +695,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，支持英文字母和数字，不需要输入@符号。</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，除特殊符号外都可以输入，不需要输入@符号，最多10个字。</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（支持英文字母和数字）"
+                placeholder="输入用户ID或昵称（除特殊符号外都可以输入，最多10个字）"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                onChange={(e) => setMentionInput(e.target.value.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '').substring(0, 10))}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}

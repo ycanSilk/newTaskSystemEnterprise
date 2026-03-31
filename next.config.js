@@ -21,7 +21,7 @@ const nextConfig = {
   // 统一开发环境和生产环境的API代理配置
   async rewrites() {
     // 使用统一的API地址，确保环境一致性
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:8000';
+    const apiBaseUrl = process.env.API_BASE_URL || 'http://54.179.253.64:28806';
     
     return [
       { source: '/api/auth/me', destination: '/api/auth/me' }, // 不转发到外部服务器
@@ -51,10 +51,16 @@ const nextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'http',
-        hostname: '134.122.136.221',
-        port: '4667',
+        protocol: 'https',
+        hostname: 'api.kktaskpaas.com',
+        port: '',
         pathname: '/img/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.kktaskpaas.com',
+        port: '',
+        pathname: '/**',
       },
     ],
     formats: ['image/webp', 'image/avif'],
@@ -130,7 +136,7 @@ const nextConfig = {
     
     // 生产环境优化
     if (config.mode === 'production') {
-      // 移除控制台日志
+      // 移除控制台日志和调试代码
       config.optimization.minimizer?.forEach((minimizer) => {
         if (minimizer instanceof TerserPlugin) {
           minimizer.options.terserOptions = {
@@ -138,10 +144,44 @@ const nextConfig = {
             compress: {
               ...minimizer.options.terserOptions?.compress,
               drop_console: true,
+              drop_debugger: true,
+              pure_funcs: [
+                'console.log', 
+                'console.info', 
+                'console.debug', 
+                'console.warn', 
+                'console.error',
+                'console.trace',
+                'console.group',
+                'console.groupEnd',
+                'console.time',
+                'console.timeEnd',
+                'console.count',
+                'console.countReset',
+                'console.assert',
+                'console.table',
+                'console.dir',
+                'console.dirxml',
+                'console.groupCollapsed',
+                'console.profile',
+                'console.profileEnd',
+                'console.timestamp'
+              ],
             },
+            mangle: {
+              safari10: true,
+            },
+            format: {
+              comments: false,
+            },
+            extractComments: false,
           };
+          minimizer.options.extractComments = false;
         }
       });
+      
+      // 移除所有 console.* 调用和 debugger 语句
+      // 已经在terser-webpack-plugin中配置了drop_console，不需要额外的string-replace-loader
     }
     
     return config;

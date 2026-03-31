@@ -402,27 +402,18 @@ export default function NewbieTaskPage() {
       
       const result: NewBbieTaskResponse = await response.json();
       
-      // 处理响应
       if (result.code === 0) {
         // 成功处理
         showAlert(result.message || '任务发布成功！', '确定', '/publisher/create/douyin');
       } else if (result.code === 4016) {
         // 余额不足
         showAlert('账户余额不足，请先充值', '前往充值', '/publisher/recharge');
-      } else if (result.code === 4001) {
-        showAlert('请求体不能为空', '确定', '');
-      } else if (result.code === 4002) {
-        showAlert('任务模板 ID 不能为空', '确定', '');
       } else if (result.code === 4003) {
         showAlert('视频链接不能为空', '确定', '');
       } else if (result.code === 4004) {
         showAlert('到期时间不能为空', '确定', '');
       } else if (result.code === 4005) {
         showAlert('到期时间不能早于当前时间', '确定', '');
-      } else if (result.code === 4006) {
-        showAlert('任务模板不存在', '确定', '');
-      } else if (result.code === 4007) {
-        showAlert('任务模板已禁用', '确定', '');
       } else if (result.code === 4008) {
         showAlert('任务数量必须大于 0', '确定', '');
       } else if (result.code === 4009) {
@@ -431,16 +422,6 @@ export default function NewbieTaskPage() {
         showAlert('推荐评论数量不匹配', '确定', '');
       } else if (result.code === 4011) {
         showAlert('总价计算错误', '确定', '');
-      } else if (result.code === 4012) {
-        showAlert('组合任务阶段 1 固定为 1 个任务', '确定', '');
-      } else if (result.code === 4013) {
-        showAlert('阶段 2 数量必须大于 0', '确定', '');
-      } else if (result.code === 4014) {
-        showAlert('用户信息异常', '确定', '');
-      } else if (result.code === 4015) {
-        showAlert('钱包不存在', '确定', '');
-      } else if (result.code === 5001) {
-        showAlert('数据库错误', '确定', '');
       } else if (result.code === 5002) {
         showAlert('任务发布失败', '确定', '');
       } else {
