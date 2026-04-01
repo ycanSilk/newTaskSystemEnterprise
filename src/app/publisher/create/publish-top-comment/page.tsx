@@ -323,15 +323,13 @@ export default function PublishTaskPage() {
       // 计算总价格
       const totalPrice = taskPrice * formData.quantity;
       
-      // 计算截止时间戳（当前时间 + 任务截止时间（分钟））
-      const currentTime = Math.floor(Date.now() / 1000); // 当前时间戳（秒）
-      const deadline = currentTime + parseInt(formData.deadline) * 60;
+      
       
       // 构建请求体
       const requestBody: PublishSingleTaskRequest = {
         template_id: templateId,
         video_url: formData.videoUrl.trim(),
-        deadline,
+        deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         task_count: formData.quantity,
         total_price: totalPrice,
         recommend_marks: formData.comments.map(comment => ({
@@ -479,22 +477,7 @@ export default function PublishTaskPage() {
           )}
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-md px-4  py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700">
-            任务截止时间
-          </label>
-          <select 
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({...formData, deadline: e.target.value})}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
+        
 
         {/* 评论内容 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm overflow-y-auto">

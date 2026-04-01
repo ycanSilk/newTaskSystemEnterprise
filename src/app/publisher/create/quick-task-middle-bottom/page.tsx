@@ -216,7 +216,7 @@ export default function PublishTaskPage() {
       image: null,
       imageUrl: ''
     }],
-    deadline: '60', // 存储分钟数，默认60分钟
+    deadline: '30', // 存储分钟数，默认30分钟
     releasesNumber: '1', // 任务发布次数，默认1次，使用字符串类型
     duplicateWarning: null
   });
@@ -512,11 +512,7 @@ export default function PublishTaskPage() {
       const totalPrice = singlePrice * releasesNumber;
       console.log('价格计算：', { singlePrice, totalPrice, releasesNumber });
 
-      // 计算截止时间（时间戳）
-      const deadlineMinutes = parseInt(formData.deadline);
-      const currentTimestamp = Math.floor(Date.now() / 1000); // 使用实时的当前时间
-      const deadlineTimestamp = currentTimestamp + (deadlineMinutes * 60);
-      console.log('截止时间计算：', { deadlineMinutes, currentTimestamp, deadlineTimestamp });
+     
 
       // 视频链接数组
       console.log('视频链接数量：', videoUrls.length);
@@ -561,7 +557,7 @@ export default function PublishTaskPage() {
       const requestData: CreateQuickTaskRequest = {
         template_id: templateId,
         video_url: videoUrls,
-        deadline: deadlineTimestamp,
+        deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         releases_number: releasesNumber,
         stage1_count: stage1Count,
         stage2_count: stage2Count,

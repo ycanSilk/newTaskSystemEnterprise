@@ -317,10 +317,7 @@ export default function PublishTaskPage() {
       const stage2Count = formData.middleQuantity;
       const totalPrice = (stage1Price * stage1Count) + (stage2Price * stage2Count);
 
-      // 计算截止时间（时间戳）
-      const deadlineMinutes = parseInt(formData.deadline);
-      const currentTimestamp = Math.floor(Date.now() / 1000); // 使用实时的当前时间
-      const deadlineTimestamp = currentTimestamp + (deadlineMinutes * 60);
+      
 
       // 构建recommend_marks数组
       const recommendMarks: RecommendMark[] = [];
@@ -351,7 +348,7 @@ export default function PublishTaskPage() {
       const requestData: PublishCombineTaskRequest = {
         template_id: templateId,
         video_url: formData.videoUrl,
-        deadline: deadlineTimestamp,
+      deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         stage1_count: stage1Count,
         stage2_count: stage2Count,
         total_price: totalPrice,
@@ -466,22 +463,7 @@ export default function PublishTaskPage() {
           )}
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
+        
 
         {/* 中评评论模块 - 固定为1条 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">

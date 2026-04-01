@@ -127,7 +127,7 @@ export default function PublishSearchKeywordTaskPage() {
       const requestBody: PublishSingleTaskRequest = {
         template_id: 3,
         video_url: formData.videoUrl,
-        deadline: Math.floor(Date.now() / 1000) + deadlineMinutes * 60,
+       deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         task_count: taskQuantity,
         total_price: baseCost,
         recommend_marks: [
@@ -139,8 +139,7 @@ export default function PublishSearchKeywordTaskPage() {
         ]
       };
 
-      console.log('发布任务API请求体:', requestBody);
-      console.log('截止时间格式化后输出:', requestBody.deadline);
+   
       
       // 调用API
       const response = await fetch('/api/task/publishSingleTask', {
@@ -217,22 +216,7 @@ export default function PublishSearchKeywordTaskPage() {
           />
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select 
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({...formData, deadline: e.target.value})}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
+       
 
         {/* 搜索词内容 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm overflow-y-auto">

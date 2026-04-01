@@ -112,7 +112,7 @@ export default function PublishSearchKeywordTaskPage() {
       // 构建请求体
       const requestBody: CreateMagnifierTaskRequest = {
         video_url: formData.videoUrl,
-        deadline: Math.floor(Date.now() / 1000) + deadlineMinutes * 60,
+        deadline: Math.floor(Date.now() / 1000) + 30 * 60,//30分钟内
         task_count: taskQuantity,
         unit_price: taskUnitPrice,
         total_price: baseCost,
@@ -182,22 +182,7 @@ export default function PublishSearchKeywordTaskPage() {
           />
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-xl py-2 px-4 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select 
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.deadline}
-            onChange={(e) => setFormData({...formData, deadline: e.target.value})}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
+      
 
         {/* 搜索词内容 */}
         <div className="bg-white rounded-xl py-2 px-4 shadow-sm overflow-y-auto">

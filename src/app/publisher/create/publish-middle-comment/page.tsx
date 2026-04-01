@@ -491,16 +491,11 @@ export default function PublishTaskPage() {
       // 计算总价格
       const totalPrice = taskPrice * formData.quantity;
 
-      // 计算截止时间戳（当前时间 + 任务截止时间分钟数）
-      const currentTime = Math.floor(Date.now() / 1000); // 当前时间戳（秒）
-      const deadlineMinutes = parseInt(formData.deadline);
-      const deadline = currentTime + deadlineMinutes * 60;
-
       // 构建请求参数
       const requestData: PublishSingleTaskRequest = {
         template_id: templateId,
         video_url: formData.videoUrl.trim(),
-        deadline,
+        deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         task_count: formData.quantity,
         total_price: totalPrice,
         recommend_marks: formData.comments.map((comment, index) => {

@@ -49,7 +49,7 @@ export default function PublisherLoginPage() {
 
 
 
-  // 如果用户已登录，重定向到目标页面
+  /*// 如果用户已登录，重定向到目标页面
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
       console.log('isAuthenticated:', isAuthenticated);
@@ -61,7 +61,7 @@ export default function PublisherLoginPage() {
         router.replace('/publisher/dashboard');
       }
     }
-  }, [isAuthLoading, isAuthenticated, router]);
+  }, [isAuthLoading, isAuthenticated, router]);*/
 
   // 生成随机验证码（与demo.html一致）
   function generateCaptcha(length = 4) {
