@@ -11,11 +11,7 @@ export async function handleLogin(req: NextRequest): Promise<NextResponse> {
     const body = await req.json();
     const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
     
-    logger.audit('login', '开始', { account: body.account, deviceId: body.device_id, deviceName: body.device_name, ip });
-
-    if (!body.device_id || !body.device_name) {
-      return NextResponse.json({ success: false, code: 4001, message: '设备信息缺失' }, { status: 400 });
-    }
+    logger.audit('login', '开始', { account: body.account, ip });
 
     const response = await apiClient.post<LoginResponse>(LOGIN_ENDPOINT, body);
     const result = NextResponse.json(response.data, { status: response.status });

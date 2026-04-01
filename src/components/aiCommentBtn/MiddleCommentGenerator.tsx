@@ -47,7 +47,6 @@ export default function MiddleCommentGenerator({
   sessionId = 'default'
 }: MiddleCommentGeneratorProps) {
   const [ruleConfig, setRuleConfig] = useState<CommentRule | null>(null);
-  const [commentLibrary, setCommentLibrary] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [generateMode, setGenerateMode] = useState<'single' | 'batch'>('batch');
   const [retryCount, setRetryCount] = useState(0);
@@ -62,7 +61,7 @@ export default function MiddleCommentGenerator({
     };
   }, []);
 
-  // 加载规则配置和评论词库
+  // 加载规则配置
   useEffect(() => {
     const loadConfigs = async () => {
       try {
@@ -72,27 +71,6 @@ export default function MiddleCommentGenerator({
         const ruleData = await ruleResponse.json();
         setRuleConfig(ruleData.rules);
         console.log('[Middle Comment Generator] 加载规则配置成功:', ruleData.rules);
-
-        // 加载评论词库
-        let libraryResponse;
-        let libraryData;
-        try {
-          // 尝试加载带空格的文件名
-          libraryResponse = await fetch('/file/comment .json');
-          if (!libraryResponse.ok) throw new Error('加载评论词库失败');
-          libraryData = await libraryResponse.json();
-        } catch (e) {
-          // 如果失败，尝试加载不带空格的文件名
-          libraryResponse = await fetch('/file/comment.json');
-          if (!libraryResponse.ok) throw new Error('加载评论词库失败');
-          libraryData = await libraryResponse.json();
-        }
-        if (Array.isArray(libraryData)) {
-          setCommentLibrary(libraryData);
-          console.log('[Middle Comment Generator] 加载评论词库成功，共', libraryData.length, '条评论');
-        } else {
-          throw new Error('评论词库格式错误');
-        }
       } catch (err) {
         console.error('加载配置失败:', err);
         setError('加载配置失败，请稍后重试');
@@ -194,39 +172,21 @@ export default function MiddleCommentGenerator({
     return replacedText;
   };
 
-  // 已使用的提示词索引
-  const [usedPromptIndices, setUsedPromptIndices] = useState<number[]>([]);
-
-  // 从词库随机获取提示词，移除[[]]标记
-  const getRandomPrompt = (): string => {
-    if (commentLibrary.length === 0) {
-      // 如果词库为空，返回默认提示词
-      return '真的假的？感谢分享';
-    }
-    
-    // 生成一个随机索引，确保不重复
-    let randomIndex: number;
-    if (usedPromptIndices.length < commentLibrary.length) {
-      // 如果还有未使用的提示词，随机选择一个
-      do {
-        randomIndex = Math.floor(Math.random() * commentLibrary.length);
-      } while (usedPromptIndices.includes(randomIndex));
-      // 添加到已使用索引列表
-      setUsedPromptIndices(prev => [...prev, randomIndex]);
-    } else {
-      // 如果所有提示词都已使用，重置已使用列表并随机选择一个
-      setUsedPromptIndices([]);
-      randomIndex = Math.floor(Math.random() * commentLibrary.length);
-    }
-    
-    let prompt = commentLibrary[randomIndex];
-    // 移除[[]]标记
-    prompt = prompt.replace(/\[\[@(.*?)\]\]/g, '@$1');
-    // 应用文本处理
-    prompt = processText(prompt);
-    prompt = applyTextReplacements(prompt);
-    console.log('[Middle Comment Generator] 选择的提示词索引:', randomIndex, '提示词:', prompt);
-    return prompt;
+  // 生成默认提示词
+  const getDefaultPrompt = (): string => {
+    const defaultPrompts = [
+      '真的假的？感谢分享',
+      '学到了！太实用了',
+      '这方法真不错',
+      '谢谢分享，很有帮助',
+      '太棒了，值得学习',
+      '真的很有用，感谢',
+      '学到了新知识',
+      '这分享太及时了',
+      '非常实用的信息',
+      '感谢分享，受益匪浅'
+    ];
+    return defaultPrompts[Math.floor(Math.random() * defaultPrompts.length)];
   };
 
   // 根据规则随机插入@用户标识
@@ -278,7 +238,7 @@ export default function MiddleCommentGenerator({
         },
         body: JSON.stringify({
           draft: draft.trim() || `请生成一条关于${industry}的评论`,
-          industry: industry || '无行业',
+          industry: industry || '无',
           commentIndex: index,
           totalComments: commentCount,
           sessionId,
@@ -311,7 +271,7 @@ export default function MiddleCommentGenerator({
         },
         body: JSON.stringify({
           drafts: drafts.map(d => d.trim() || `请生成一条关于${industry}的评论`),
-          industry: industry || '无行业',
+          industry: industry || '无',
           sessionId
         }),
       });
@@ -355,7 +315,7 @@ export default function MiddleCommentGenerator({
       // 准备草稿评论
       const drafts = userComments || [];
       const fullDrafts = Array.from({ length: commentCount }, (_, i) => {
-        return drafts[i]?.trim() || getRandomPrompt();
+        return drafts[i]?.trim() || getDefaultPrompt();
       });
       
       if (generateMode === 'batch' && commentCount >= 3) {

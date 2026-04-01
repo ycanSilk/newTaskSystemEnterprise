@@ -112,14 +112,14 @@ export default function DouyinAccountRentalPage() {
     // 基础信息验证
     if (!formData.title.trim()) {
       newErrors.title = '请输入出租信息标题';
-    } else if (formData.title.length < 4 || formData.title.length > 20) {
-      newErrors.title = '出租信息标题长度需在4-20个字符之间';
+    } else if (formData.title.length < 4 || formData.title.length > 100) {
+      newErrors.title = '出租信息标题长度需在4-100个字符之间';
     }
     
     if (!formData.description.trim()) {
       newErrors.description = '请输入账号信息';
-    } else if (formData.description.length < 4 || formData.description.length > 50) {
-      newErrors.description = '账号信息长度需在4-50个字符之间';
+    } else if (formData.description.length < 4 || formData.description.length > 100) {
+      newErrors.description = '账号信息长度需在4-100个字符之间';
     }
     
     if (formData.accountImages.length === 0) {
@@ -131,9 +131,7 @@ export default function DouyinAccountRentalPage() {
       newErrors.price = '请输入价格';
     } else if (!Number.isInteger(formData.price)) {
       newErrors.price = '价格必须为整数';
-    } else if (formData.price < 20 || formData.price > 200) {
-      newErrors.price = '价格取值范围为20-200元/天';
-    }
+    } 
     
     if (!formData.minLeaseDays) {
       newErrors.minLeaseDays = '请输入最低出租天数';

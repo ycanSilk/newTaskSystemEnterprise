@@ -128,7 +128,7 @@ export default function PublisherProfilePage() {
   const handleMenuItemClick = (id: string, path: string) => {
     if (id === 'customer-service') {
       // 打开客服聊天窗口
-      const fullChatUrl = `https://kefu.kktaskpaas.com/chatIndex?kefu_id=kefu`;
+      const fullChatUrl = `https://kefu.kktaskpaas.xyz/chatIndex?kefu_id=kefu`;
       window.open(fullChatUrl, '_blank', 'width=800,height=600,top=100,left=100');
       return;
     }

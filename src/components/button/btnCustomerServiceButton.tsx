@@ -14,8 +14,8 @@ interface CustomerServiceButtonProps {
 export const BtnCustomerServiceButton: React.FC<CustomerServiceButtonProps> = ({
   className = '',
   buttonText = '联系客服',
-  CustomerServiceId = 'lofty',
-  chatUrl = 'https://kefu.kktaskpaas.xyz/chatIndex?kefu_id=lofty',
+  CustomerServiceId = 'kefu',
+  chatUrl = 'https://kefu.kktaskpaas.xyz/chatIndex?kefu_id=kefu',
   size = 32
 }) => {
   // 打开客服聊天页面

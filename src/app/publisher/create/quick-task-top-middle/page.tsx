@@ -190,8 +190,8 @@ export default function PublishTaskPage() {
   // 状态管理
   const [isPublishing, setIsPublishing] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
-  // 行业选项列表
-  const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
+  // 选项列表
+  const [industryOptions, setIndustryOptions] = useState<string[]>(['无']);
 
   // 页面加载时获取配置信息
   useEffect(() => {
@@ -233,7 +233,7 @@ export default function PublishTaskPage() {
     }
   }, [isEditingConfig, config]);
 
-  // 加载行业选项
+  // 加载选项
   useEffect(() => {
     const loadIndustries = async () => {
       try {
@@ -245,7 +245,7 @@ export default function PublishTaskPage() {
           }
         }
       } catch (error) {
-        console.error('加载行业选项失败:', error);
+        console.error('加载选项失败:', error);
       }
     };
     loadIndustries();

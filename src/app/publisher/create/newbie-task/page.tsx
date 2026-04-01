@@ -109,10 +109,10 @@ export default function NewbieTaskPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   // AI评论生成状态
   const [isAIGenerating, setIsAIGenerating] = useState(false);
-  // 行业选择状态
-  const [selectedIndustry, setSelectedIndustry] = useState('无行业');
-  // 行业选项列表
-  const [industryOptions, setIndustryOptions] = useState<string[]>(['无行业']);
+  // 选择状态
+  const [selectedIndustry, setSelectedIndustry] = useState('无');
+  // 选项列表
+  const [industryOptions, setIndustryOptions] = useState<string[]>(['无']);
   // 会话ID
   const [sessionId, setSessionId] = useState('');
   
@@ -130,7 +130,7 @@ export default function NewbieTaskPage() {
     }
   }, []);
 
-  // 加载行业选项
+  // 加载选项
   useEffect(() => {
     const loadIndustries = async () => {
       try {
@@ -142,7 +142,7 @@ export default function NewbieTaskPage() {
           }
         }
       } catch (error) {
-        console.error('加载行业选项失败:', error);
+        console.error('加载选项失败:', error);
       }
     };
     loadIndustries();
@@ -542,10 +542,10 @@ export default function NewbieTaskPage() {
 
         {/* 评论内容 */}
         <div className="bg-white rounded-md px-4  py-2 shadow-sm overflow-y-auto">
-          {/* 行业筛选下拉菜单 */}
+          {/* 筛选下拉菜单 */}
           <div className="bg-white rounded-md shadow-sm ">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              行业选择
+              选择
             </label>
             <select
               className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

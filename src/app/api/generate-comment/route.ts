@@ -148,9 +148,9 @@ function buildPrompt(
   
   let prompt = `请润色以下评论，使其更加自然、口语化，保持原有的语义和情感，生成的评论要和原评论差异在80%以上。\n\n`;
   
-  // 添加行业要求
-  if (industry && industry !== '无行业') {
-    prompt += `请确保评论内容与${industry}行业高度相关。\n\n`;
+  // 添加要求
+  if (industry && industry !== '无') {
+    prompt += `请确保评论内容与${industry}高度相关。\n\n`;
   }
   
   // 添加风格要求
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
   try {
     const { 
       draft, 
-      industry = '无行业',
+      industry = '无',
       commentIndex = 0,
       totalComments = 1,
       sessionId = 'default',
@@ -324,7 +324,7 @@ export async function PUT(request: Request) {
   try {
     const { 
       drafts,
-      industry = '无行业',
+      industry = '无',
       sessionId = 'default'
     } = await request.json();
     

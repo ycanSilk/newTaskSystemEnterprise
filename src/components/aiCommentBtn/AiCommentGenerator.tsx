@@ -298,7 +298,7 @@ export default function AiCommentGenerator({
         },
         body: JSON.stringify({
           draft: draft.trim() || `请生成一条关于${industry}的评论`,
-          industry: industry || '无行业',
+          industry: industry || '无',
           commentIndex: index,
           totalComments: commentCount,
           sessionId,
@@ -331,7 +331,7 @@ export default function AiCommentGenerator({
         },
         body: JSON.stringify({
           drafts: drafts.map(d => d.trim() || `请生成一条关于${industry}的评论`),
-          industry: industry || '无行业',
+          industry: industry || '无',
           sessionId
         }),
       });

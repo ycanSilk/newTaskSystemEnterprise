@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LoginFormData, LoginApiResponse } from '../../../types/auth/loginTypes';
 import { useUser } from '@/hooks/useUser';
 import { saveUserOnLoginSuccess } from '@/store/userStore';
-import { getDeviceInfo } from '@/utils/device';
+
 import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
 import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
 import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
@@ -14,16 +14,12 @@ import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceN
     4002: '请输入账号',
     4003: '请输入密码',
     4004: '账号或密码错误',
-    4005: '您的账号已被禁用，请联系管理员',
-    4006: '登录设备数量已达到限制，请先退出其他设备',
+    4005: '您的账号已被禁用，请联系管理员', 
     5001: '注册失败',
     5002: '注册失败',
     1001: '注册失败',
     1002: '注册失败'
   };
-
- 
-
 
 
 export default function PublisherLoginPage() {
@@ -39,8 +35,6 @@ export default function PublisherLoginPage() {
   const [captchaCode, setCaptchaCode] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [showPassword, setShowPassword] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<{ device_id: string; device_name: string } | null>(null);
-  const [deviceLoading, setDeviceLoading] = useState(true);
   // 协议模态框状态
   const [showUserAgreement, setShowUserAgreement] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -51,20 +45,7 @@ export default function PublisherLoginPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser();
 
 
-  // 初始化设备信息
-  useEffect(() => {
-    async function initDeviceInfo() {
-      try {
-        const info = await getDeviceInfo();
-        setDeviceInfo(info);
-      } catch (error) {
-        console.error('获取设备信息失败:', error);
-      } finally {
-        setDeviceLoading(false);
-      }
-    }
-    initDeviceInfo();
-  }, []);
+
 
 
 
@@ -191,15 +172,7 @@ export default function PublisherLoginPage() {
     e.preventDefault();
     setErrorMessage('');
 
-    // 1. 设备信息校验
-    if (deviceLoading) {
-      setErrorMessage('设备信息获取中，请稍候...');
-      return;
-    }
-    if (!deviceInfo) {
-      setErrorMessage('设备信息获取失败，请刷新页面重试');
-      return;
-    }
+
 
     // 2. 用户名校验：必填、字符长度>=4
     if (!formData.account || formData.account.trim() === '') {
@@ -254,13 +227,12 @@ export default function PublisherLoginPage() {
         },
         body: JSON.stringify({
           account: formData.account.trim(),
-          password: formData.password.trim(),
-          device_id: deviceInfo.device_id,
-          device_name: deviceInfo.device_name
+          password: formData.password.trim()          
         })
       });
 
-
+      console.log(response);
+      
       const httpStatus = response.status;
 
       if (!response.ok) {
@@ -284,7 +256,7 @@ export default function PublisherLoginPage() {
       const result: LoginApiResponse = await response.json();
 
       if (result.code === 0) {
-        saveUserOnLoginSuccess(result.data, result.data.token, deviceInfo);
+        saveUserOnLoginSuccess(result.data, result.data.token);
         router.replace('/publisher/dashboard');
       } else if (result.code === 4001) {
         setErrorMessage('注册失败');
@@ -296,8 +268,6 @@ export default function PublisherLoginPage() {
         setErrorMessage('账号或密码错误');
       } else if (result.code === 4005) {
         setErrorMessage('您的账号已被禁用，请联系管理员');
-      } else if (result.code === 4006) {
-        setErrorMessage('登录设备数量已达到限制，请先退出其他设备');
       } else if (result.code === 5001) {
         setErrorMessage('注册失败');
       } else if (result.code === 5002) {
