@@ -10,15 +10,15 @@ import UserAgreementModal from '@/app/components/modals/UserAgreementModal';
 import PrivacyPolicyModal from '@/app/components/modals/PrivacyPolicyModal';
 import PlatformServiceNoticeModal from '@/app/components/modals/PlatformServiceNoticeModal';
   const userFriendlyMessages: Record<number, string> = {
-    4001: '注册失败',
+    4001: '登录失败',
     4002: '请输入账号',
     4003: '请输入密码',
     4004: '账号或密码错误',
     4005: '您的账号已被禁用，请联系管理员', 
-    5001: '注册失败',
-    5002: '注册失败',
-    1001: '注册失败',
-    1002: '注册失败'
+    5001: '登录失败',
+    5002: '登录失败',
+    1001: '登录失败',
+    1002: '登录失败'
   };
 
 
@@ -259,7 +259,7 @@ export default function PublisherLoginPage() {
         saveUserOnLoginSuccess(result.data, result.data.token);
         router.replace('/publisher/dashboard');
       } else if (result.code === 4001) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else if (result.code === 4002) {
         setErrorMessage('请输入账号');
       } else if (result.code === 4003) {
@@ -269,15 +269,15 @@ export default function PublisherLoginPage() {
       } else if (result.code === 4005) {
         setErrorMessage('您的账号已被禁用，请联系管理员');
       } else if (result.code === 5001) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else if (result.code === 5002) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else if (result.code === 1001) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else if (result.code === 1002) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else if (result.code === 1000) {
-        setErrorMessage('注册失败');
+        setErrorMessage('登录失败');
       } else {
         setErrorMessage(result.message || '登录失败，请稍后重试');
       }

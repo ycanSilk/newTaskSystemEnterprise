@@ -703,14 +703,14 @@ export default function PublishTaskPage() {
                 </div>
                 <div className="w-full md:w-auto">
                   <div className="flex flex-col md:flex md:items-center">
-                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">抖音ID:</span>
+                    <span className="text-sm text-gray-600 mb-1 md:mb-0 md:mr-2">抖音ID或名称:</span>
                     {isEditingConfig ? (
                       <input
                         type="text"
                         value={editConfig.douyin_id}
-                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '').substring(0, 10)})}
+                        onChange={(e) => setEditConfig({...editConfig, douyin_id: e.target.value})}
                         className="w-full md:w-auto px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="除特殊符号外均可输入，最多10个字符"
+                        placeholder="抖音ID或名称"
                       />
                     ) : (
                       <span className="ml-0 md:ml-2">{config.douyin_id || '未设置'}</span>

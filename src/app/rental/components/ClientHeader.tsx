@@ -197,12 +197,7 @@ export default function TopNavigationBar({ user }: TopNavigationBarProps) {
           >
             <BellOutlined className="text-3xl text-white" />
           </button>
-          {/* 通知数量提示，只有当unread_count大于0时显示 */}
-          {userWithUnreadCount && (userWithUnreadCount as any).unread_count > 0 && (
-            <div className="absolute top-0 left-5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {(userWithUnreadCount as any).unread_count}
-            </div>
-          )}
+         
         </div>
 
         {/* 用户头像和下拉菜单 */}

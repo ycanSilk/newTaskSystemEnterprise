@@ -235,18 +235,6 @@ export default function PublishTaskPage() {
       return;
     }
 
-    // 2. 非法字符校验（除特殊符号外都可以输入）
-    const validPattern = /^[^!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/;
-    if (!validPattern.test(trimmedMention)) {
-      showAlert('用户ID或昵称不能包含特殊符号', '确认', '');
-      return;
-    }
-
-    // 3. 字数限制校验（最多10个字）
-    if (trimmedMention.length > 10) {
-      showAlert('用户ID或昵称不能超过10个字', '确认', '');
-      return;
-    }
 
     // 3. 确保用户昵称ID唯一
     if (trimmedMention && !mentions.includes(trimmedMention)) {
@@ -615,22 +603,7 @@ export default function PublishTaskPage() {
           )}
         </div>
 
-        {/* 截止时间 */}
-        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            任务截止时间
-          </label>
-          <select
-            className="w-full p-3 border border-gray-200 rounded-lg"
-            value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          >
-            <option value="10">10分钟内</option>
-            <option value="30">30分钟内</option>
-            <option value="720">12小时内</option>
-            <option value="1440">24小时内</option>
-          </select>
-        </div>
+
 
         {/* 派单示例模块 */}
         <div className="bg-white rounded-2xl px-4 py-2 shadow-sm overflow-y-auto">
@@ -639,12 +612,12 @@ export default function PublishTaskPage() {
           </label>
           {/* @用户标记 */}
           <div className="bg-white shadow-sm">
-            <span className="text-sm text-red-500">@用户昵称 请使用抖音唯一ID，除特殊符号外都可以输入，不需要输入@符号，最多10个字。</span>
+            <span className="text-sm text-red-500">@用户昵称 请使用抖音名称或唯一ID</span>
             <div className="space-y-3">
               <Input
-                placeholder="输入用户ID或昵称（除特殊符号外都可以输入，最多10个字）"
+                placeholder="输入用户ID或名称"
                 value={mentionInput}
-                onChange={(e) => setMentionInput(e.target.value.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '').substring(0, 10))}
+                onChange={(e) => setMentionInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (!mentions.length && handleAddMention())}
                 className="w-full"
                 disabled={mentions.length >= 1}

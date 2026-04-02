@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { PublisherBottomNavigation } from './components/PublisherBottomNavigation';
 import { PublisherHeader } from '@/app/publisher/components/PublisherHeader';
 import AwaitingReviewNotification from './components/AwaitingReviewNotification';
-import { useTokenChecker } from '@/hooks/useTokenChecker';
 
 export default function PublisherLayout({
   children,
@@ -13,9 +12,6 @@ export default function PublisherLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  
-  // 总是在顶层调用useTokenChecker钩子，确保Hooks调用顺序一致
-  useTokenChecker();
   
   // 判断是否为登录页面或认证相关页面
   const isAuthPage = !pathname || 
