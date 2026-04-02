@@ -14,11 +14,16 @@ const AwaitingReviewTabPage = dynamic(() => import('./AwaitingReview/page'), {
   loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
   ssr: false
 });
-const CompletedTabPage = dynamic(() => import('./Completed/page'), {
+const NotCompletedTabPage = dynamic(() => import('./NotCompleted/page'), {
   loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
   ssr: false
 });
 const MagnifyingGlassTabPage = dynamic(() => import('./MagnifyingGlass/page'), {
+  loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
+  ssr: false
+});
+
+const CompletedTabPage = dynamic(() => import('./Completed/page'), {
   loading: () => <div className="flex justify-center items-center py-20">加载中...</div>,
   ssr: false
 });
@@ -101,36 +106,39 @@ export default function PublisherDashboardPage() {
     window.history.replaceState({}, '', newUrl.toString());
   };
 
-
-
-
   return (
     <div className="pb-20">
       {/* 只保留4个切换按钮 */}
-      <div className="mx-4 mt-4 grid grid-cols-4 gap-1">
+      <div className="mx-4 mt-4 grid grid-cols-5 gap-1">
         <button
           onClick={() => handleTabChange('InProgress')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          className={`py-2 rounded text-sm font-medium transition-colors ${activeTab === 'InProgress' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
         >
           进行中
         </button>
         <button
           onClick={() => handleTabChange('AwaitingReview')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          className={`py-2 rounded text-sm font-medium transition-colors ${activeTab === 'AwaitingReview' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
         >
           待审核
         </button>
         <button
           onClick={() => handleTabChange('Completed')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          className={`py-2 rounded text-sm font-medium transition-colors ${activeTab === 'Completed' ? 'bg-green-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-green-50'}`}
         >
           已完成
         </button>
         <button
           onClick={() => handleTabChange('MagnifyingGlass')}
-          className={`py-3 px-2 rounded text-sm font-medium transition-colors ${activeTab === 'MagnifyingGlass' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+          className={`py-2 rounded text-sm font-medium transition-colors ${activeTab === 'MagnifyingGlass' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
         >
-          放大镜任务
+          放大镜
+        </button>
+           <button
+          onClick={() => handleTabChange('NotCompleted')}
+          className={`py-2 rounded text-sm font-medium transition-colors ${activeTab === 'NotCompleted' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600 hover:bg-blue-50'}`}
+        >
+          未完成
         </button>
       </div>
       <div>
@@ -155,11 +163,13 @@ export default function PublisherDashboardPage() {
         {activeTab === 'Completed' && (
           <CompletedTabPage />
         )}
+        {activeTab === 'NotCompleted' && (
+          <NotCompletedTabPage />
+        )}
         {activeTab === 'MagnifyingGlass' && (
           <MagnifyingGlassTabPage />
         )}
       </Suspense>
-
     </div>
   );
 }

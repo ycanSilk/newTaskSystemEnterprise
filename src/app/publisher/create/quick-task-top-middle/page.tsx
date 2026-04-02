@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/imagesUpload/ImageUpload';
 import TaskAssistance from '@/components/taskAssistance/quickTaskTopMiddle';
-import AIcoment from '@/components/aiCommentBtn/AIcoment';
+import AIcoment from '@/components/aiCommentBtn/quickTopAndMiddle';
 // 类型定义
 interface CommentData {
   comment: string;
@@ -332,7 +332,7 @@ export default function PublishTaskPage() {
     // 存储生成的评论
     setGeneratedComments(comments);
     
-    // 更新评论数据
+    // 更新评论数据 - 只更新第一条任务的评论作为预览
     if (comments && comments.length >= 3) {
       setFormData(prev => ({
         ...prev,
@@ -357,10 +357,10 @@ export default function PublishTaskPage() {
     
     // 只有评论生成成功后，才继续发布任务
     if (success === true) {
-      console.log('评论生成成功，等待5秒后继续发布任务');
-      // 增加5秒延时，确保表单数据更新完成
+      console.log('评论生成成功，等待1秒后继续发布任务');
+      // 增加1秒延时，确保表单数据更新完成
       setTimeout(() => {
-        console.log('5秒延时结束，继续发布任务');
+        console.log('1秒延时结束，继续发布任务');
         handlePublishAfterCommentGeneration(comments);
       }, 1000);
       
@@ -393,6 +393,54 @@ export default function PublishTaskPage() {
     setShowCommentGenerator(true);
   };
 
+  // 计算两个字符串的相似度（使用编辑距离算法）
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(null));
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i][0] = i;
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1, // 删除
+          matrix[i][j - 1] + 1, // 插入
+          matrix[i - 1][j - 1] + cost // 替换
+        );
+      }
+    }
+
+    const maxLength = Math.max(len1, len2);
+    const similarity = 1 - matrix[len1][len2] / maxLength;
+    return similarity;
+  };
+
+  // 检查评论是否有重复
+  const checkDuplicateComments = (comments: string[]): { hasDuplicate: boolean; duplicateIndices: number[] } => {
+    const similarityThreshold = 0.6; // 相似度阈值
+    const duplicateIndices: number[] = [];
+    
+    for (let i = 0; i < comments.length; i++) {
+      for (let j = i + 1; j < comments.length; j++) {
+        const similarity = calculateSimilarity(comments[i], comments[j]);
+        if (similarity > similarityThreshold) {
+          console.log(`[发布校验] 发现重复评论: 评论${i + 1} 与 评论${j + 1} 相似度 ${(similarity * 100).toFixed(2)}%`);
+          if (!duplicateIndices.includes(i)) duplicateIndices.push(i);
+          if (!duplicateIndices.includes(j)) duplicateIndices.push(j);
+        }
+      }
+    }
+    
+    return { hasDuplicate: duplicateIndices.length > 0, duplicateIndices };
+  };
+
   // 评论生成完成后继续发布任务
   const handlePublishAfterCommentGeneration = async (comments: string[]) => {
     console.log('评论生成完成，继续发布任务');
@@ -404,51 +452,71 @@ export default function PublishTaskPage() {
     try {
       // 任务发布次数等于有效视频链接数量
       const releasesNumber = formData.videoUrls.length;
+      const commentsPerTask = 3; // 每条任务需要3条评论
+      const totalCommentsNeeded = releasesNumber * commentsPerTask;
 
-      // 验证评论内容
-    if (!comments[0] || comments[0].trim() === '') {
-      console.log('验证失败：上评评论为空');
-      showAlert('上评评论不能为空', '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+      // 验证评论数量是否足够
+      if (comments.length < totalCommentsNeeded) {
+        console.log('验证失败：评论数量不足');
+        showAlert(`评论数量不足，需要 ${totalCommentsNeeded} 条评论`, '确认', '');
+        setIsPublishing(false);
+        return;
+      }
 
-    // 验证上评评论必须包含固定名称
-    if (config.name && !comments[0].includes(config.name)) {
-      console.log('验证失败：上评评论必须包含固定名称');
-      showAlert(`上评评论必须包含固定名称 "${config.name}"`, '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+      // 检查评论是否有重复
+      const { hasDuplicate, duplicateIndices } = checkDuplicateComments(comments);
+      if (hasDuplicate) {
+        console.log('验证失败：生成的评论存在重复');
+        showAlert(`生成的评论存在重复或高度相似，请重新生成。重复评论序号: ${duplicateIndices.map(i => i + 1).join(', ')}`, '确认', '');
+        setIsPublishing(false);
+        return;
+      }
 
-    if (comments.length < 2) {
-      console.log('验证失败：中评评论数量不足');
-      showAlert('中评评论数量不足', '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+      // 验证每条任务的评论
+      for (let taskIndex = 0; taskIndex < releasesNumber; taskIndex++) {
+        const startIndex = taskIndex * commentsPerTask;
+        const taskComments = comments.slice(startIndex, startIndex + commentsPerTask);
 
-    if (!comments[1] || comments[1].trim() === '') {
-      console.log('验证失败：第一条中评评论为空');
-      showAlert('第一条中评评论不能为空', '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+        // 验证上评评论
+        if (!taskComments[0] || taskComments[0].trim() === '') {
+          console.log(`验证失败：第 ${taskIndex + 1} 条任务的上评评论为空`);
+          showAlert(`第 ${taskIndex + 1} 条任务的上评评论不能为空`, '确认', '');
+          setIsPublishing(false);
+          return;
+        }
 
-    if (!comments[2] || comments[2].trim() === '') {
-      console.log('验证失败：第二条中评评论为空');
-      showAlert('第二条中评评论不能为空', '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+        // 验证上评评论必须包含固定名称
+        if (config.name && !taskComments[0].includes(config.name)) {
+          console.log(`验证失败：第 ${taskIndex + 1} 条任务的上评评论必须包含固定名称`);
+          showAlert(`第 ${taskIndex + 1} 条任务的上评评论必须包含固定名称 "${config.name}"`, '确认', '');
+          setIsPublishing(false);
+          return;
+        }
 
-    // 验证第二条中评评论必须包含@抖音ID
-    if (config.douyin_id && !comments[2].includes(`@${config.douyin_id}`)) {
-      console.log('验证失败：第二条中评评论必须包含@抖音ID');
-      showAlert(`第二条中评评论必须包含 "@${config.douyin_id}"`, '确认', '');
-      setIsPublishing(false);
-      return;
-    }
+        // 验证第一条中评评论
+        if (!taskComments[1] || taskComments[1].trim() === '') {
+          console.log(`验证失败：第 ${taskIndex + 1} 条任务的第一条中评评论为空`);
+          showAlert(`第 ${taskIndex + 1} 条任务的第一条中评评论不能为空`, '确认', '');
+          setIsPublishing(false);
+          return;
+        }
+
+        // 验证第二条中评评论
+        if (!taskComments[2] || taskComments[2].trim() === '') {
+          console.log(`验证失败：第 ${taskIndex + 1} 条任务的第二条中评评论为空`);
+          showAlert(`第 ${taskIndex + 1} 条任务的第二条中评评论不能为空`, '确认', '');
+          setIsPublishing(false);
+          return;
+        }
+
+        // 验证第二条中评评论必须包含@抖音ID
+        if (config.douyin_id && !taskComments[2].includes(`@${config.douyin_id}`)) {
+          console.log(`验证失败：第 ${taskIndex + 1} 条任务的第二条中评评论必须包含@抖音ID`);
+          showAlert(`第 ${taskIndex + 1} 条任务的第二条中评评论必须包含 "@${config.douyin_id}"`, '确认', '');
+          setIsPublishing(false);
+          return;
+        }
+      }
 
       console.log('验证通过，开始构建请求数据');
 
@@ -458,38 +526,34 @@ export default function PublishTaskPage() {
       const totalPrice = singlePrice * releasesNumber;
       console.log('价格计算：', { singlePrice, totalPrice, releasesNumber });
 
-   
-
       // 视频链接数组
       const videoUrls = formData.videoUrls;
       console.log('视频链接数量：', videoUrls.length);
 
-      // 构建recommend_marks数组
+      // 构建recommend_marks数组 - 按照顺序添加所有评论
       const recommendMarks: RecommendMark[] = [];
 
-      // 添加上评评论（第0条）
-      recommendMarks.push({
-        comment: comments[0] || '',
-        image_url: formData.topComment.imageUrl || ''
-      });
-      console.log('添加上评评论');
-
-      // 添加中评评论
-      for (let i = 1; i < Math.min(3, comments.length); i++) {
+      // 直接按照AI生成的评论顺序添加到recommend_marks数组
+      for (let i = 0; i < comments.length; i++) {
         const recommendMark: RecommendMark = {
           comment: comments[i] || '',
-          image_url: formData.middleComments[i-1].imageUrl || ''
+          image_url: '' // 不使用表单中的图片URL，保持与示例一致
         };
 
-        // 只在第二条中评评论添加@用户标记（抖音ID）
-        if (i === 2 && config.douyin_id) {
-          recommendMark.at_user = config.douyin_id;
-          console.log('在第二条中评评论添加@用户标记:', config.douyin_id);
+        // 检查是否是每组的第三条评论（即每个任务的第二条中评评论）
+        if ((i + 1) % 3 === 0 && config.douyin_id) {
+          // 提取@用户ID并添加到at_user字段
+          const comment = comments[i];
+          if (comment.includes(`@${config.douyin_id}`)) {
+            recommendMark.at_user = config.douyin_id;
+            console.log(`为第 ${Math.floor(i / 3) + 1} 条任务的第二条中评评论添加@用户标记:`, config.douyin_id);
+          }
         }
 
         recommendMarks.push(recommendMark);
       }
-      console.log('添加中评评论完成，共', recommendMarks.length, '条评论');
+      console.log('添加评论完成，共', recommendMarks.length, '条评论');
+      console.log('评论详情:', recommendMarks);
 
       // 构建请求体
       const requestData: CreateQuickTaskRequest = {
@@ -497,12 +561,27 @@ export default function PublishTaskPage() {
         video_url: videoUrls,
         deadline: Math.floor(Date.now() / 1000) + 30 * 60,
         releases_number: releasesNumber,
-        stage1_count: stage1Count,
-        stage2_count: stage2Count,
+        stage1_count: stage1Count, // 每个任务1个上评
+        stage2_count: stage2Count, // 每个任务2个中评
         total_price: totalPrice,
         recommend_marks: recommendMarks
       };
       console.log('请求数据构建完成:', requestData);
+      console.log('阶段配置: stage1_count=', stage1Count, 'stage2_count=', stage2Count);
+      console.log('预期评论数量:', releasesNumber * (stage1Count + stage2Count));
+      console.log('实际评论数量:', recommendMarks.length);
+
+      // 验证评论数量是否正确
+      const expectedCommentsCount = releasesNumber * (stage1Count + stage2Count);
+      if (recommendMarks.length !== expectedCommentsCount) {
+        console.error('评论数量验证失败:', {
+          expected: expectedCommentsCount,
+          actual: recommendMarks.length
+        });
+        showAlert(`评论数量验证失败，预期 ${expectedCommentsCount} 条，实际 ${recommendMarks.length} 条`, '确认', '');
+        setIsPublishing(false);
+        return;
+      }
 
       // 调用API
       console.log('开始调用API');
@@ -520,7 +599,7 @@ export default function PublishTaskPage() {
 
       console.log('API响应结果：', result);
       // 处理响应结果
-      if (result.success) {
+      if (result.success && result.message !== '推荐评论数量不匹配，应为 3 组（1个阶段 1 + 2个阶段 2）') {
         // 发布成功
         console.log('任务发布成功');
         showAlert(
@@ -531,7 +610,18 @@ export default function PublishTaskPage() {
       } else {
         // 发布失败
         console.log('任务发布失败:', result.message);
-         if (result.code === 4019) {
+        if (result.message && result.message.includes('推荐评论数量不匹配')) {
+          // 评论数量不匹配错误
+          console.error('评论数量不匹配错误，详细信息:', {
+            releasesNumber,
+            stage1Count,
+            stage2Count,
+            expectedCommentsCount,
+            actualCommentsCount: recommendMarks.length,
+            recommendMarks
+          });
+          showAlert(`评论数量不匹配，请重新生成评论。错误信息: ${result.message}`, '确认', '');
+        } else if (result.code === 4019) {
           showAlert('账户余额不足，请充值后再发布任务。','前往充值', '/publisher/recharge');
         } else if (result.code === 4001) {
           showAlert('发布任务失败', '确定', '');
@@ -574,7 +664,7 @@ export default function PublishTaskPage() {
         } else if (result.code === 5002) {
           showAlert('任务发布失败', '确定', '');
         } else {
-          showAlert( '任务发布失败','确认','');
+          showAlert(`任务发布失败: ${result.message || '未知错误'}`, '确认', '');
         }        
       }
     } catch (error) {
@@ -614,7 +704,7 @@ export default function PublishTaskPage() {
             派单禁止项
           </button>
         </div>
-        <div className="text-lg pl-5 text-red-500">
+        <div className="text-sm pl-5 text-red-500">
           <span className="text-1xl text-red-500">⚠️</span>提示：<br />
           1.违反平台的：引导词，极限词，赌博以及其他限制词<br />
           2.违反国家禁止的言论<br />
@@ -872,7 +962,7 @@ export default function PublishTaskPage() {
                 }}
                 isLoading={isGeneratingComments}
                 onLoadingChange={setIsGeneratingComments}
-                commentCount={3} // 生成3条评论：1条上评 + 2条中评
+                commentCount={formData.videoUrls.length * 3} // 生成总评论数量：任务次数 × 3条评论/任务
                 atUser={config.douyin_id}
                 name={config.name}
                 userComments={[formData.topComment.comment, ...formData.middleComments.map(c => c.comment)]}

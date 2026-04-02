@@ -170,14 +170,14 @@ function buildPrompt(
     prompt += `字数限制：请确保生成的评论内容不超过20个文字，保持简洁有力。\n`;
   }
   
-  // 添加历史评论提醒（避免重复）
+  // 添加历史评论提醒（避免重复）- 增强去重要求
   if (recentHistory.length > 0) {
-    prompt += `避免与以下已生成的评论风格雷同：\n`;
+    prompt += `【重要】必须避免与以下已生成的评论重复或高度相似，确保语义、用词、句式结构都有明显差异：\n`;
     recentHistory.forEach((comment, idx) => {
       const cleanedComment = cleanString(comment);
-      prompt += `历史评论${idx + 1}：${cleanedComment.substring(0, 30)}...\n`;
+      prompt += `已有评论${idx + 1}：${cleanedComment.substring(0, 30)}...\n`;
     });
-    prompt += `\n`;
+    prompt += `\n严格要求：生成的评论必须与上述所有已有评论在语义、用词、句式上有明显区别，相似度不能超过30%。\n\n`;
   }
   
   // 添加原评论内容
@@ -200,15 +200,15 @@ async function callDeepSeek(
     messages: [
       {
         role: 'system',
-        content: '你是一个擅长润色抖音评论的助手。使评论更有趣、更吸引人，可以适当添加表情符号，但保持原意不变。直接返回生成的评论，不要包含任何解释。每次生成的评论必须在风格、用词、句式上有明显差异，避免重复。',
+        content: '你是一个擅长润色抖音评论的助手。使评论更有趣、更吸引人，可以适当添加表情符号，但保持原意不变。直接返回生成的评论，不要包含任何解释。每次生成的评论必须在风格、用词、句式上有明显差异，绝对不能与历史评论重复或高度相似。确保每条评论都是独一无二的。',
       },
       { role: 'user', content: prompt },
     ],
     temperature,
     max_tokens: 200, // 限制输出长度，节省token
     top_p: 0.95,
-    frequency_penalty: 0.6, // 降低重复词频率
-    presence_penalty: 0.6,  // 鼓励谈论新内容
+    frequency_penalty: 0.8, // 提高惩罚，降低重复词频率
+    presence_penalty: 0.8,  // 提高惩罚，鼓励谈论新内容
   };
   
   console.log('DeepSeek API 请求体:', JSON.stringify(requestBody, null, 2));

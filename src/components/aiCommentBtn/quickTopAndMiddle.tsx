@@ -36,6 +36,35 @@ interface CommentRule {
   };
 }
 
+// 计算两个字符串的相似度（使用编辑距离算法）
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const len1 = str1.length;
+  const len2 = str2.length;
+  const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(null));
+
+  for (let i = 0; i <= len1; i++) {
+    matrix[i][0] = i;
+  }
+  for (let j = 0; j <= len2; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // 删除
+        matrix[i][j - 1] + 1, // 插入
+        matrix[i - 1][j - 1] + cost // 替换
+      );
+    }
+  }
+
+  const maxLength = Math.max(len1, len2);
+  const similarity = 1 - matrix[len1][len2] / maxLength;
+  return similarity;
+};
+
 export default function MiddleCommentGenerator({
   onCommentsGenerated,
   onProgressUpdate,
@@ -266,11 +295,9 @@ export default function MiddleCommentGenerator({
     let lastError: any;
     // 使用随机
     const industryOptions = [
-      "竞技足球",
-      "游戏",
-      "付页",
-      "信息咨询",
-      "宣传类"
+      "竞技足球", "游戏", "付页", "信息咨询", "宣传类",
+      "科技", "教育", "医疗", "金融", "旅游",
+      "餐饮", "娱乐", "体育", "艺术", "时尚"
     ];
     const randomIndustry = industryOptions[Math.floor(Math.random() * industryOptions.length)];
 
@@ -282,7 +309,7 @@ export default function MiddleCommentGenerator({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            draft: draft.trim() || `请生成一条关于${randomIndustry}的评论`,
+            draft: draft.trim() || `请生成一条关于${randomIndustry}的独特评论，不要与之前的评论重复`,
             industry: randomIndustry,
             commentIndex: index,
             totalComments: commentCount,
@@ -333,7 +360,7 @@ export default function MiddleCommentGenerator({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            drafts: drafts.map(d => d.trim() || `请生成一条关于${randomIndustry}的评论`),
+            drafts: drafts.map((d, index) => d.trim() || `请生成第${index + 1}条关于${randomIndustry}的独特评论，不要与之前的评论重复，确保每条评论内容都不同`),
             industry: randomIndustry,
             sessionId
           }),
@@ -386,7 +413,7 @@ export default function MiddleCommentGenerator({
       // 准备草稿评论
       const drafts = userComments || [];
       const fullDrafts = Array.from({ length: commentCount }, (_, i) => {
-        return drafts[i]?.trim() || getDefaultPrompt();
+        return drafts[i % drafts.length]?.trim() || getDefaultPrompt();
       });
       
       // 始终使用批量模式生成评论
@@ -397,153 +424,265 @@ export default function MiddleCommentGenerator({
       
       onProgressUpdate?.(commentCount, commentCount);
       
-      // 去重后返回
-      const uniqueResults = results.map((r, idx) => {
-        // 如果与前一条太相似，稍微修改
-        if (idx > 0 && r === results[idx - 1]) {
-          return r + '，';
+      // 去重处理 - 检查并移除重复或高度相似的评论
+      const uniqueResults: string[] = [];
+      const similarityThreshold = 0.5; // 相似度阈值，超过则认为重复
+      
+      for (let i = 0; i < results.length; i++) {
+        const currentComment = results[i];
+        let isDuplicate = false;
+        
+        // 检查与已保留的评论是否重复
+        for (const existingComment of uniqueResults) {
+          const similarity = calculateSimilarity(currentComment, existingComment);
+          if (similarity > similarityThreshold) {
+            console.log(`[Middle Comment Generator] 发现重复评论，相似度: ${(similarity * 100).toFixed(2)}%`);
+            isDuplicate = true;
+            break;
+          }
         }
-        return r;
+        
+        // 如果不重复，添加到结果中
+        if (!isDuplicate) {
+          uniqueResults.push(currentComment);
+        } else {
+          // 如果重复，尝试添加随机后缀使其不同
+          const randomSuffix = ['，', '！', '。', '～'][Math.floor(Math.random() * 4)];
+          const modifiedComment = currentComment + randomSuffix;
+          
+          // 再次检查修改后的评论是否仍然重复
+          let stillDuplicate = false;
+          for (const existingComment of uniqueResults) {
+            const similarity = calculateSimilarity(modifiedComment, existingComment);
+            if (similarity > similarityThreshold) {
+              stillDuplicate = true;
+              break;
+            }
+          }
+          
+          if (!stillDuplicate) {
+            uniqueResults.push(modifiedComment);
+          } else {
+            // 如果仍然重复，使用默认提示词生成新评论
+            const defaultPrompts = [
+              '真的假的？感谢分享',
+              '学到了！太实用了',
+              '这方法真不错',
+              '谢谢分享，很有帮助',
+              '太棒了，值得学习',
+              '真的很有用，感谢',
+              '学到了新知识',
+              '这分享太及时了',
+              '非常实用的信息',
+              '感谢分享，受益匪浅',
+              '太感谢了，这个方法真好用',
+              '学到了很多，谢谢分享',
+              '这个技巧太实用了',
+              '感谢分享，收获满满',
+              '真的很有帮助，谢谢',
+              '学到了，非常感谢',
+              '这个方法太棒了',
+              '谢谢分享，很实用',
+              '真的很有用，学到了',
+              '感谢分享，非常实用'
+            ];
+            const randomPrompt = defaultPrompts[Math.floor(Math.random() * defaultPrompts.length)];
+            uniqueResults.push(randomPrompt);
+          }
+        }
+      }
+      
+      // 处理@用户标识和文本替换
+      const finalComments = uniqueResults.map((comment, i) => {
+        let processedComment = processText(comment);
+        processedComment = applyTextReplacements(processedComment);
+        
+        // 确定评论类型：每3条评论为一组，分别是上评、中评1、中评2
+        const groupIndex = Math.floor(i / 3);
+        const commentType = i % 3;
+        
+        // 上评评论（每组的第一条）：固定带name参数
+        if (commentType === 0) {
+          // 普通评论的字数控制，限制在20字以内
+          if (processedComment.length > 20) {
+            processedComment = processedComment.slice(0, 19) + '…';
+          } else if (processedComment.length < ruleConfig.minWords) {
+            processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
+          }
+          
+          // 确保添加name参数
+          if (name && !processedComment.includes(name)) {
+            const namePos = Math.random();
+            if (namePos < 0.33) {
+              processedComment = `${name} ${processedComment}`;
+            } else if (namePos < 0.66) {
+              const parts = processedComment.split('，');
+              if (parts.length >= 2) {
+                const insertIndex = Math.floor(Math.random() * (parts.length - 1)) + 1;
+                parts.splice(insertIndex, 0, name);
+                processedComment = parts.join('，');
+              } else {
+                processedComment = `${processedComment} ${name}`;
+              }
+            } else {
+              processedComment = `${processedComment} ${name}`;
+            }
+          }
+          
+        }
+        // 中评评论的第二条（每组的第三条评论）：固定带atUser参数
+        else if (commentType === 2 && atUser) {
+          // 提取实际评论内容（排除@用户标识）
+          let commentWithoutAt = processedComment.replace(new RegExp(`@${atUser}`, 'g'), '').trim();
+          // 对于带有@用户标识的评论，限制实际内容在10字以内（不包含@用户标识）
+          const lastCommentMaxWords = 10;
+          console.log(`[Middle Comment Generator] 第 ${groupIndex + 1} 组最后一条评论字数限制:`, lastCommentMaxWords);
+          console.log(`[Middle Comment Generator] 第 ${groupIndex + 1} 组最后一条评论实际内容长度:`, commentWithoutAt.length);
+          
+          // 确保截取的内容不包含乱码，并且长度正确
+          let trimmedContent = commentWithoutAt;
+          if (commentWithoutAt.length > lastCommentMaxWords) {
+            // 截取前lastCommentMaxWords个字符
+            trimmedContent = commentWithoutAt.slice(0, lastCommentMaxWords);
+            console.log(`[Middle Comment Generator] 截取后的内容:`, trimmedContent);
+          }
+          // 插入@用户标识
+          processedComment = insertAtUser(trimmedContent, atUser);
+          console.log(`[Middle Comment Generator] 处理后的第 ${groupIndex + 1} 组最后一条评论:`, processedComment);
+          
+        }
+        // 其他评论（中评第一条）
+        else {
+          // 普通评论的字数控制，限制在20字以内
+          if (processedComment.length > 20) {
+            processedComment = processedComment.slice(0, 19) + '…';
+          } else if (processedComment.length < ruleConfig.minWords) {
+            processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
+          }
+          
+        }
+        
+        return processedComment;
       });
       
-      // 计算两个字符串的相似度（使用编辑距离算法）
-  const calculateSimilarity = (str1: string, str2: string): number => {
-    const len1 = str1.length;
-    const len2 = str2.length;
-    const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(null));
-
-    for (let i = 0; i <= len1; i++) {
-      matrix[i][0] = i;
-    }
-    for (let j = 0; j <= len2; j++) {
-      matrix[0][j] = j;
-    }
-
-    for (let i = 1; i <= len1; i++) {
-      for (let j = 1; j <= len2; j++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1, // 删除
-          matrix[i][j - 1] + 1, // 插入
-          matrix[i - 1][j - 1] + cost // 替换
-        );
-      }
-    }
-
-    const maxLength = Math.max(len1, len2);
-    const similarity = 1 - matrix[len1][len2] / maxLength;
-    return similarity;
-  };
-
-  // 处理@用户标识和文本替换
-  const finalComments = uniqueResults.map((comment, i) => {
-    let processedComment = processText(comment);
-    processedComment = applyTextReplacements(processedComment);
-    
-    // 上评评论（第一条）：固定带name参数
-    if (i === 0) {
-      // 普通评论的字数控制，限制在20字以内
-      if (processedComment.length > 20) {
-        processedComment = processedComment.slice(0, 19) + '…';
-      } else if (processedComment.length < ruleConfig.minWords) {
-        processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
-      }
-      
-      // 确保添加name参数
-      if (name && !processedComment.includes(name)) {
-        const namePos = Math.random();
-        if (namePos < 0.33) {
-          processedComment = `${name} ${processedComment}`;
-        } else if (namePos < 0.66) {
-          const parts = processedComment.split('，');
-          if (parts.length >= 2) {
-            const insertIndex = Math.floor(Math.random() * (parts.length - 1)) + 1;
-            parts.splice(insertIndex, 0, name);
-            processedComment = parts.join('，');
-          } else {
-            processedComment = `${processedComment} ${name}`;
+      // 确保每组的第三条评论都带有@用户ID
+      const finalCommentsWithAtUser = finalComments.map((comment, i) => {
+        const commentType = i % 3;
+        if (commentType === 2 && atUser && !comment.includes(`@${atUser}`)) {
+          // 如果第三条评论没有@用户ID，重新插入
+          let commentWithoutAt = comment.replace(new RegExp(`@${atUser}`, 'g'), '').trim();
+          const lastCommentMaxWords = 10;
+          let trimmedContent = commentWithoutAt;
+          if (commentWithoutAt.length > lastCommentMaxWords) {
+            trimmedContent = commentWithoutAt.slice(0, lastCommentMaxWords);
           }
-        } else {
-          processedComment = `${processedComment} ${name}`;
+          return insertAtUser(trimmedContent, atUser);
+        }
+        return comment;
+      });
+
+      // 确保生成的评论与历史评论的差异度在50%以上
+      const filteredComments = finalCommentsWithAtUser.filter((comment, index) => {
+        // 检查与之前所有评论的相似度
+        for (let i = 0; i < index; i++) {
+          const similarity = calculateSimilarity(comment, finalCommentsWithAtUser[i]);
+          console.log(`[Middle Comment Generator] 评论 ${i} 与评论 ${index} 的相似度: ${(similarity * 100).toFixed(2)}%`);
+          // 如果相似度超过50%，则过滤掉
+          if (similarity > 0.5) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // 如果过滤后评论数量不足，使用默认提示词补充
+      const defaultPrompts = [
+        '真的假的？感谢分享',
+        '学到了！太实用了',
+        '这方法真不错',
+        '谢谢分享，很有帮助',
+        '太棒了，值得学习',
+        '真的很有用，感谢',
+        '学到了新知识',
+        '这分享太及时了',
+        '非常实用的信息',
+        '感谢分享，受益匪浅',
+        '太感谢了，这个方法真好用',
+        '学到了很多，谢谢分享',
+        '这个技巧太实用了',
+        '感谢分享，收获满满',
+        '真的很有帮助，谢谢',
+        '学到了，非常感谢',
+        '这个方法太棒了',
+        '谢谢分享，很实用',
+        '真的很有用，学到了',
+        '感谢分享，非常实用'
+      ];
+      
+      while (filteredComments.length < commentCount) {
+        let randomPrompt = defaultPrompts[Math.floor(Math.random() * defaultPrompts.length)];
+        let isUnique = true;
+        
+        // 检查与现有评论的相似度
+        for (const existingComment of filteredComments) {
+          const similarity = calculateSimilarity(randomPrompt, existingComment);
+          if (similarity > 0.5) {
+            isUnique = false;
+            break;
+          }
+        }
+        
+        if (isUnique) {
+          // 处理补充的评论，确保格式正确
+          let processedPrompt = processText(randomPrompt);
+          processedPrompt = applyTextReplacements(processedPrompt);
+          
+          // 确定评论类型：每3条评论为一组
+          const i = filteredComments.length;
+          const commentType = i % 3;
+          
+          // 上评评论（每组的第一条）：固定带name参数
+          if (commentType === 0) {
+            // 确保添加name参数
+            if (name && !processedPrompt.includes(name)) {
+              const namePos = Math.random();
+              if (namePos < 0.33) {
+                processedPrompt = `${name} ${processedPrompt}`;
+              } else if (namePos < 0.66) {
+                const parts = processedPrompt.split('，');
+                if (parts.length >= 2) {
+                  const insertIndex = Math.floor(Math.random() * (parts.length - 1)) + 1;
+                  parts.splice(insertIndex, 0, name);
+                  processedPrompt = parts.join('，');
+                } else {
+                  processedPrompt = `${processedPrompt} ${name}`;
+                }
+              } else {
+                processedPrompt = `${processedPrompt} ${name}`;
+              }
+            }
+          }
+          // 中评评论的第二条（每组的第三条评论）：固定带atUser参数
+          else if (commentType === 2 && atUser) {
+            // 对于带有@用户标识的评论，限制实际内容在10字以内（不包含@用户标识）
+            const lastCommentMaxWords = 10;
+            let trimmedContent = processedPrompt;
+            if (processedPrompt.length > lastCommentMaxWords) {
+              trimmedContent = processedPrompt.slice(0, lastCommentMaxWords);
+            }
+            // 插入@用户标识
+            processedPrompt = insertAtUser(trimmedContent, atUser);
+          }
+          
+          filteredComments.push(processedPrompt);
         }
       }
-      
-    }
-    // 中评评论的第二条（第三条评论）：固定带atUser参数
-    else if (i === 2 && atUser) {
-      // 提取实际评论内容（排除@用户标识）
-      let commentWithoutAt = processedComment.replace(new RegExp(`@${atUser}`, 'g'), '').trim();
-      // 对于带有@用户标识的评论，限制实际内容在7字以内（不包含@用户标识）
-      const lastCommentMaxWords = 7;
-      console.log('[Middle Comment Generator] 最后一条评论字数限制:', lastCommentMaxWords);
-      console.log('[Middle Comment Generator] 最后一条评论实际内容长度:', commentWithoutAt.length);
-      
-      // 确保截取的内容不包含乱码，并且长度正确
-      let trimmedContent = commentWithoutAt;
-      if (commentWithoutAt.length > lastCommentMaxWords) {
-        // 截取前lastCommentMaxWords个字符
-        trimmedContent = commentWithoutAt.slice(0, lastCommentMaxWords);
-        console.log('[Middle Comment Generator] 截取后的内容:', trimmedContent);
-      }
-      // 插入@用户标识
-      processedComment = insertAtUser(trimmedContent, atUser);
-      console.log('[Middle Comment Generator] 处理后的最后一条评论:', processedComment);
-      
-    }
-    // 其他评论（中评第一条）
-    else {
-      // 普通评论的字数控制，限制在20字以内
-      if (processedComment.length > 20) {
-        processedComment = processedComment.slice(0, 19) + '…';
-      } else if (processedComment.length < ruleConfig.minWords) {
-        processedComment = processedComment + ` ${randomPick(ruleConfig.vocabulary.结尾语气词)}`;
-      }
-      
-    }
-    
-    return processedComment;
-  });
-
-  // 确保生成的评论与历史评论的差异度在50%以上
-  const filteredComments = finalComments.filter((comment, index) => {
-    // 对于第一条评论，不需要检查相似度
-    if (index === 0) return true;
-    
-    // 检查与之前所有评论的相似度
-    for (let i = 0; i < index; i++) {
-      const similarity = calculateSimilarity(comment, finalComments[i]);
-      console.log(`[Middle Comment Generator] 评论 ${i} 与评论 ${index} 的相似度: ${(similarity * 100).toFixed(2)}%`);
-      // 如果相似度超过50%，则过滤掉
-      if (similarity > 0.5) {
-        return false;
-      }
-    }
-    return true;
-  });
-
-  // 如果过滤后评论数量不足，使用默认提示词补充
-  while (filteredComments.length < commentCount) {
-    const randomPrompt = getDefaultPrompt();
-    let isUnique = true;
-    
-    // 检查与现有评论的相似度
-    for (const existingComment of filteredComments) {
-      const similarity = calculateSimilarity(randomPrompt, existingComment);
-      if (similarity > 0.5) {
-        isUnique = false;
-        break;
-      }
-    }
-    
-    if (isUnique) {
-      filteredComments.push(randomPrompt);
-    }
-  }
       
       // 应用文本过滤，移除用户名关键词
       filteredComments.forEach((comment, i) => {
         let storageComment = comment;
-        if (atUser && i === commentCount - 1) {
+        // 为每组的第三条评论添加@用户标识格式
+        if (atUser && (i + 1) % 3 === 0) {
           storageComment = formatCommentForStorage(comment, atUser);
         }
         const filteredStorageComment = filterUsernames(storageComment);

@@ -167,7 +167,7 @@ const AuditOrderCard: React.FC<AuditOrderCardProps> = ({
           要求：组合任务，中下评评论
       </div>
 
-      <div className="text-sm text-red-500 mb-2">温馨提示：审核过程中如目标视频丢失，将以接单员完成任务截图为准给予审核结算</div>
+
 
       <div className="mb-2 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
         <p className='mb-2  text-sm text-blue-600'>已完成评论点击进入：</p>

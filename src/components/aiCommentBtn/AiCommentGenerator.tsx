@@ -456,17 +456,28 @@ export default function AiCommentGenerator({
         return comment;
       });
       
-      // 将生成的评论添加到词库
+      // 过滤掉包含@用户标识的评论，不保存到词库
+      const commentsToSave = storageComments.filter(comment => {
+        if (nickname) {
+          // 检查评论中是否包含@用户标识
+          return !comment.includes(`@${nickname}`) && !comment.includes(`[[@${nickname}]]`);
+        }
+        return true;
+      });
+      
+      // 将过滤后的评论添加到词库
       try {
-        const addToLibraryResponse = await fetch('/api/task/addCommentToLibrary', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ comments: storageComments }),
-        });
-        
-        if (!addToLibraryResponse.ok) {
-          const errorData = await addToLibraryResponse.json();
-          console.error('添加评论到词库失败:', errorData.message);
+        if (commentsToSave.length > 0) {
+          const addToLibraryResponse = await fetch('/api/task/addCommentToLibrary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comments: commentsToSave }),
+          });
+          
+          if (!addToLibraryResponse.ok) {
+            const errorData = await addToLibraryResponse.json();
+            console.error('添加评论到词库失败:', errorData.message);
+          }
         }
       } catch (err) {
         console.error('添加评论到词库失败:', err);

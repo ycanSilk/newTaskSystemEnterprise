@@ -450,10 +450,10 @@ export default function AwaitingReviewTabPage() {
     return [...orders].sort((a, b) => {
       switch (sortBy) {
         case 'time':
-          // 只使用submitted_at字段
+          // 只使用submitted_at字段，按升序排列（最早的排在最上面）
           const timeA = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
           const timeB = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
-          return timeB - timeA;
+          return timeA - timeB;
         case 'status':
           // 待审核任务默认状态为待审核
           return '待审核'.localeCompare('待审核');
@@ -563,7 +563,7 @@ export default function AwaitingReviewTabPage() {
        
           <div className="text-black text-sm mb-1 w-full rounded-lg">评论类型：{order.template_title}</div>
           <div className="flex items-start justify-between mb-1 text-blue-600">任务的要求评论：{order.recommend_mark?.comment || ''}</div>
-          <div className="text-sm text-red-500 mb-1">温馨提示：审核过程中如目标视频或评论丢失，将以接单员完成任务截图为准给予审核结算</div>
+        
           <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
             <p className='mb-1  text-sm text-blue-600'>已完成评论链接：</p>
             <div className="flex gap-2 flex-wrap">

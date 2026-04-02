@@ -256,7 +256,7 @@ export default function CompletedTabPage() {
       <div className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
         <div className="flex items-center mb-1 overflow-hidden">
           <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate text-black text-sm">
-            任务ID：{task.task_id}
+            单号：{task.task_id}
           </div>
           <div className="relative">
             <button 

@@ -44,5 +44,8 @@ export const GET_MAGNIFIER_TASK_LIST_ENDPOINT = '/b/v1/magnify/list.php';
 //发布新手任务请求端点
 export const PUBLISH_NEWBIE_TASK_ENDPOINT = '/b/v1/newbie-tasks.php';
 
+//获取新手任务列表端点
+export const NOT_COMPLETED_ENDPOINT = '/b/v1/tasks/not-completed.php';
+
 
 

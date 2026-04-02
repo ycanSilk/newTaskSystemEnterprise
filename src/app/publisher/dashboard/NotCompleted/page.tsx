@@ -2,20 +2,80 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { SearchOutlined } from '@ant-design/icons';
-// 导入放大镜任务列表的类型定义
-import type { GetMagnifierTaskListApiResponse, MagnifierTaskItem } from '@/api/types/task/getMagnifierTaskListTypes';
+import OrderHeaderTemplate from '../components/OrderHeaderTemplate';
+
 // 导入打开视频按钮组件
 import OpenVideoButton from '@/components/button/taskbutton/OpenVideoButton';
+// 推荐标记类型
+interface RecommendMark {
+  comment: string;
+  image_url: string;
+}
 
+// 任务数据类型
+interface Task {
+  task_id: number;
+  template_id: number;
+  template_title: string;
+  template_type: number;
+  template_type_text: string;
+  video_url: string;
+  deadline: number;
+  deadline_text: string;
+  task_count: number;
+  task_done: number;
+  task_doing: number;
+  task_reviewing: number;
+  task_available: number;
+  progress_percent: number;
+  unit_price: string;
+  total_price: string;
+  status: number;
+  status_text: string;
+  unfinished_count: number;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  is_combo: boolean;
+  stage: number;
+  stage_text: string;
+  stage_title: string | null;
+  stage_status: number;
+  stage_status_text: string;
+  combo_task_id: string | null;
+  parent_task_id: number | null;
+  recommend_marks?: RecommendMark[];
+}
+
+// 分页信息类型
+interface PaginationInfo {
+  current_page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+// 任务数据返回类型
+interface TasksData {
+  tasks: Task[];
+  pagination: PaginationInfo;
+}
+
+// API 响应类型
+interface GetTasksListResponse {
+  code: number;
+  message: string;
+  data: TasksData;
+  timestamp: number;
+}
 
 const dyurl = "https://www.douyin.com/video/7598199346240228614"
 
 // 独立页面组件，不接收外部传入的数据
-export default function CompletedTabPage() {
+export default function NotCompletedTabPage() {
   const router = useRouter();
-  const [tasks, setTasks] = useState<MagnifierTaskItem[]>([]);
-  const [originalTasks, setOriginalTasks] = useState<MagnifierTaskItem[]>([]); // 原始任务列表
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [originalTasks, setOriginalTasks] = useState<Task[]>([]); // 原始任务列表
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState(''); // 输入框内容
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
@@ -23,6 +83,8 @@ export default function CompletedTabPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [pageSize] = useState<number>(20);
+  // 数据缓存和轮询相关
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 处理搜索点击（前端过滤）
   const handleSearch = () => {
@@ -33,7 +95,7 @@ export default function CompletedTabPage() {
     } else {
       // 只过滤任务ID匹配的任务
       const filteredTasks = originalTasks.filter(task => 
-        task.id.toString().includes(searchTerm.trim())
+        task.task_id.toString().includes(searchTerm.trim())
       );
       console.log('Filtered tasks:', filteredTasks.length, 'tasks');
       setTasks(filteredTasks);
@@ -45,11 +107,11 @@ export default function CompletedTabPage() {
     // 这里可以添加具体的操作逻辑
   };
 
-  // API调用 - 获取放大镜任务列表
-  const fetchMagnifierTasks = async (page: number = 1) => {
+  // API 调用 - 获取未完成任务列表
+  const fetchNotCompletedTasks = async (page: number = 1) => {
     try {
-      // 直接使用fetch
-      const response = await fetch(`/api/task/getMagnifierTaskList?page=${page}&page_size=${pageSize}`, {
+      // 调用未完成任务 API
+      const response = await fetch(`/api/task/notCompleted?status=0&page=${page}&page_size=${pageSize}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -59,48 +121,60 @@ export default function CompletedTabPage() {
         }
       });
       
-      const result: GetMagnifierTaskListApiResponse = await response.json();
-      
+      const result: GetTasksListResponse = await response.json();
+      console.log('未完成任务列表:', result);
       if (result.code === 0) {
         // 更新分页信息
-        if (result.data) {
-          // 计算总页数
-          const totalPages = Math.ceil((result.data.total || 0) / (result.data.pageSize || 10));
-          setTotalPages(totalPages > 0 ? totalPages : 1);
+        if (result.data?.pagination) {
+          setTotalPages(result.data.pagination.total_pages || 1);
         }
-        return result.data.list || [];
+        return result.data.tasks || [];
       }
       return [];
     } catch (error) {
       if (error instanceof Error && error.message.includes('401')) {
-        // 如果是401错误，重定向到登录页
+        // 如果是 401 错误，重定向到登录页
         router.push('/publisher/auth/login');
         return [];
       }
       if (error instanceof Error && error.message.includes('500')) {
-        // 如果是500错误，重定向到登录页
+        // 如果是 500 错误，重定向到登录页
         router.push('/publisher/auth/login');
         return [];
       }
       if (error instanceof Error && error.message.includes('403')) {
-        // 如果是403错误，重定向到登录页
+        // 如果是 403 错误，重定向到登录页
         router.push('/publisher/auth/login');
         return [];
       }
       if (error instanceof Error && error.message.includes('4011')) {
-        // 如果是4011错误，重定向到登录页
+        // 如果是 4011 错误，重定向到登录页
         router.push('/publisher/auth/login');
         return [];
       }
-      console.error('获取放大镜任务列表失败:', error);
+      console.error('获取未完成任务列表失败:', error);
       return [];
     }
+  };
+
+  // 检查数据是否有变化
+  const hasDataChanged = (newData: Task[], oldData: Task[]): boolean => {
+    if (newData.length !== oldData.length) return true;
+    
+    // 比较任务ID，检查是否有新增或删除的任务
+    const newTaskIds = new Set(newData.map(task => task.task_id));
+    const oldTaskIds = new Set(oldData.map(task => task.task_id));
+    
+    if (newTaskIds.size !== oldTaskIds.size) return true;
+    
+    // 检查是否有不同的任务ID
+    return !Array.from(newTaskIds).every(taskId => oldTaskIds.has(taskId));
   };
 
   // 刷新任务列表数据
   const refreshTasks = async () => {
     try {
-      const newTasks = await fetchMagnifierTasks(currentPage);
+      const newTasks = await fetchNotCompletedTasks(currentPage);
       setOriginalTasks(newTasks);
       setTasks(newTasks);
       showCopySuccess('数据已更新');
@@ -144,7 +218,7 @@ export default function CompletedTabPage() {
     setCurrentPage(page);
     setLoading(true);
     try {
-      const newTasks = await fetchMagnifierTasks(page);
+      const newTasks = await fetchNotCompletedTasks(page);
       setOriginalTasks(newTasks);
       setTasks(newTasks);
     } catch (error) {
@@ -159,7 +233,7 @@ export default function CompletedTabPage() {
     const initData = async () => {
       setLoading(true);
       try {
-        const initialTasks = await fetchMagnifierTasks(currentPage);
+        const initialTasks = await fetchNotCompletedTasks(currentPage);
         setOriginalTasks(initialTasks);
         setTasks(initialTasks);
       } catch (error) {
@@ -173,7 +247,7 @@ export default function CompletedTabPage() {
 
     // 设置被动轮询，每1分钟刷新一次
     const pollingInterval = 1 * 60 * 1000; // 1分钟
-    const intervalId = setInterval(() => {
+    pollingIntervalRef.current = setInterval(() => {
       refreshTasks();
     }, pollingInterval);
 
@@ -188,14 +262,16 @@ export default function CompletedTabPage() {
 
     // 清理函数
     return () => {
-      clearInterval(intervalId);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentPage]);
 
-  // MainOrderCard组件定义，使用MagnifierTaskItem类型
+  // MainOrderCard组件定义，直接使用Task类型
   const MainOrderCard = ({ task, onCopyOrderNumber, onCopyComment, onViewDetails, onReorder }: {
-    task: MagnifierTaskItem;
+    task: Task;
     onCopyOrderNumber?: (orderNumber: string) => void;
     onCopyComment?: (comment: string) => void;
     onViewDetails?: (orderId: string) => void;
@@ -203,43 +279,39 @@ export default function CompletedTabPage() {
   }) => {
     const router = useRouter();
 
+    // 直接使用API返回的原始统计数据
+
     // 处理复制订单号 - 仅调用父组件传入的方法
     const handleCopyOrderNumber = () => {
       if (onCopyOrderNumber) {
-        onCopyOrderNumber(task.id.toString());
+        onCopyOrderNumber(task.task_id.toString());
       }
     };
 
     // 处理查看详情
     const handleViewDetails = () => {
       if (onViewDetails) {
-        onViewDetails(task.id.toString());
+        onViewDetails(task.task_id.toString());
       } else {
-        router.push(`/publisher/orders/task-detail/${task.id}`);
+        router.push(`/publisher/orders/task-detail/${task.task_id}`);
       }
     };
 
     // 处理补单
     const handleReorder = () => {
       if (onReorder) {
-        onReorder(task.id.toString());
+        onReorder(task.task_id.toString());
       } else {
         // 跳转到新的补单页面
-        router.push(`/publisher/create/supplementaryorder?reorder=true&orderId=${task.id}&title=${encodeURIComponent(task.title)}&description=${encodeURIComponent(task.title)}&budget=${task.total_price}&subOrderCount=${task.task_count}`);
+        router.push(`/publisher/create/supplementaryorder?reorder=true&orderId=${task.task_id}&title=${encodeURIComponent(task.template_title)}&description=${encodeURIComponent(task.template_title)}&budget=${task.total_price}&subOrderCount=${task.task_count}`);
       }
-    };
-
-    // 格式化截止时间
-    const formatDeadline = (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      return date.toLocaleString('zh-CN');
     };
 
     return (
       <div className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow mb-1 bg-white">
         <div className="flex items-center mb-1 overflow-hidden">
           <div className="flex-1 mr-2 whitespace-nowrap overflow-hidden text-truncate text-black text-sm">
-            单号：{task.id}
+            单号：{task.task_id}
           </div>
           <div className="relative">
             <button 
@@ -251,24 +323,22 @@ export default function CompletedTabPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-500">
             {task.status_text}
           </span>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
-            放大镜任务
+            {task.template_type_text}
           </span>
+         
         </div>
         <div className="mb-1 text-sm text-black text-sm">
           发布时间：{task.created_at}
         </div>
         <div className="mb-1 text-sm text-black text-sm ">
-          截止时间：{formatDeadline(task.deadline)}
+          截止时间：{task.deadline_text}
         </div>
         <div className="text-black text-sm mb-1 w-full rounded-lg">
-           任务要求：{task.title}
-        </div>
-        <div className="mb-1 text-sm text-black text-sm">
-          任务描述：{task.recommend_marks[0]?.comment || ''}
+           任务要求：{task.template_title}
         </div>
         <div className="mb-1 bg-blue-50 border border-blue-500 py-2 px-3 rounded-lg">
           <p className='mb-1  text-sm text-blue-600'>任务视频链接：</p>
@@ -285,10 +355,22 @@ export default function CompletedTabPage() {
             <span className="text-white text-sm block">¥{task.total_price}</span>
           </div>
           <div className="flex-1 bg-green-600 rounded-lg p-1 text-center">
-            <span className="text-white text-sm mb-1">总数量</span>
+            <span className="text-white text-sm mb-1">任务总数量</span>
             <span className="text-white text-sm block">{task.task_count}</span>
           </div>
+          <div className="flex-1 bg-red-600 rounded-lg p-1 text-center">
+            <span className="text-white text-sm mb-1">未完成任务</span>
+            <span className="text-white text-sm block">{task.unfinished_count}</span>
+          </div>
         </div>
+         <div className="flex justify-center mt-2">
+              <button 
+                onClick={() => router.push(`/publisher/create/douyin`)}
+                className="bg-blue-600 text-white px-10 py-2 rounded-md shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+               重新发布任务
+              </button>
+            </div>
       </div>
     );
   };
@@ -302,10 +384,6 @@ export default function CompletedTabPage() {
     );
   }
 
-
-  
-
-
   return (
     <div className="mx-4 mt-6">
       {/* 复制成功提示 */}
@@ -316,29 +394,30 @@ export default function CompletedTabPage() {
       )}
 
       {/* 页面标题和搜索框 */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-gray-800">放大镜任务</h3>
+          <h3 className="font-bold text-gray-800">未完成的订单</h3>
           <span className="text-sm text-gray-500">共 {tasks.length} 个任务</span>
         </div>
-        
-        {/* 内置搜索功能 */}
+
         <div className="flex-grow max-w-md">
           <div className="grid grid-cols-[79%_20%] gap-1">
             <div className="relative mr-1">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchOutlined className="h-5 w-5 text-gray-400" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
-              <input 
-                type="text" 
-                placeholder="搜索任务ID"
+              <input
+                type="text"
+                placeholder="搜索单号"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>
-            <button 
+            <button
               onClick={handleSearch}
               className="inline-flex items-center justify-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md whitespace-nowrap"
             >
@@ -354,7 +433,7 @@ export default function CompletedTabPage() {
           <>
             {tasks.map((task) => (
               <MainOrderCard
-                key={task.id}
+                key={task.task_id}
                 task={task}
                 onCopyOrderNumber={handleCopyOrderNumber}
                 onCopyComment={handleCopyComment}
@@ -368,29 +447,49 @@ export default function CompletedTabPage() {
             
             {/* 分页控件 */}
             {totalPages > 1 && (
-              <div className="flex justify-center mt-8">
-                <nav className="flex items-center space-x-4">
+              <div className="flex flex-col items-center mt-8 space-y-3">
+                {/* 分页信息 */}
+                <div className="text-sm text-gray-600">
+                  共 <span className="font-medium text-gray-800">{tasks.length}</span> 条记录，
+                  第 <span className="font-medium text-gray-800">{currentPage}</span> / <span className="font-medium text-gray-800">{totalPages}</span> 页
+                </div>
+                
+                {/* 分页按钮 */}
+                <nav className="flex items-center space-x-2">
+                  {/* 首页按钮 */}
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    首页
+                  </button>
+                  
                   {/* 上一页按钮 */}
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                   >
                     上一页
                   </button>
-                  
-                  {/* 页码信息 */}
-                  <span className="px-4 py-2 text-gray-700 font-medium">
-                    第 {currentPage} / {totalPages} 页
-                  </span>
                   
                   {/* 下一页按钮 */}
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                   >
                     下一页
+                  </button>
+                  
+                  {/* 尾页按钮 */}
+                  <button
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    尾页
                   </button>
                 </nav>
               </div>
