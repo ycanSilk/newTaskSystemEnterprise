@@ -422,13 +422,23 @@ export default function PublishTaskPage() {
     return similarity;
   };
 
-  // 检查评论是否有重复
+  // 检查评论是否有重复（带@用户的评论不做重复校验）
   const checkDuplicateComments = (comments: string[]): { hasDuplicate: boolean; duplicateIndices: number[] } => {
     const similarityThreshold = 0.6; // 相似度阈值
     const duplicateIndices: number[] = [];
     
     for (let i = 0; i < comments.length; i++) {
+      // 跳过带@用户的评论（每组的第三条）
+      if ((i + 1) % 3 === 0) {
+        continue;
+      }
+      
       for (let j = i + 1; j < comments.length; j++) {
+        // 跳过带@用户的评论（每组的第三条）
+        if ((j + 1) % 3 === 0) {
+          continue;
+        }
+        
         const similarity = calculateSimilarity(comments[i], comments[j]);
         if (similarity > similarityThreshold) {
           console.log(`[发布校验] 发现重复评论: 评论${i + 1} 与 评论${j + 1} 相似度 ${(similarity * 100).toFixed(2)}%`);

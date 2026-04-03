@@ -518,24 +518,10 @@ export default function MiddleCommentGenerator({
       }
       
     }
-    // 下评评论（偶数索引）：固定带atUser参数
+    // 下评评论（偶数索引）：固定带atUser参数，只包含@用户，不带其他文字
     else if (i % 2 === 1 && atUser) {
-      // 提取实际评论内容（排除@用户标识）
-      let commentWithoutAt = processedComment.replace(new RegExp(`@${atUser}`, 'g'), '').trim();
-      // 对于带有@用户标识的评论，限制实际内容在7字以内（不包含@用户标识）
-      const lastCommentMaxWords = 10;
-      console.log('[Middle Comment Generator] 最后一条评论字数限制:', lastCommentMaxWords);
-      console.log('[Middle Comment Generator] 最后一条评论实际内容长度:', commentWithoutAt.length);
-      
-      // 确保截取的内容不包含乱码，并且长度正确
-      let trimmedContent = commentWithoutAt;
-      if (commentWithoutAt.length > lastCommentMaxWords) {
-        // 截取前lastCommentMaxWords个字符
-        trimmedContent = commentWithoutAt.slice(0, lastCommentMaxWords);
-        console.log('[Middle Comment Generator] 截取后的内容:', trimmedContent);
-      }
-      // 插入@用户标识
-      processedComment = insertAtUser(trimmedContent, atUser);
+      // 只包含@用户，不带其他文字
+      processedComment = `@${atUser}`;
       console.log('[Middle Comment Generator] 处理后的最后一条评论:', processedComment);
       
     }
@@ -543,10 +529,21 @@ export default function MiddleCommentGenerator({
     return processedComment;
   });
 
-  // 确保生成的评论与历史评论的差异度在50%以上
+  // 确保生成的评论与历史评论的差异度在50%以上（带@用户的评论不做重复校验）
   const filteredComments = finalComments.filter((comment, index) => {
+    // 检查是否是带@用户的评论（偶数索引）
+    if (index % 2 === 1 && atUser) {
+      // 带@用户的评论不做重复校验
+      return true;
+    }
+    
     // 检查与之前所有评论的相似度
     for (let i = 0; i < index; i++) {
+      // 跳过与带@用户评论的相似度检查
+      if (i % 2 === 1 && atUser) {
+        continue;
+      }
+      
       const similarity = calculateSimilarity(comment, finalComments[i]);
       console.log(`[Middle Comment Generator] 评论 ${i} 与评论 ${index} 的相似度: ${(similarity * 100).toFixed(2)}%`);
       // 如果相似度超过50%，则过滤掉
@@ -598,8 +595,8 @@ export default function MiddleCommentGenerator({
           }
         }
       } else if (atUser) {
-        // 下评评论：添加atUser参数
-        processedComment = insertAtUser(processedComment, atUser);
+        // 下评评论：只包含@用户，不带其他文字
+        processedComment = `@${atUser}`;
       }
       
       filteredComments.push(processedComment);

@@ -178,15 +178,13 @@ export default function PublishTaskPage() {
         content: comment.content.replace(/ @\S+/g, '').replace(/@\S+/g, '').trim()
       }));
 
-      // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中
+      // 检查是否有@用户标记，如果有，确保它在最新的最后一条评论中，只包含@用户，不带其他文字
       if (mentions.length > 0 && quantity > 0) {
-        // 将@用户标记添加到最新的最后一条评论
+        // 将@用户标记添加到最新的最后一条评论，只包含@用户，不带其他文字
         const lastIndex = newComments.length - 1;
         newComments[lastIndex] = {
           ...newComments[lastIndex],
-          content: newComments[lastIndex].content
-            ? `${newComments[lastIndex].content} @${mentions[0]}`
-            : `@${mentions[0]}`
+          content: `@${mentions[0]}` // 只包含@用户，不带其他文字
         };
       }
 
@@ -241,16 +239,14 @@ export default function PublishTaskPage() {
       setMentions([trimmedMention]); // 只保留一个用户
       setMentionInput('');
 
-      // 将@标记插入到评论列表的最后一条
+      // 将@标记插入到评论列表的最后一条，只包含@用户，不带其他文字
       if (formData.comments.length > 0) {
         const lastIndex = formData.comments.length - 1;
         setFormData(prevData => {
           const newComments = [...prevData.comments];
           newComments[lastIndex] = {
             ...newComments[lastIndex],
-            content: newComments[lastIndex].content
-              ? `${newComments[lastIndex].content} @${trimmedMention}`
-              : `@${trimmedMention}`
+            content: `@${trimmedMention}` // 只包含@用户，不带其他文字
           };
           return {
             ...prevData,
@@ -419,16 +415,8 @@ export default function PublishTaskPage() {
             // 非最后一条评论，移除所有@用户标识
             processedComment = comment.replace(/@\S+/g, '').trim();
           } else if (mentions.length > 0) {
-            // 最后一条评论，确保只包含一个@用户标识
-            const atMatches = processedComment.match(/@\S+/g);
-            if (atMatches && atMatches.length > 1) {
-              // 如果有多个@标识，只保留第一个
-              const firstAt = atMatches[0];
-              processedComment = processedComment.replace(/@\S+/g, '').trim() + ` ${firstAt}`;
-            } else if (!atMatches) {
-              // 如果没有@标识，添加一个
-              processedComment = processedComment.trim() + ` @${mentions[0]}`;
-            }
+            // 最后一条评论，只包含@用户，不带其他文字
+            processedComment = `@${mentions[0]}`;
           }
           newComments[index].content = processedComment;
         }
